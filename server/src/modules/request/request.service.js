@@ -51,6 +51,22 @@ async function updateStatus(id, newStatus, tenantId) {
 }
 
 /**
+ * Manually assign a request to an assignee.
+ */
+async function assign(id, assigneeId, tenantId) {
+  const [request] = await db('requests')
+    .where({ id, business_id: tenantId })
+    .update({
+      assigned_to_id: assigneeId,
+      assignment_rule_id: null,
+      assigned_at: db.fn.now(),
+      updated_at: db.fn.now(),
+    })
+    .returning('*');
+  return request;
+}
+
+/**
  * Set human takeover on a request.
  */
 async function takeover(id, tenantId) {
@@ -72,4 +88,4 @@ async function release(id, tenantId) {
   return request;
 }
 
-module.exports = { list, getById, create, updateStatus, takeover, release };
+module.exports = { list, getById, create, updateStatus, assign, takeover, release };

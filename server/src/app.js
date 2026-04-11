@@ -8,6 +8,8 @@ const templateRoutes = require('./modules/template/template.routes');
 const menuRoutes = require('./modules/menu/menu.routes');
 const flowRoutes = require('./modules/flow/flow.routes');
 const requestRoutes = require('./modules/request/request.routes');
+const assigneeRoutes = require('./modules/assignee/assignee.routes');
+const assignmentRuleRoutes = require('./modules/assignment-rule/assignment-rule.routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -25,6 +27,8 @@ app.use('/api/v1/templates', templateRoutes);
 app.use('/api/v1/menu', menuRoutes);
 app.use('/api/v1/flows', flowRoutes);
 app.use('/api/v1/requests', requestRoutes);
+app.use('/api/v1/assignees', assigneeRoutes);
+app.use('/api/v1/assignment-rules', assignmentRuleRoutes);
 
 // --- 404 handler ---
 app.use((_req, res) => {

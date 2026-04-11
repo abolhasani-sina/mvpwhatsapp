@@ -1,4 +1,6 @@
 const requestService = require('./request.service');
+const assigneeService = require('../assignee/assignee.service');
+const { assignRequest } = require('../assignment-rule/assignment.engine');
 const {
   VALID_STATUSES,
   validateCreateRequest,
@@ -56,7 +58,12 @@ async function createRequest(req, res, next) {
       });
     }
 
-    const request = await requestService.create(req.body, req.tenantId);
+    let request = await requestService.create(req.body, req.tenantId);
+
+    // Rule-based auto-assignment (fire-and-forget, does not affect response on failure)
+    const assigned = await assignRequest(request, req.tenantId);
+    if (assigned) request = assigned;
+
     res.status(201).json({ data: request });
   } catch (err) {
     next(err);
@@ -134,4 +141,38 @@ async function releaseRequest(req, res, next) {
   }
 }
 
-module.exports = { listRequests, getRequest, createRequest, updateStatus, takeoverRequest, releaseRequest };
+/**
+ * POST /api/v1/requests/:id/assign
+ */
+async function assignRequestToAssignee(req, res, next) {
+  try {
+    const existing = await requestService.getById(req.params.id, req.tenantId);
+    if (!existing) {
+      return res.status(404).json({
+        error: { status: 404, message: 'Request not found' },
+      });
+    }
+
+    const { assignee_id } = req.body;
+    if (!assignee_id || typeof assignee_id !== 'string') {
+      return res.status(400).json({
+        error: { status: 400, message: 'assignee_id is required' },
+      });
+    }
+
+    // Ensure assignee belongs to the same business
+    const assignee = await assigneeService.getById(assignee_id, req.tenantId);
+    if (!assignee) {
+      return res.status(400).json({
+        error: { status: 400, message: 'Assignee not found in this business' },
+      });
+    }
+
+    const request = await requestService.assign(req.params.id, assignee_id, req.tenantId);
+    res.json({ data: request });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listRequests, getRequest, createRequest, updateStatus, assignRequestToAssignee, takeoverRequest, releaseRequest };
