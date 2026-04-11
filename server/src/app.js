@@ -5,6 +5,7 @@ const profileRoutes = require('./modules/business/business.profile.routes');
 const authRoutes = require('./modules/auth/auth.routes');
 const serviceRoutes = require('./modules/service/service.routes');
 const templateRoutes = require('./modules/template/template.routes');
+const menuRoutes = require('./modules/menu/menu.routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -19,6 +20,7 @@ app.use('/api/v1/businesses', businessRoutes);
 app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/services', serviceRoutes);
 app.use('/api/v1/templates', templateRoutes);
+app.use('/api/v1/menu-nodes', menuRoutes);
 
 // --- 404 handler ---
 app.use((_req, res) => {

@@ -6,7 +6,7 @@ import {
   AppstoreOutlined,
   LogoutOutlined,
 } from '@ant-design/icons';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 
 const { Header, Sider, Content } = AntLayout;
 const { Text } = Typography;

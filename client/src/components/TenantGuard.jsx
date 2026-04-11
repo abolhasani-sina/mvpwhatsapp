@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { Spin } from 'antd';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 
 export default function TenantGuard({ children }) {
   const { user, loading } = useAuth();
