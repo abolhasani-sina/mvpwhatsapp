@@ -10,6 +10,7 @@ const flowRoutes = require('./modules/flow/flow.routes');
 const requestRoutes = require('./modules/request/request.routes');
 const assigneeRoutes = require('./modules/assignee/assignee.routes');
 const assignmentRuleRoutes = require('./modules/assignment-rule/assignment-rule.routes');
+const notificationRoutes = require('./modules/notification/notification.routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -29,6 +30,7 @@ app.use('/api/v1/flows', flowRoutes);
 app.use('/api/v1/requests', requestRoutes);
 app.use('/api/v1/assignees', assigneeRoutes);
 app.use('/api/v1/assignment-rules', assignmentRuleRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 
 // --- 404 handler ---
 app.use((_req, res) => {

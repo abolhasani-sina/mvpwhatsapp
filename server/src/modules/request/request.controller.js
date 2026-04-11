@@ -1,5 +1,6 @@
 const requestService = require('./request.service');
 const assigneeService = require('../assignee/assignee.service');
+const notificationService = require('../notification/notification.service');
 const { assignRequest } = require('../assignment-rule/assignment.engine');
 const {
   VALID_STATUSES,
@@ -60,9 +61,28 @@ async function createRequest(req, res, next) {
 
     let request = await requestService.create(req.body, req.tenantId);
 
+    // Notification: request_created
+    await notificationService.create({
+      businessId: req.tenantId,
+      type: 'request_created',
+      referenceId: request.id,
+      referenceType: 'request',
+      message: `New request created (status: pending)`,
+    });
+
     // Rule-based auto-assignment (fire-and-forget, does not affect response on failure)
     const assigned = await assignRequest(request, req.tenantId);
-    if (assigned) request = assigned;
+    if (assigned) {
+      request = assigned;
+      // Notification: request_assigned (auto)
+      await notificationService.create({
+        businessId: req.tenantId,
+        type: 'request_assigned',
+        referenceId: request.id,
+        referenceType: 'request',
+        message: `Request auto-assigned to assignee`,
+      });
+    }
 
     res.status(201).json({ data: request });
   } catch (err) {
@@ -97,6 +117,16 @@ async function updateStatus(req, res, next) {
     }
 
     const request = await requestService.updateStatus(req.params.id, newStatus, req.tenantId);
+
+    // Notification: request_status_changed
+    await notificationService.create({
+      businessId: req.tenantId,
+      type: 'request_status_changed',
+      referenceId: request.id,
+      referenceType: 'request',
+      message: `Request status changed from "${existing.status}" to "${newStatus}"`,
+    });
+
     res.json({ data: request });
   } catch (err) {
     next(err);
@@ -169,6 +199,16 @@ async function assignRequestToAssignee(req, res, next) {
     }
 
     const request = await requestService.assign(req.params.id, assignee_id, req.tenantId);
+
+    // Notification: request_assigned (manual)
+    await notificationService.create({
+      businessId: req.tenantId,
+      type: 'request_assigned',
+      referenceId: request.id,
+      referenceType: 'request',
+      message: `Request manually assigned to ${assignee.name}`,
+    });
+
     res.json({ data: request });
   } catch (err) {
     next(err);
