@@ -96,4 +96,42 @@ async function updateStatus(req, res, next) {
   }
 }
 
-module.exports = { listRequests, getRequest, createRequest, updateStatus };
+/**
+ * POST /api/v1/requests/:id/takeover
+ */
+async function takeoverRequest(req, res, next) {
+  try {
+    const existing = await requestService.getById(req.params.id, req.tenantId);
+    if (!existing) {
+      return res.status(404).json({
+        error: { status: 404, message: 'Request not found' },
+      });
+    }
+
+    const request = await requestService.takeover(req.params.id, req.tenantId);
+    res.json({ data: request });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/v1/requests/:id/release
+ */
+async function releaseRequest(req, res, next) {
+  try {
+    const existing = await requestService.getById(req.params.id, req.tenantId);
+    if (!existing) {
+      return res.status(404).json({
+        error: { status: 404, message: 'Request not found' },
+      });
+    }
+
+    const request = await requestService.release(req.params.id, req.tenantId);
+    res.json({ data: request });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listRequests, getRequest, createRequest, updateStatus, takeoverRequest, releaseRequest };

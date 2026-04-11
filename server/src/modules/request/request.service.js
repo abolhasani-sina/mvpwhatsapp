@@ -50,4 +50,26 @@ async function updateStatus(id, newStatus, tenantId) {
   return request;
 }
 
-module.exports = { list, getById, create, updateStatus };
+/**
+ * Set human takeover on a request.
+ */
+async function takeover(id, tenantId) {
+  const [request] = await db('requests')
+    .where({ id, business_id: tenantId })
+    .update({ is_human_taken_over: true, taken_over_at: db.fn.now(), updated_at: db.fn.now() })
+    .returning('*');
+  return request;
+}
+
+/**
+ * Release human takeover on a request.
+ */
+async function release(id, tenantId) {
+  const [request] = await db('requests')
+    .where({ id, business_id: tenantId })
+    .update({ is_human_taken_over: false, taken_over_at: null, updated_at: db.fn.now() })
+    .returning('*');
+  return request;
+}
+
+module.exports = { list, getById, create, updateStatus, takeover, release };

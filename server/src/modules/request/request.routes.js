@@ -11,5 +11,7 @@ router.get('/', controller.listRequests);
 router.post('/', controller.createRequest);
 router.get('/:id', controller.getRequest);
 router.patch('/:id/status', controller.updateStatus);
+router.post('/:id/takeover', controller.takeoverRequest);
+router.post('/:id/release', controller.releaseRequest);
 
 module.exports = router;
