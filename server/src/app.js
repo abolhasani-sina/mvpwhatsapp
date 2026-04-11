@@ -20,7 +20,7 @@ app.use('/api/v1/businesses', businessRoutes);
 app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/services', serviceRoutes);
 app.use('/api/v1/templates', templateRoutes);
-app.use('/api/v1/menu-nodes', menuRoutes);
+app.use('/api/v1/menu', menuRoutes);
 
 // --- 404 handler ---
 app.use((_req, res) => {

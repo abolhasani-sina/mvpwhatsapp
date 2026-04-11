@@ -1,6 +1,6 @@
 const db = require('../../config/database');
 const { buildTree, getNodeDepth, getSubtreeDepth } = require('./menu.tree');
-const { MAX_CHILDREN, MAX_DEPTH, MAX_BUTTONS, VALID_NODE_TYPES } = require('./menu.validation');
+const { MAX_CHILDREN, MAX_DEPTH, VALID_NODE_TYPES } = require('./menu.validation');
 
 // ---------- Menu Nodes ----------
 
@@ -16,63 +16,21 @@ async function listFlat(tenantId) {
 
 /**
  * Get the full menu tree for a tenant (nested).
- * Info nodes include their info_contents and action_buttons.
+ * Returns navigation-only structure: id, title, type, children.
+ * Info contents and action buttons are reserved for future phases.
  */
 async function getTree(tenantId) {
   const nodes = await listFlat(tenantId);
-
-  // Fetch info_contents and action_buttons for all info nodes
-  const infoNodeIds = nodes.filter((n) => n.node_type === 'info').map((n) => n.id);
-  let infoContents = [];
-  let actionButtons = [];
-  if (infoNodeIds.length > 0) {
-    infoContents = await db('info_contents')
-      .whereIn('menu_node_id', infoNodeIds)
-      .select('*');
-    actionButtons = await db('action_buttons')
-      .whereIn('menu_node_id', infoNodeIds)
-      .orderBy('sort_order', 'asc')
-      .select('*');
-  }
-
-  // Attach info_content and action_buttons to their nodes
-  const infoMap = {};
-  for (const ic of infoContents) {
-    infoMap[ic.menu_node_id] = ic;
-  }
-  const buttonMap = {};
-  for (const ab of actionButtons) {
-    if (!buttonMap[ab.menu_node_id]) buttonMap[ab.menu_node_id] = [];
-    buttonMap[ab.menu_node_id].push(ab);
-  }
-
-  for (const node of nodes) {
-    if (node.node_type === 'info') {
-      node.info_content = infoMap[node.id] || null;
-      node.action_buttons = buttonMap[node.id] || [];
-    }
-  }
-
   return buildTree(nodes);
 }
 
 /**
  * Get a single node by ID, scoped to tenant.
+ * Returns the menu_nodes row only. Info content / action buttons
+ * are reserved for future phases.
  */
 async function getById(id, tenantId) {
-  const node = await db('menu_nodes').where({ id, business_id: tenantId }).first();
-  if (!node) return null;
-
-  // Attach info_content + action_buttons for info nodes
-  if (node.node_type === 'info') {
-    node.info_content = await db('info_contents').where({ menu_node_id: id }).first() || null;
-    node.action_buttons = await db('action_buttons')
-      .where({ menu_node_id: id })
-      .orderBy('sort_order', 'asc')
-      .select('*');
-  }
-
-  return node;
+  return db('menu_nodes').where({ id, business_id: tenantId }).first();
 }
 
 /**
@@ -124,12 +82,6 @@ async function create(data, tenantId) {
       is_active: data.is_active !== undefined ? data.is_active : true,
     })
     .returning('*');
-
-  // If info node, create info_content record if provided
-  if (data.node_type === 'info' && data.info_content) {
-    const ic = await createInfoContent(node.id, data.info_content);
-    node.info_content = ic;
-  }
 
   return { data: node };
 }
@@ -238,108 +190,10 @@ async function reorder(id, newSortOrder, tenantId) {
   return node;
 }
 
-// ---------- Info Contents ----------
-
-async function getInfoContent(nodeId) {
-  return db('info_contents').where({ menu_node_id: nodeId }).first();
-}
-
-async function createInfoContent(nodeId, data) {
-  const [ic] = await db('info_contents')
-    .insert({
-      menu_node_id: nodeId,
-      title: data.title,
-      description: data.description || null,
-      price: data.price != null ? data.price : null,
-      duration: data.duration || null,
-    })
-    .returning('*');
-  return ic;
-}
-
-async function updateInfoContent(nodeId, data) {
-  const existing = await db('info_contents').where({ menu_node_id: nodeId }).first();
-
-  if (!existing) {
-    // Create if doesn't exist
-    return createInfoContent(nodeId, data);
-  }
-
-  const updateFields = {};
-  if (data.title !== undefined) updateFields.title = data.title;
-  if (data.description !== undefined) updateFields.description = data.description;
-  if (data.price !== undefined) updateFields.price = data.price;
-  if (data.duration !== undefined) updateFields.duration = data.duration;
-
-  if (Object.keys(updateFields).length === 0) return existing;
-
-  const [ic] = await db('info_contents')
-    .where({ menu_node_id: nodeId })
-    .update(updateFields)
-    .returning('*');
-  return ic;
-}
-
-// ---------- Action Buttons ----------
-
-async function listActionButtons(nodeId) {
-  return db('action_buttons')
-    .where({ menu_node_id: nodeId })
-    .orderBy('sort_order', 'asc')
-    .select('*');
-}
-
-async function createActionButton(nodeId, data) {
-  // Check max buttons
-  const count = await db('action_buttons')
-    .where({ menu_node_id: nodeId })
-    .count('id as count')
-    .first();
-  if (parseInt(count.count) >= MAX_BUTTONS) {
-    return { error: `Maximum ${MAX_BUTTONS} action buttons per info node` };
-  }
-
-  const [btn] = await db('action_buttons')
-    .insert({
-      menu_node_id: nodeId,
-      label: data.label,
-      behavior_type: data.behavior_type,
-      flow_id: data.behavior_type === 'trigger_flow' ? data.flow_id || null : null,
-      action_type: data.behavior_type === 'action' ? data.action_type || null : null,
-      action_config: data.behavior_type === 'action' && data.action_config
-        ? JSON.stringify(data.action_config) : null,
-      sort_order: data.sort_order != null ? data.sort_order : 0,
-    })
-    .returning('*');
-  return { data: btn };
-}
-
-async function updateActionButton(buttonId, data) {
-  const updateFields = {};
-  if (data.label !== undefined) updateFields.label = data.label;
-  if (data.behavior_type !== undefined) updateFields.behavior_type = data.behavior_type;
-  if (data.flow_id !== undefined) updateFields.flow_id = data.flow_id;
-  if (data.action_type !== undefined) updateFields.action_type = data.action_type;
-  if (data.action_config !== undefined) updateFields.action_config = data.action_config ? JSON.stringify(data.action_config) : null;
-  if (data.sort_order !== undefined) updateFields.sort_order = data.sort_order;
-
-  if (Object.keys(updateFields).length === 0) {
-    return db('action_buttons').where({ id: buttonId }).first();
-  }
-
-  const [btn] = await db('action_buttons')
-    .where({ id: buttonId })
-    .update(updateFields)
-    .returning('*');
-  return btn;
-}
-
-async function removeActionButton(buttonId) {
-  const btn = await db('action_buttons').where({ id: buttonId }).first();
-  if (!btn) return null;
-  await db('action_buttons').where({ id: buttonId }).del();
-  return btn;
-}
+// ---------- Info Contents & Action Buttons ----------
+// Reserved for future phases. Tables exist (info_contents, action_buttons)
+// but these functions are not used in Phase 3 core menu logic.
+// Menu is navigation-only in this phase.
 
 // ---------- Publish Validation ----------
 
@@ -392,16 +246,8 @@ function validateNodeRecursive(nodes, depth, violations) {
       });
     }
 
-    // Info nodes: check max action buttons
-    if (node.node_type === 'info' && node.action_buttons && node.action_buttons.length > MAX_BUTTONS) {
-      violations.push({
-        entity_type: 'menu_node',
-        entity_id: node.id,
-        rule: 'max_buttons',
-        current: node.action_buttons.length,
-        limit: MAX_BUTTONS,
-      });
-    }
+    // Info nodes: max action buttons check reserved for future phases
+    // (action_buttons table exists but is not populated in Phase 3)
 
     // Recurse
     if (node.children.length > 0) {
@@ -436,12 +282,5 @@ module.exports = {
   update,
   remove,
   reorder,
-  getInfoContent,
-  createInfoContent,
-  updateInfoContent,
-  listActionButtons,
-  createActionButton,
-  updateActionButton,
-  removeActionButton,
   validateForPublish,
 };

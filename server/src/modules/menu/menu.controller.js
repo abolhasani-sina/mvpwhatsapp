@@ -3,27 +3,38 @@ const {
   validateCreateNode,
   validateUpdateNode,
   validateReorder,
-  validateInfoContent,
-  validateActionButton,
 } = require('./menu.validation');
 
 // ---------- Menu Nodes ----------
 
 /**
- * GET /api/v1/menu-nodes
- * Return the full menu tree (nested) for the tenant.
+ * GET /api/v1/menu
+ * Return the full menu tree (nested, navigation-only) for the tenant.
+ * Response shape: { data: [{ id, title, type, children }] }
  */
 async function getTree(req, res, next) {
   try {
     const tree = await menuService.getTree(req.tenantId);
-    res.json({ data: tree });
+    res.json({ data: formatTree(tree) });
   } catch (err) {
     next(err);
   }
 }
 
 /**
- * POST /api/v1/menu-nodes
+ * Strip a tree down to navigation-only fields: id, title, type, children.
+ */
+function formatTree(nodes) {
+  return nodes.map((node) => ({
+    id: node.id,
+    title: node.label,
+    type: node.node_type,
+    children: node.children ? formatTree(node.children) : [],
+  }));
+}
+
+/**
+ * POST /api/v1/menu
  * Create a new menu node.
  */
 async function createNode(req, res, next) {
@@ -49,7 +60,7 @@ async function createNode(req, res, next) {
 }
 
 /**
- * GET /api/v1/menu-nodes/:id
+ * GET /api/v1/menu/:id
  * Get a single node by ID.
  */
 async function getNode(req, res, next) {
@@ -67,7 +78,7 @@ async function getNode(req, res, next) {
 }
 
 /**
- * PUT /api/v1/menu-nodes/:id
+ * PUT /api/v1/menu/:id
  * Update a menu node.
  */
 async function updateNode(req, res, next) {
@@ -98,7 +109,7 @@ async function updateNode(req, res, next) {
 }
 
 /**
- * DELETE /api/v1/menu-nodes/:id
+ * DELETE /api/v1/menu/:id
  * Delete a node and its entire subtree.
  */
 async function deleteNode(req, res, next) {
@@ -116,7 +127,7 @@ async function deleteNode(req, res, next) {
 }
 
 /**
- * PUT /api/v1/menu-nodes/:id/reorder
+ * PUT /api/v1/menu/:id/reorder
  * Set the sort_order for a node among its siblings.
  */
 async function reorderNode(req, res, next) {
@@ -142,7 +153,7 @@ async function reorderNode(req, res, next) {
 }
 
 /**
- * POST /api/v1/menu-nodes/publish
+ * POST /api/v1/menu/publish
  * Validate the full menu tree. Return violations or success.
  */
 async function publish(req, res, next) {
@@ -157,138 +168,10 @@ async function publish(req, res, next) {
   }
 }
 
-// ---------- Info Content ----------
-
-/**
- * GET /api/v1/menu-nodes/:id/info-content
- */
-async function getInfoContent(req, res, next) {
-  try {
-    const node = await menuService.getById(req.params.id, req.tenantId);
-    if (!node) {
-      return res.status(404).json({ error: { status: 404, message: 'Menu node not found' } });
-    }
-    if (node.node_type !== 'info') {
-      return res.status(400).json({ error: { status: 400, message: 'Node is not an info node' } });
-    }
-    const ic = await menuService.getInfoContent(node.id);
-    res.json({ data: ic || null });
-  } catch (err) {
-    next(err);
-  }
-}
-
-/**
- * PUT /api/v1/menu-nodes/:id/info-content
- * Create or update info content for an info node.
- */
-async function upsertInfoContent(req, res, next) {
-  try {
-    const node = await menuService.getById(req.params.id, req.tenantId);
-    if (!node) {
-      return res.status(404).json({ error: { status: 404, message: 'Menu node not found' } });
-    }
-    if (node.node_type !== 'info') {
-      return res.status(400).json({ error: { status: 400, message: 'Node is not an info node' } });
-    }
-
-    const errors = validateInfoContent(req.body);
-    if (errors.length > 0) {
-      return res.status(400).json({ error: { status: 400, message: 'Validation failed', details: errors } });
-    }
-
-    const ic = await menuService.updateInfoContent(node.id, req.body);
-    res.json({ data: ic });
-  } catch (err) {
-    next(err);
-  }
-}
-
-// ---------- Action Buttons ----------
-
-/**
- * GET /api/v1/menu-nodes/:id/action-buttons
- */
-async function listActionButtons(req, res, next) {
-  try {
-    const node = await menuService.getById(req.params.id, req.tenantId);
-    if (!node) {
-      return res.status(404).json({ error: { status: 404, message: 'Menu node not found' } });
-    }
-    if (node.node_type !== 'info') {
-      return res.status(400).json({ error: { status: 400, message: 'Node is not an info node' } });
-    }
-    const buttons = await menuService.listActionButtons(node.id);
-    res.json({ data: buttons });
-  } catch (err) {
-    next(err);
-  }
-}
-
-/**
- * POST /api/v1/menu-nodes/:id/action-buttons
- */
-async function createActionButton(req, res, next) {
-  try {
-    const node = await menuService.getById(req.params.id, req.tenantId);
-    if (!node) {
-      return res.status(404).json({ error: { status: 404, message: 'Menu node not found' } });
-    }
-    if (node.node_type !== 'info') {
-      return res.status(400).json({ error: { status: 400, message: 'Node is not an info node' } });
-    }
-
-    const errors = validateActionButton(req.body);
-    if (errors.length > 0) {
-      return res.status(400).json({ error: { status: 400, message: 'Validation failed', details: errors } });
-    }
-
-    const result = await menuService.createActionButton(node.id, req.body);
-    if (result.error) {
-      return res.status(400).json({ error: { status: 400, message: result.error } });
-    }
-
-    res.status(201).json({ data: result.data });
-  } catch (err) {
-    next(err);
-  }
-}
-
-/**
- * PUT /api/v1/menu-nodes/:id/action-buttons/:buttonId
- */
-async function updateActionButton(req, res, next) {
-  try {
-    const node = await menuService.getById(req.params.id, req.tenantId);
-    if (!node) {
-      return res.status(404).json({ error: { status: 404, message: 'Menu node not found' } });
-    }
-
-    const btn = await menuService.updateActionButton(req.params.buttonId, req.body);
-    if (!btn) {
-      return res.status(404).json({ error: { status: 404, message: 'Action button not found' } });
-    }
-
-    res.json({ data: btn });
-  } catch (err) {
-    next(err);
-  }
-}
-
-/**
- * DELETE /api/v1/menu-nodes/:id/action-buttons/:buttonId
- */
-async function deleteActionButton(req, res, next) {
-  try {
-    const deleted = await menuService.removeActionButton(req.params.buttonId);
-    if (!deleted) {
-      return res.status(404).json({ error: { status: 404, message: 'Action button not found' } });
-    }
-    res.json({ data: { message: 'Button deleted', id: deleted.id } });
-  } catch (err) {
-    next(err);
-  }
-}
+// ---------- Info Content & Action Buttons ----------
+// Reserved for future phases. Tables exist (info_contents, action_buttons)
+// but these handlers are not routed in Phase 3.
+// Menu is navigation-only in this phase.
 
 module.exports = {
   getTree,
@@ -298,10 +181,4 @@ module.exports = {
   deleteNode,
   reorderNode,
   publish,
-  getInfoContent,
-  upsertInfoContent,
-  listActionButtons,
-  createActionButton,
-  updateActionButton,
-  deleteActionButton,
 };

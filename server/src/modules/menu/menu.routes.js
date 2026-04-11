@@ -7,7 +7,7 @@ const router = Router();
 
 router.use(authenticate, tenantScope);
 
-// --- Menu node CRUD ---
+// --- Menu node CRUD (navigation only) ---
 router.get('/', controller.getTree);
 router.post('/', controller.createNode);
 router.post('/publish', controller.publish);
@@ -16,14 +16,8 @@ router.put('/:id', controller.updateNode);
 router.delete('/:id', controller.deleteNode);
 router.put('/:id/reorder', controller.reorderNode);
 
-// --- Info content (per info node) ---
-router.get('/:id/info-content', controller.getInfoContent);
-router.put('/:id/info-content', controller.upsertInfoContent);
-
-// --- Action buttons (per info node) ---
-router.get('/:id/action-buttons', controller.listActionButtons);
-router.post('/:id/action-buttons', controller.createActionButton);
-router.put('/:id/action-buttons/:buttonId', controller.updateActionButton);
-router.delete('/:id/action-buttons/:buttonId', controller.deleteActionButton);
+// --- Info content & action buttons: reserved for future phases ---
+// Tables exist (info_contents, action_buttons) but endpoints are not
+// exposed in Phase 3. Menu is navigation-only in this phase.
 
 module.exports = router;
