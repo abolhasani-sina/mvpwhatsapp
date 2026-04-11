@@ -23,21 +23,11 @@ async function getById(id) {
 
 /**
  * Check if a business has already applied a template.
- * A business that already has menu_nodes is considered to have applied a template.
- * For Phase 2 (no menu_nodes table yet), check if services exist.
- * The roadmap says "Template apply: one-time only (reject if business already has menu data)".
- * Since menu_nodes don't exist until Phase 3, we track via a flag approach:
- * check if template_data references already exist for this business.
+ * Uses the template_applied_at column on the businesses table.
  */
 async function hasAppliedTemplate(tenantId) {
-  // Check if business already has services created from a template.
-  // In Phase 3+, this will also check menu_nodes.
-  const tableExists = await db.schema.hasTable('menu_nodes');
-  if (tableExists) {
-    const nodes = await db('menu_nodes').where({ business_id: tenantId }).first();
-    if (nodes) return true;
-  }
-  return false;
+  const business = await db('businesses').where({ id: tenantId }).first();
+  return business && business.template_applied_at != null;
 }
 
 /**
@@ -60,6 +50,11 @@ async function applyTemplate(templateId, tenantId) {
       flow_steps: [],
     };
 
+    // ID maps — accessible across all template_data rows
+    const serviceIdMap = {};
+    const nodeIdMap = {};
+    const flowIdMap = {};
+
     // The template_data contains the blueprint as a jsonb blob.
     // Each template_data row has a data field with the structure to copy.
     for (const td of template.template_data) {
@@ -67,7 +62,6 @@ async function applyTemplate(templateId, tenantId) {
 
       // --- Copy services ---
       if (data.services && Array.isArray(data.services)) {
-        const serviceIdMap = {};
         for (const svc of data.services) {
           const [newService] = await trx('services')
             .insert({
@@ -86,7 +80,6 @@ async function applyTemplate(templateId, tenantId) {
       // --- Copy menu_nodes (Phase 3+ — only if table exists) ---
       const menuNodesExist = await trx.schema.hasTable('menu_nodes');
       if (menuNodesExist && data.menu_nodes && Array.isArray(data.menu_nodes)) {
-        const nodeIdMap = {};
 
         // First pass: insert nodes without parent_id references
         for (const node of data.menu_nodes) {
@@ -119,7 +112,6 @@ async function applyTemplate(templateId, tenantId) {
       // --- Copy flows + flow_steps (Phase 4+ — only if tables exist) ---
       const flowsExist = await trx.schema.hasTable('flows');
       if (flowsExist && data.flows && Array.isArray(data.flows)) {
-        const flowIdMap = {};
         for (const flow of data.flows) {
           const [newFlow] = await trx('flows')
             .insert({
@@ -154,22 +146,20 @@ async function applyTemplate(templateId, tenantId) {
         // Update Flow Entry Nodes to point to new flow IDs
         if (menuNodesExist && data.menu_nodes) {
           for (const node of data.menu_nodes) {
-            if (node.flow_id && flowIdMap[node.flow_id]) {
-              const nodeIdMap = {};
-              result.menu_nodes.forEach((n, i) => {
-                const origNode = data.menu_nodes[i];
-                if (origNode) nodeIdMap[origNode.id] = n.id;
-              });
-              if (nodeIdMap[node.id]) {
-                await trx('menu_nodes')
-                  .where({ id: nodeIdMap[node.id] })
-                  .update({ flow_id: flowIdMap[node.flow_id] });
-              }
+            if (node.flow_id && flowIdMap[node.flow_id] && nodeIdMap[node.id]) {
+              await trx('menu_nodes')
+                .where({ id: nodeIdMap[node.id] })
+                .update({ flow_id: flowIdMap[node.flow_id] });
             }
           }
         }
       }
     }
+
+    // Stamp business as template-applied
+    await trx('businesses')
+      .where({ id: tenantId })
+      .update({ template_applied_at: trx.fn.now() });
 
     return result;
   });
