@@ -7,6 +7,7 @@ const serviceRoutes = require('./modules/service/service.routes');
 const templateRoutes = require('./modules/template/template.routes');
 const menuRoutes = require('./modules/menu/menu.routes');
 const flowRoutes = require('./modules/flow/flow.routes');
+const requestRoutes = require('./modules/request/request.routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -23,6 +24,7 @@ app.use('/api/v1/services', serviceRoutes);
 app.use('/api/v1/templates', templateRoutes);
 app.use('/api/v1/menu', menuRoutes);
 app.use('/api/v1/flows', flowRoutes);
+app.use('/api/v1/requests', requestRoutes);
 
 // --- 404 handler ---
 app.use((_req, res) => {
