@@ -110,4 +110,28 @@ async function hashPassword(password) {
   return bcrypt.hash(password, SALT_ROUNDS);
 }
 
-module.exports = { login, refresh, verifyToken, hashPassword, findByEmail };
+/**
+ * Register: create business + owner user in a transaction.
+ */
+async function register({ business_name, email, password }) {
+  return db.transaction(async (trx) => {
+    const [business] = await trx('businesses')
+      .insert({ name: business_name, phone: '' })
+      .returning('*');
+
+    const password_hash = await hashPassword(password);
+
+    const [user] = await trx('users')
+      .insert({
+        business_id: business.id,
+        email,
+        password_hash,
+        role: 'business_owner',
+      })
+      .returning('*');
+
+    return { business, user };
+  });
+}
+
+module.exports = { login, refresh, verifyToken, hashPassword, findByEmail, register };

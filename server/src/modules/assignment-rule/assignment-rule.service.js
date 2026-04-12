@@ -40,6 +40,8 @@ async function create(data, tenantId) {
       name: data.name.trim(),
       priority: data.priority,
       conditions: data.conditions ? JSON.stringify(data.conditions) : '{}',
+      trigger_type: data.trigger_type || null,
+      trigger_id: data.trigger_id || null,
       assignee_id: data.assignee_id,
       is_active: data.is_active !== undefined ? data.is_active : true,
     })
@@ -55,6 +57,8 @@ async function update(id, data, tenantId) {
   if (data.name !== undefined) fields.name = data.name.trim();
   if (data.priority !== undefined) fields.priority = data.priority;
   if (data.conditions !== undefined) fields.conditions = JSON.stringify(data.conditions);
+  if (data.trigger_type !== undefined) fields.trigger_type = data.trigger_type;
+  if (data.trigger_id !== undefined) fields.trigger_id = data.trigger_id;
   if (data.assignee_id !== undefined) fields.assignee_id = data.assignee_id;
   if (data.is_active !== undefined) fields.is_active = data.is_active;
 

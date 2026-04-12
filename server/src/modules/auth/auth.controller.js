@@ -1,6 +1,43 @@
 const authService = require('./auth.service');
 const authConfig = require('../../config/auth');
 
+const MIN_PASSWORD_LENGTH = 6;
+
+/**
+ * POST /api/v1/auth/register
+ * Create a new business + owner user.
+ */
+async function register(req, res, next) {
+  try {
+    const { business_name, email, password } = req.body;
+
+    if (!business_name || !email || !password) {
+      return res.status(400).json({
+        error: { status: 400, message: 'business_name, email, and password are required' },
+      });
+    }
+
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({
+        error: { status: 400, message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` },
+      });
+    }
+
+    const existing = await authService.findByEmail(email);
+    if (existing) {
+      return res.status(409).json({
+        error: { status: 409, message: 'Email is already registered' },
+      });
+    }
+
+    await authService.register({ business_name, email, password });
+
+    res.status(201).json({ message: 'Registered successfully' });
+  } catch (err) {
+    next(err);
+  }
+}
+
 /**
  * POST /api/v1/auth/login
  * Authenticate user, set JWT cookies.
@@ -84,4 +121,4 @@ async function logout(_req, res) {
   res.json({ data: { message: 'Logged out' } });
 }
 
-module.exports = { login, refresh, logout };
+module.exports = { register, login, refresh, logout };

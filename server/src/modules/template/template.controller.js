@@ -45,4 +45,37 @@ async function applyTemplate(req, res, next) {
   }
 }
 
-module.exports = { listTemplates, applyTemplate };
+/**
+ * GET /api/v1/templates/status
+ * Check whether the current business has completed setup (template applied or skipped).
+ */
+async function getSetupStatus(req, res, next) {
+  try {
+    const applied = await templateService.hasAppliedTemplate(req.tenantId);
+    res.json({ data: { setup_complete: applied } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/v1/templates/skip
+ * Mark setup as complete without applying a template (Custom / start from scratch).
+ */
+async function skipTemplate(req, res, next) {
+  try {
+    const alreadyApplied = await templateService.hasAppliedTemplate(req.tenantId);
+    if (alreadyApplied) {
+      return res.status(409).json({
+        error: { status: 409, message: 'Setup already completed' },
+      });
+    }
+
+    await templateService.markSetupComplete(req.tenantId);
+    res.json({ data: { setup_complete: true } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listTemplates, applyTemplate, getSetupStatus, skipTemplate };

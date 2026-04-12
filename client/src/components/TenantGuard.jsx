@@ -1,5 +1,4 @@
 import { Navigate } from 'react-router-dom';
-import { Spin } from 'antd';
 import { useAuth } from '../context/useAuth';
 
 export default function TenantGuard({ children }) {
@@ -7,8 +6,8 @@ export default function TenantGuard({ children }) {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <Spin size="large" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
       </div>
     );
   }

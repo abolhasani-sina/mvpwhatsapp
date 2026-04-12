@@ -118,7 +118,7 @@ async function applyTemplate(templateId, tenantId) {
               business_id: tenantId,
               name: flow.name,
               description: flow.description || null,
-              is_published: false,
+              is_active: true,
             })
             .returning('*');
           flowIdMap[flow.id] = newFlow.id;
@@ -132,9 +132,11 @@ async function applyTemplate(templateId, tenantId) {
                 const [newStep] = await trx('flow_steps')
                   .insert({
                     flow_id: newFlow.id,
-                    step_type: step.step_type,
-                    order: step.order,
-                    configuration: step.configuration || {},
+                    step_order: step.step_order || step.order || 1,
+                    type: step.step_type || step.type,
+                    label: step.label || step.step_type || step.type || 'Step',
+                    config: step.configuration || step.config || '{}',
+                    is_required: step.is_required !== undefined ? step.is_required : true,
                   })
                   .returning('*');
                 result.flow_steps.push(newStep);
@@ -156,6 +158,55 @@ async function applyTemplate(templateId, tenantId) {
       }
     }
 
+    // --- Create default assignee + assignment rules ---
+    const assigneesExist = await trx.schema.hasTable('assignees');
+    const rulesExist = await trx.schema.hasTable('assignment_rules');
+
+    if (assigneesExist && rulesExist) {
+      // Create a default staff member
+      const [defaultAssignee] = await trx('assignees')
+        .insert({ business_id: tenantId, name: 'Default Staff', is_active: true })
+        .returning('*');
+
+      result.assignees = [defaultAssignee];
+      result.assignment_rules = [];
+
+      // Create a service-based rule for each copied service
+      let priority = Object.keys(serviceIdMap).length + 1;
+      for (const [, newServiceId] of Object.entries(serviceIdMap)) {
+        const svc = result.services.find((s) => s.id === newServiceId);
+        const [rule] = await trx('assignment_rules')
+          .insert({
+            business_id: tenantId,
+            name: svc ? `${svc.name} → Default Staff` : 'Service Rule',
+            priority,
+            conditions: '{}',
+            trigger_type: 'service',
+            trigger_id: newServiceId,
+            assignee_id: defaultAssignee.id,
+            is_active: true,
+          })
+          .returning('*');
+        result.assignment_rules.push(rule);
+        priority--;
+      }
+
+      // Fallback catch-all rule (lowest priority)
+      const [fallback] = await trx('assignment_rules')
+        .insert({
+          business_id: tenantId,
+          name: 'Fallback → Default Staff',
+          priority: 0,
+          conditions: '{}',
+          trigger_type: null,
+          trigger_id: null,
+          assignee_id: defaultAssignee.id,
+          is_active: true,
+        })
+        .returning('*');
+      result.assignment_rules.push(fallback);
+    }
+
     // Stamp business as template-applied
     await trx('businesses')
       .where({ id: tenantId })
@@ -165,4 +216,13 @@ async function applyTemplate(templateId, tenantId) {
   });
 }
 
-module.exports = { list, getById, hasAppliedTemplate, applyTemplate };
+/**
+ * Mark a business as setup-complete without applying a template.
+ */
+async function markSetupComplete(tenantId) {
+  await db('businesses')
+    .where({ id: tenantId })
+    .update({ template_applied_at: db.fn.now() });
+}
+
+module.exports = { list, getById, hasAppliedTemplate, applyTemplate, markSetupComplete };

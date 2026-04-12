@@ -32,6 +32,7 @@ async function create(data, tenantId) {
       business_id: tenantId,
       source_flow_id: data.source_flow_id || null,
       entered_from_node_id: data.entered_from_node_id || null,
+      phone_number: data.phone_number || null,
       data: data.data ? JSON.stringify(data.data) : '{}',
       status: 'pending',
     })
@@ -66,26 +67,4 @@ async function assign(id, assigneeId, tenantId) {
   return request;
 }
 
-/**
- * Set human takeover on a request.
- */
-async function takeover(id, tenantId) {
-  const [request] = await db('requests')
-    .where({ id, business_id: tenantId })
-    .update({ is_human_taken_over: true, taken_over_at: db.fn.now(), updated_at: db.fn.now() })
-    .returning('*');
-  return request;
-}
-
-/**
- * Release human takeover on a request.
- */
-async function release(id, tenantId) {
-  const [request] = await db('requests')
-    .where({ id, business_id: tenantId })
-    .update({ is_human_taken_over: false, taken_over_at: null, updated_at: db.fn.now() })
-    .returning('*');
-  return request;
-}
-
-module.exports = { list, getById, create, updateStatus, assign, takeover, release };
+module.exports = { list, getById, create, updateStatus, assign };

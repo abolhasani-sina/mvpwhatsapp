@@ -1,6 +1,7 @@
 const ruleService = require('./assignment-rule.service');
 const assigneeService = require('../assignee/assignee.service');
 const { validateCreate, validateUpdate } = require('./assignment-rule.validation');
+const db = require('../../config/database');
 
 /**
  * GET /api/v1/assignment-rules
@@ -51,6 +52,16 @@ async function createRule(req, res, next) {
       });
     }
 
+    // Validate trigger_id references an existing entity
+    if (req.body.trigger_type && req.body.trigger_id) {
+      const refError = await validateTriggerReference(req.body.trigger_type, req.body.trigger_id, req.tenantId);
+      if (refError) {
+        return res.status(400).json({
+          error: { status: 400, message: refError },
+        });
+      }
+    }
+
     const rule = await ruleService.create(req.body, req.tenantId);
     res.status(201).json({ data: rule });
   } catch (err) {
@@ -87,6 +98,18 @@ async function updateRule(req, res, next) {
       }
     }
 
+    // Validate trigger_id references an existing entity
+    const triggerType = req.body.trigger_type !== undefined ? req.body.trigger_type : existing.trigger_type;
+    const triggerId = req.body.trigger_id !== undefined ? req.body.trigger_id : existing.trigger_id;
+    if (triggerType && triggerId) {
+      const refError = await validateTriggerReference(triggerType, triggerId, req.tenantId);
+      if (refError) {
+        return res.status(400).json({
+          error: { status: 400, message: refError },
+        });
+      }
+    }
+
     const rule = await ruleService.update(req.params.id, req.body, req.tenantId);
     res.json({ data: rule });
   } catch (err) {
@@ -108,6 +131,32 @@ async function deleteRule(req, res, next) {
     res.status(204).end();
   } catch (err) {
     next(err);
+  }
+}
+
+/**
+ * Validate that trigger_id references an existing entity for the given trigger_type.
+ * Returns an error string if invalid, or null if valid.
+ */
+async function validateTriggerReference(triggerType, triggerId, tenantId) {
+  switch (triggerType) {
+    case 'service': {
+      const service = await db('services').where({ id: triggerId, business_id: tenantId }).first();
+      if (!service) return `Service with id '${triggerId}' not found in this business`;
+      return null;
+    }
+    case 'menu_node': {
+      const node = await db('menu_nodes').where({ id: triggerId, business_id: tenantId }).first();
+      if (!node) return `Menu node with id '${triggerId}' not found in this business`;
+      return null;
+    }
+    case 'flow': {
+      const flow = await db('flows').where({ id: triggerId, business_id: tenantId }).first();
+      if (!flow) return `Flow with id '${triggerId}' not found in this business`;
+      return null;
+    }
+    default:
+      return `Unknown trigger_type '${triggerType}'`;
   }
 }
 

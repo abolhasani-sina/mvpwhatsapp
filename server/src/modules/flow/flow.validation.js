@@ -8,7 +8,10 @@ const VALID_STEP_TYPES = [
   'number_input',
   'select_option',
   'select_service',
+  'select_date',
+  'select_time',
   'confirm',
+  'summary',
 ];
 
 // ---------- Flow Validation ----------

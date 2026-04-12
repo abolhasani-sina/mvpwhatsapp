@@ -3,6 +3,8 @@
  * Phase 6 — Assignment System
  */
 
+const VALID_TRIGGER_TYPES = ['service', 'menu_node', 'flow'];
+
 function validateCreate(body) {
   const errors = [];
 
@@ -14,6 +16,15 @@ function validateCreate(body) {
     errors.push('priority is required');
   } else if (!Number.isInteger(body.priority)) {
     errors.push('priority must be an integer');
+  }
+
+  if (body.trigger_type !== undefined && body.trigger_type !== null) {
+    if (!VALID_TRIGGER_TYPES.includes(body.trigger_type)) {
+      errors.push(`trigger_type must be one of: ${VALID_TRIGGER_TYPES.join(', ')}`);
+    }
+    if (!body.trigger_id || typeof body.trigger_id !== 'string') {
+      errors.push('trigger_id is required when trigger_type is provided');
+    }
   }
 
   if (body.conditions !== undefined && body.conditions !== null) {
@@ -42,6 +53,16 @@ function validateUpdate(body) {
 
   if (body.priority !== undefined && !Number.isInteger(body.priority)) {
     errors.push('priority must be an integer');
+  }
+
+  if (body.trigger_type !== undefined && body.trigger_type !== null) {
+    if (!VALID_TRIGGER_TYPES.includes(body.trigger_type)) {
+      errors.push(`trigger_type must be one of: ${VALID_TRIGGER_TYPES.join(', ')}`);
+    }
+  }
+
+  if (body.trigger_id !== undefined && body.trigger_id !== null && typeof body.trigger_id !== 'string') {
+    errors.push('trigger_id must be a string (UUID)');
   }
 
   if (body.conditions !== undefined && body.conditions !== null) {

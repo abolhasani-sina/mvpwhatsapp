@@ -1,4 +1,6 @@
 const { Router } = require('express');
+const authenticate = require('../../middleware/authenticate');
+const tenantScope = require('../../middleware/tenantScope');
 const controller = require('./whatsapp.controller');
 
 const router = Router();
@@ -9,7 +11,7 @@ router.get('/', controller.verifyWebhook);
 // Incoming message handler (no auth required — Meta calls this)
 router.post('/', controller.handleWebhook);
 
-// Simulate endpoint for development (no auth required)
-router.post('/simulate', controller.simulateMessage);
+// Simulate endpoint — authenticated, business_id derived from tenant
+router.post('/simulate', authenticate, tenantScope, controller.simulateMessage);
 
 module.exports = router;

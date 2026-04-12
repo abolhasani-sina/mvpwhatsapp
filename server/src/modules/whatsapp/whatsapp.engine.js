@@ -8,6 +8,9 @@ const notificationService = require('../notification/notification.service');
 const { assignRequest } = require('../assignment-rule/assignment.engine');
 const db = require('../../config/database');
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUuid(str) { return UUID_RE.test(str); }
+
 /**
  * Main entry point: process an incoming WhatsApp message.
  *
@@ -42,6 +45,22 @@ async function handleIncomingMessage(phoneNumber, businessId, messageText) {
   }
 
   // 4. Route based on context
+  // If user is in a flow but clicked a menu button, reset session and go to menu
+  if (session.current_flow_id && isUuid(text)) {
+    const menuNode = await db('menu_nodes')
+      .where({ id: text, business_id: businessId })
+      .first();
+    if (menuNode) {
+      session = await sessionService.update(session.id, {
+        current_flow_id: null,
+        current_flow_step: null,
+        flow_data: null,
+        current_menu_node_id: null,
+      });
+      return handleMenuContext(session, phoneNumber, businessId, text);
+    }
+  }
+
   if (session.current_flow_id) {
     return handleFlowContext(session, phoneNumber, businessId, text);
   }
@@ -65,6 +84,17 @@ async function handleMenuContext(session, phoneNumber, businessId, text) {
 
   // Get children of current node (or root)
   const children = await getMenuChildren(businessId, session.current_menu_node_id);
+
+  // If current node is an info node, handle button input instead of children
+  if (session.current_menu_node_id && children.length === 0) {
+    const currentNode = await db('menu_nodes')
+      .where({ id: session.current_menu_node_id, business_id: businessId })
+      .first();
+
+    if (currentNode && currentNode.node_type === 'info') {
+      return handleInfoButtonInput(session, phoneNumber, businessId, currentNode, text);
+    }
+  }
 
   if (children.length === 0) {
     // No children — show root menu
@@ -123,8 +153,8 @@ async function handleMenuNode(session, phoneNumber, businessId, node) {
 }
 
 async function handleInfoNode(session, phoneNumber, businessId, node) {
-  // Show info content — stay in current menu
-  await sessionService.update(session.id, {});
+  // Set current node to this info node so button responses route back here
+  await sessionService.update(session.id, { current_menu_node_id: node.id });
 
   // Load info_contents for this node
   const infoContent = await db('info_contents').where({ menu_node_id: node.id }).first();
@@ -135,10 +165,94 @@ async function handleInfoNode(session, phoneNumber, businessId, node) {
     if (infoContent.duration) text += `\n⏱ Duration: ${infoContent.duration}`;
   }
 
-  // Show "Back" hint
-  text += '\n\nReply *0* to go back.';
+  // Load action buttons for this info node
+  const buttons = await db('action_buttons')
+    .where({ menu_node_id: node.id })
+    .orderBy('sort_order', 'asc')
+    .limit(3);
 
+  if (buttons.length > 0) {
+    const options = buttons.map((btn) => ({
+      id: btn.id,
+      title: btn.label,
+    }));
+    return [formatter.menuMessage(phoneNumber, text, options)];
+  }
+
+  // No buttons — show text with back hint
+  text += '\n\nReply *0* to go back.';
   return [formatter.textMessage(phoneNumber, text)];
+}
+
+async function handleInfoButtonInput(session, phoneNumber, businessId, infoNode, text) {
+  const buttons = await db('action_buttons')
+    .where({ menu_node_id: infoNode.id })
+    .orderBy('sort_order', 'asc')
+    .limit(3);
+
+  if (buttons.length === 0) {
+    // No buttons — go back to parent
+    return handleGoBack(session, phoneNumber, businessId);
+  }
+
+  // Match input: by index or by button id
+  const selectedIndex = parseInt(text, 10);
+  let selectedButton = null;
+
+  if (!isNaN(selectedIndex) && selectedIndex >= 1 && selectedIndex <= buttons.length) {
+    selectedButton = buttons[selectedIndex - 1];
+  } else {
+    selectedButton = buttons.find((b) => b.id === text);
+  }
+
+  if (!selectedButton) {
+    // Re-show info node with buttons
+    return handleInfoNode(session, phoneNumber, businessId, infoNode);
+  }
+
+  // Execute button action based on behavior_type
+  if (selectedButton.behavior_type === 'trigger_flow' && selectedButton.flow_id) {
+    const flow = await flowService.getFlowById(selectedButton.flow_id, businessId);
+    if (!flow || !flow.is_active || !flow.steps || flow.steps.length === 0) {
+      return [formatter.textMessage(phoneNumber, 'This flow is not available right now.')];
+    }
+
+    const firstStep = flow.steps[0];
+    await sessionService.update(session.id, {
+      current_flow_id: flow.id,
+      current_flow_step: firstStep.step_order,
+      flow_data: {},
+    });
+
+    const messages = [
+      formatter.textMessage(phoneNumber, `📝 Starting: *${flow.name}*`),
+      buildStepPrompt(phoneNumber, firstStep, businessId),
+    ];
+
+    if (firstStep.type === 'select_service') {
+      messages[1] = await buildSelectServicePrompt(phoneNumber, firstStep, businessId);
+    }
+
+    return messages;
+  }
+
+  if (selectedButton.behavior_type === 'action') {
+    const config = selectedButton.action_config || {};
+    switch (selectedButton.action_type) {
+      case 'show_phone':
+        return [formatter.textMessage(phoneNumber, `📞 Phone: ${config.phone || 'N/A'}`)];
+      case 'show_location':
+        return [formatter.textMessage(phoneNumber, `📍 Location: ${config.address || config.url || 'N/A'}`)];
+      case 'open_link':
+        return [formatter.textMessage(phoneNumber, `🔗 Link: ${config.url || 'N/A'}`)];
+      case 'go_back':
+        return handleGoBack(session, phoneNumber, businessId);
+      default:
+        return [formatter.textMessage(phoneNumber, 'Action completed.')];
+    }
+  }
+
+  return [formatter.textMessage(phoneNumber, 'Unknown button action.')];
 }
 
 async function handleFlowEntryNode(session, phoneNumber, businessId, node) {
@@ -267,7 +381,22 @@ async function handleFlowContext(session, phoneNumber, businessId, text) {
   if (validation.error) {
     return [
       formatter.textMessage(phoneNumber, `⚠️ ${validation.error}`),
-      await resolveStepPrompt(phoneNumber, currentStep, businessId),
+      await resolveStepPrompt(phoneNumber, currentStep, businessId, session.flow_data),
+    ];
+  }
+
+  // Confirm step: if user said no, cancel the flow
+  if (currentStep.type === 'confirm' && validation.value === false) {
+    await sessionService.update(session.id, {
+      current_flow_id: null,
+      current_flow_step: null,
+      flow_data: null,
+      current_menu_node_id: null,
+    });
+    const menuMessages = await buildRootMenuResponse(phoneNumber, businessId);
+    return [
+      formatter.textMessage(phoneNumber, '❌ Request cancelled.'),
+      ...menuMessages,
     ];
   }
 
@@ -286,7 +415,7 @@ async function handleFlowContext(session, phoneNumber, businessId, text) {
       flow_data: flowData,
     });
 
-    return [await resolveStepPrompt(phoneNumber, nextStep, businessId)];
+    return [await resolveStepPrompt(phoneNumber, nextStep, businessId, flowData)];
   }
 
   // Flow complete — create request
@@ -294,15 +423,26 @@ async function handleFlowContext(session, phoneNumber, businessId, text) {
 }
 
 async function completeFlow(session, phoneNumber, businessId, flow, flowData) {
-  // Find the menu node the user entered from
-  const enteredFromNodeId = await findFlowEntryNode(flow.id, businessId);
+  // Find the menu node the user entered from (fallback to session's current node)
+  const enteredFromNodeId =
+    (await findFlowEntryNode(flow.id, businessId)) || session.current_menu_node_id || null;
+
+  // Extract service_id from flow data if a select_service step was used
+  const enrichedData = { ...flowData };
+  for (const value of Object.values(flowData)) {
+    if (value && typeof value === 'object' && value.id && value.name) {
+      enrichedData._service_id = value.id;
+      break;
+    }
+  }
 
   // Create request
   let request = await requestService.create(
     {
       source_flow_id: flow.id,
       entered_from_node_id: enteredFromNodeId,
-      data: flowData,
+      phone_number: phoneNumber,
+      data: enrichedData,
     },
     businessId
   );
@@ -330,21 +470,19 @@ async function completeFlow(session, phoneNumber, businessId, flow, flowData) {
   }
 
   // Reset session flow context
-  const session2 = await sessionService.update(session.id, {
+  await sessionService.update(session.id, {
     current_flow_id: null,
     current_flow_step: null,
     flow_data: null,
     current_menu_node_id: null,
   });
 
-  // Send confirmation + main menu
-  const menuMessages = await buildRootMenuResponse(phoneNumber, businessId);
+  // Send confirmation only — do not auto-restart welcome menu
   return [
     formatter.textMessage(
       phoneNumber,
       `✅ Your request has been submitted successfully!\n\nWe'll get back to you soon.`
     ),
-    ...menuMessages,
   ];
 }
 
@@ -392,10 +530,25 @@ async function validateStepInput(step, text, businessId) {
       return { error: `Please select a number between 1 and ${services.length}.` };
     }
 
-    case 'confirm': {
+    case 'select_date':
+      if (!text) return { error: 'Please enter a date.' };
+      return { value: text };
+
+    case 'select_time':
+      if (!text) return { error: 'Please enter a time.' };
+      return { value: text };
+
+    case 'summary': {
       const lower = text.toLowerCase();
-      if (['yes', 'y', '1'].includes(lower)) return { value: true };
-      if (['no', 'n', '0'].includes(lower)) return { value: false };
+      if (['yes', 'y', '1', 'confirm'].includes(lower)) return { value: 'confirmed' };
+      if (['no', 'n', '0', 'cancel'].includes(lower)) return { value: 'rejected' };
+      return { error: 'Please reply *yes* to confirm or *no* to cancel.' };
+    }
+
+    case 'confirm': {
+      const lower2 = text.toLowerCase();
+      if (['yes', 'y', '1'].includes(lower2)) return { value: true };
+      if (['no', 'n', '0'].includes(lower2)) return { value: false };
       return { error: 'Please reply with *yes* or *no*.' };
     }
 
@@ -474,6 +627,16 @@ function buildStepPrompt(phoneNumber, step, businessId) {
       return formatter.menuMessage(phoneNumber, step.label, options);
     }
 
+    case 'select_date':
+      return formatter.textMessage(phoneNumber, `${step.label}\n\nPlease enter a date.`);
+
+    case 'select_time':
+      return formatter.textMessage(phoneNumber, `${step.label}\n\nPlease enter a time.`);
+
+    case 'summary':
+      // Summary needs flow_data — handled in resolveStepPrompt
+      return formatter.textMessage(phoneNumber, step.label);
+
     case 'confirm':
       return formatter.textMessage(phoneNumber, `${step.label}\n\nReply *yes* or *no*.`);
 
@@ -489,11 +652,24 @@ function buildStepPrompt(phoneNumber, step, businessId) {
 /**
  * Resolve step prompt with async support (for select_service).
  */
-async function resolveStepPrompt(phoneNumber, step, businessId) {
+async function resolveStepPrompt(phoneNumber, step, businessId, flowData) {
   if (step.type === 'select_service') {
     return buildSelectServicePrompt(phoneNumber, step, businessId);
   }
+  if (step.type === 'summary' && flowData) {
+    return buildSummaryPrompt(phoneNumber, step, flowData);
+  }
   return buildStepPrompt(phoneNumber, step, businessId);
+}
+
+function buildSummaryPrompt(phoneNumber, step, flowData) {
+  let text = `📋 *${step.label}*\n`;
+  for (const [key, value] of Object.entries(flowData)) {
+    const display = typeof value === 'object' ? (value.name || JSON.stringify(value)) : String(value);
+    text += `\n• *${key}:* ${display}`;
+  }
+  text += '\n\nReply *yes* to confirm or *no* to cancel.';
+  return formatter.textMessage(phoneNumber, text);
 }
 
 /**
