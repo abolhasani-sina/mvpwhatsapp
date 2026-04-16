@@ -79,4 +79,21 @@ async function remove(id, tenantId) {
   return count > 0;
 }
 
-module.exports = { list, getById, create, update, remove };
+/**
+ * Remap trigger_id references after a publish cycle regenerates entities with new IDs.
+ * maps: { service: { oldId: newId }, flow: { oldId: newId }, menu_node: { oldId: newId } }
+ */
+async function remapTriggers(maps, tenantId) {
+  let updated = 0;
+  for (const [triggerType, idMap] of Object.entries(maps)) {
+    for (const [oldId, newId] of Object.entries(idMap)) {
+      const count = await db('assignment_rules')
+        .where({ business_id: tenantId, trigger_type: triggerType, trigger_id: Number(oldId) })
+        .update({ trigger_id: Number(newId) });
+      updated += count;
+    }
+  }
+  return updated;
+}
+
+module.exports = { list, getById, create, update, remove, remapTriggers };

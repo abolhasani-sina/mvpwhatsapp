@@ -88,7 +88,7 @@ export default function SetupWizard() {
         <div className="flex flex-col gap-3 items-center">
           <button
             onClick={() => navigate('/dashboard', { replace: true })}
-            className="px-6 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 cursor-pointer"
+            className="px-6 py-3 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 cursor-pointer"
           >
             Go to Dashboard →
           </button>
@@ -113,7 +113,7 @@ export default function SetupWizard() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 mb-6">
           {tpl ? (
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-3xl flex-shrink-0">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-3xl flex-shrink-0">
                 {INDUSTRY_ICONS[tpl.industry_type] || '📦'}
               </div>
               <div>
@@ -140,7 +140,7 @@ export default function SetupWizard() {
         <button
           onClick={handleApply}
           disabled={applying}
-          className="w-full px-5 py-3 text-sm bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-200 cursor-pointer font-medium"
+          className="w-full px-5 py-3 text-sm bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-lg shadow-emerald-200 cursor-pointer font-medium"
         >
           {applying ? 'Setting up your workspace...' : 'Apply & Continue →'}
         </button>
@@ -152,7 +152,7 @@ export default function SetupWizard() {
   return (
     <div className="max-w-3xl mx-auto py-10 animate-fade-in">
       <div className="text-center mb-10">
-        <div className="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-5">🏢</div>
+        <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-5">🏢</div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">What type of business do you run?</h2>
         <p className="text-gray-500 max-w-lg mx-auto">
           Pick a template to auto-create services, menu buttons, and forms for your business type — or start from scratch.
@@ -170,8 +170,8 @@ export default function SetupWizard() {
             onClick={() => setSelected(tpl.id)}
             className={`text-left p-5 rounded-2xl border-2 transition-all cursor-pointer animate-fade-in ${
               selected === tpl.id
-                ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-200 shadow-md'
-                : 'border-gray-200 bg-white hover:border-indigo-200 hover:shadow-sm'
+                ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-200 shadow-md'
+                : 'border-gray-200 bg-white hover:border-emerald-200 hover:shadow-sm'
             }`}
           >
             <div className="flex items-center gap-3 mb-2">
@@ -187,8 +187,8 @@ export default function SetupWizard() {
           onClick={() => setSelected('custom')}
           className={`text-left p-5 rounded-2xl border-2 transition-all cursor-pointer animate-fade-in ${
             selected === 'custom'
-              ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-200 shadow-md'
-              : 'border-gray-200 bg-white hover:border-indigo-200 hover:shadow-sm'
+              ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-200 shadow-md'
+              : 'border-gray-200 bg-white hover:border-emerald-200 hover:shadow-sm'
           }`}
         >
           <div className="flex items-center gap-3 mb-2">
@@ -203,7 +203,7 @@ export default function SetupWizard() {
         <button
           onClick={() => setStep(2)}
           disabled={!selected}
-          className="px-6 py-2.5 text-sm bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-40 transition-all shadow-sm cursor-pointer font-medium"
+          className="px-6 py-2.5 text-sm bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-40 transition-all shadow-sm cursor-pointer font-medium"
         >
           Next →
         </button>

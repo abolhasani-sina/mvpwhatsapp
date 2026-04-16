@@ -24,6 +24,10 @@ function tenantScope(req, res, next) {
   } else if (req.user.role === 'platform_owner') {
     // Platform owner can optionally scope to a specific business
     req.tenantId = req.query.business_id || req.body.business_id || null;
+  } else {
+    return res.status(403).json({
+      error: { status: 403, message: 'Unknown role — access denied' },
+    });
   }
 
   next();

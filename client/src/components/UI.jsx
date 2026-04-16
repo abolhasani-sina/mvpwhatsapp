@@ -17,13 +17,13 @@ export function ModalActions({ onCancel, submitLabel = 'Save' }) {
   return (
     <div className="flex justify-end gap-3 pt-4">
       <button type="button" onClick={onCancel} className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-all">Cancel</button>
-      <button type="submit" className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 cursor-pointer transition-all shadow-sm">{submitLabel}</button>
+      <button type="submit" className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 cursor-pointer transition-all shadow-sm btn-press">{submitLabel}</button>
     </div>
   );
 }
 
 export function Spinner() {
-  return <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" /></div>;
+  return <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" /></div>;
 }
 
 export function ErrorMsg({ msg, onDismiss }) {
@@ -53,5 +53,5 @@ export function StatusBadge({ status }) {
   );
 }
 
-export const inputClass = 'w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm transition-all';
-export const selectClass = 'w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm bg-white transition-all';
+export const inputClass = 'w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm transition-all bg-gray-50/50';
+export const selectClass = 'w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm bg-white transition-all';

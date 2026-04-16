@@ -60,8 +60,9 @@ async function applyTemplate(templateId, tenantId) {
     for (const td of template.template_data) {
       const data = td.data;
 
-      // --- Copy services ---
+    // --- Copy services (2-pass: insert then update parent_id) ---
       if (data.services && Array.isArray(data.services)) {
+        // First pass: insert all services without parent_id
         for (const svc of data.services) {
           const [newService] = await trx('services')
             .insert({
@@ -70,10 +71,23 @@ async function applyTemplate(templateId, tenantId) {
               description: svc.description || null,
               price: svc.price != null ? svc.price : null,
               duration: svc.duration || null,
+              sort_order: svc.sort_order != null ? svc.sort_order : 0,
+              behavior: svc.behavior ? JSON.stringify(svc.behavior) : null,
+              buttons: svc.buttons ? JSON.stringify(svc.buttons) : null,
+              parent_id: null, // updated in second pass
             })
             .returning('*');
           serviceIdMap[svc.id] = newService.id;
           result.services.push(newService);
+        }
+
+        // Second pass: update parent_id references
+        for (const svc of data.services) {
+          if (svc.parent_id && serviceIdMap[svc.parent_id]) {
+            await trx('services')
+              .where({ id: serviceIdMap[svc.id] })
+              .update({ parent_id: serviceIdMap[svc.parent_id] });
+          }
         }
       }
 
@@ -93,6 +107,7 @@ async function applyTemplate(templateId, tenantId) {
               action_type: node.action_type || null,
               action_config: node.action_config || null,
               flow_id: null, // will be updated after flows are copied
+              catalog_node_id: null, // will be updated after services are copied
             })
             .returning('*');
           nodeIdMap[node.id] = newNode.id;
@@ -152,6 +167,17 @@ async function applyTemplate(templateId, tenantId) {
               await trx('menu_nodes')
                 .where({ id: nodeIdMap[node.id] })
                 .update({ flow_id: flowIdMap[node.flow_id] });
+            }
+          }
+        }
+
+        // Update Catalog Entry Nodes to point to new service IDs
+        if (menuNodesExist && data.menu_nodes) {
+          for (const node of data.menu_nodes) {
+            if (node.catalog_node_id && serviceIdMap[node.catalog_node_id] && nodeIdMap[node.id]) {
+              await trx('menu_nodes')
+                .where({ id: nodeIdMap[node.id] })
+                .update({ catalog_node_id: serviceIdMap[node.catalog_node_id] });
             }
           }
         }

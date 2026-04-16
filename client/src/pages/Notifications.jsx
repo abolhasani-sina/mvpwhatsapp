@@ -36,8 +36,8 @@ export default function Notifications() {
           <p className="text-sm text-gray-500 mt-1">Stay updated on new requests, assignments, and system events.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowUnread(false)} className={`px-3 py-1.5 text-sm rounded-xl cursor-pointer transition-all ${!showUnread ? 'bg-indigo-600 text-white shadow-sm' : 'border border-gray-200 text-gray-700 hover:bg-gray-50'}`}>All</button>
-          <button onClick={() => setShowUnread(true)} className={`px-3 py-1.5 text-sm rounded-xl cursor-pointer transition-all ${showUnread ? 'bg-indigo-600 text-white shadow-sm' : 'border border-gray-200 text-gray-700 hover:bg-gray-50'}`}>Unread</button>
+          <button onClick={() => setShowUnread(false)} className={`px-3 py-1.5 text-sm rounded-xl cursor-pointer transition-all ${!showUnread ? 'bg-emerald-600 text-white shadow-sm' : 'border border-gray-200 text-gray-700 hover:bg-gray-50'}`}>All</button>
+          <button onClick={() => setShowUnread(true)} className={`px-3 py-1.5 text-sm rounded-xl cursor-pointer transition-all ${showUnread ? 'bg-emerald-600 text-white shadow-sm' : 'border border-gray-200 text-gray-700 hover:bg-gray-50'}`}>Unread</button>
         </div>
       </div>
       <ErrorMsg msg={error} onDismiss={() => setError(null)} />
@@ -50,14 +50,14 @@ export default function Notifications() {
               <li key={n.id} className={`px-6 py-4 flex items-start justify-between gap-4 ${n.is_read ? 'opacity-60' : ''}`}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    {!n.is_read && <span className="w-2 h-2 bg-indigo-600 rounded-full flex-shrink-0" />}
-                    <span className="text-xs font-medium text-indigo-600 uppercase">{n.type?.replace(/_/g, ' ')}</span>
+                    {!n.is_read && <span className="w-2 h-2 bg-emerald-600 rounded-full flex-shrink-0" />}
+                    <span className="text-xs font-medium text-emerald-600 uppercase">{n.type?.replace(/_/g, ' ')}</span>
                   </div>
                   <p className="text-sm text-gray-900 mt-1">{n.message}</p>
                   <p className="text-xs text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
                 </div>
                 {!n.is_read && (
-                  <button onClick={() => markAsRead(n.id)} className="text-xs text-indigo-600 hover:text-indigo-800 flex-shrink-0 cursor-pointer">Mark read</button>
+                  <button onClick={() => markAsRead(n.id)} className="text-xs text-emerald-600 hover:text-emerald-800 flex-shrink-0 cursor-pointer">Mark read</button>
                 )}
               </li>
             ))}

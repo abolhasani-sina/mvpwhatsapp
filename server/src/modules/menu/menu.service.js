@@ -47,9 +47,9 @@ async function create(data, tenantId) {
       return { error: 'Parent node not found or does not belong to this business' };
     }
 
-    // Parent must be a menu node (only menu nodes can have children)
-    if (parent.node_type !== 'menu') {
-      return { error: 'Only menu nodes can have children' };
+    // Parent must be a menu or catalog_entry node (can have children)
+    if (parent.node_type !== 'menu' && parent.node_type !== 'catalog_entry') {
+      return { error: 'Only menu and catalog_entry nodes can have children' };
     }
 
     // Check max children
@@ -79,6 +79,7 @@ async function create(data, tenantId) {
       action_type: data.node_type === 'action' ? data.action_type : null,
       action_config: data.node_type === 'action' && data.action_config ? JSON.stringify(data.action_config) : null,
       flow_id: data.node_type === 'flow_entry' ? data.flow_id || null : null,
+      catalog_node_id: data.node_type === 'catalog_entry' ? data.catalog_node_id || null : null,
       is_active: data.is_active !== undefined ? data.is_active : true,
     })
     .returning('*');
@@ -120,6 +121,14 @@ async function update(id, data, tenantId) {
     }
   }
 
+  if (effectiveType === 'catalog_entry') {
+    if (data.catalog_node_id !== undefined) updateFields.catalog_node_id = data.catalog_node_id || null;
+  } else {
+    if (data.node_type !== undefined && data.node_type !== 'catalog_entry') {
+      updateFields.catalog_node_id = null;
+    }
+  }
+
   // Handle parent change — validate depth
   if (data.parent_id !== undefined && data.parent_id !== existing.parent_id) {
     if (data.parent_id !== null) {
@@ -127,7 +136,7 @@ async function update(id, data, tenantId) {
         .where({ id: data.parent_id, business_id: tenantId })
         .first();
       if (!newParent) return { error: 'Parent node not found' };
-      if (newParent.node_type !== 'menu') return { error: 'Only menu nodes can have children' };
+      if (newParent.node_type !== 'menu' && newParent.node_type !== 'catalog_entry') return { error: 'Only menu and catalog_entry nodes can have children' };
 
       // Prevent moving a node under itself or its descendants
       const allNodes = await listFlat(tenantId);

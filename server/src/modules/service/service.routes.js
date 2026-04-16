@@ -7,6 +7,8 @@ const router = Router();
 
 router.use(authenticate, tenantScope);
 
+router.get('/tree', controller.getTree);
+router.get('/leaves', controller.getLeaves);
 router.get('/', controller.listServices);
 router.post('/', controller.createService);
 router.get('/:id', controller.getService);

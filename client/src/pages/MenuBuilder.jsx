@@ -7,6 +7,7 @@ const NODE_TYPE_LABELS = {
   menu: '📂 Sub-menu (shows more buttons)',
   info: 'ℹ️ Info (display a message)',
   flow_entry: '📝 Start Form (collect info)',
+  catalog_entry: '📋 Catalog (browse services & prices)',
   action: '⚡ Action (call, location, link)',
 };
 
@@ -110,7 +111,7 @@ export default function MenuBuilder() {
           <button onClick={handlePublish} className="px-4 py-2 text-sm border border-emerald-300 text-emerald-700 rounded-xl hover:bg-emerald-50 transition-all cursor-pointer font-medium">
             Publish Menu
           </button>
-          <button onClick={() => openCreate(null)} className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-all cursor-pointer shadow-sm">
+          <button onClick={() => openCreate(null)} className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition-all cursor-pointer shadow-sm">
             + Add Button
           </button>
         </div>
@@ -130,7 +131,7 @@ export default function MenuBuilder() {
               <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center text-2xl mx-auto mb-4">📱</div>
               <p className="font-medium text-gray-900 mb-1">No menu buttons yet</p>
               <p className="text-sm text-gray-500 mb-5 max-w-xs mx-auto">Create buttons that your WhatsApp customers will tap. Start with a root button.</p>
-              <button onClick={() => openCreate(null)} className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-all cursor-pointer">
+              <button onClick={() => openCreate(null)} className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition-all cursor-pointer">
                 + Add First Button
               </button>
             </div>
@@ -152,7 +153,7 @@ export default function MenuBuilder() {
 
       {/* Info box: how menu connects to forms */}
       {tree.length > 0 && (
-        <div className="mt-6 p-5 bg-gradient-to-r from-indigo-50/80 to-emerald-50/80 rounded-2xl border border-indigo-100">
+        <div className="mt-6 p-5 bg-gradient-to-r from-emerald-50/80 to-emerald-50/80 rounded-2xl border border-emerald-100">
           <p className="text-sm font-semibold text-gray-800 mb-2">💡 How buttons connect to forms</p>
           <div className="flex items-center gap-2 text-xs text-gray-600 mb-2 flex-wrap">
             <span className="bg-white px-2.5 py-1 rounded-lg border border-gray-200 font-medium">📱 Customer taps button</span>
@@ -185,6 +186,7 @@ export default function MenuBuilder() {
                 {form.node_type === 'menu' && 'Opens a sub-menu with more buttons for the customer.'}
                 {form.node_type === 'info' && 'Displays information text to the customer.'}
                 {form.node_type === 'flow_entry' && 'Starts a form to collect customer info step-by-step.'}
+                {form.node_type === 'catalog_entry' && 'Opens the Business Catalog so customers can browse services and prices.'}
                 {form.node_type === 'action' && 'Performs an action like showing a phone number or location.'}
               </p>
             </div>
@@ -201,13 +203,34 @@ export default function MenuBuilder() {
             {form.node_type === 'action' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
-                <select value={form.action_type} onChange={(e) => setForm({ ...form, action_type: e.target.value })} className={selectClass}>
+                <select value={form.action_type} onChange={(e) => setForm({ ...form, action_type: e.target.value, action_config: {} })} className={selectClass}>
                   <option value="">Select action...</option>
                   <option value="show_phone">📞 Show Phone Number</option>
                   <option value="show_location">📍 Show Location</option>
                   <option value="open_link">🔗 Open Link</option>
                   <option value="go_back">⬅️ Go Back</option>
                 </select>
+              </div>
+            )}
+            {form.node_type === 'action' && form.action_type === 'show_phone' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <input value={form.action_config?.phone || ''} onChange={(e) => setForm({ ...form, action_config: { ...form.action_config, phone: e.target.value } })} className={inputClass} placeholder="e.g. +1 555 123 4567" />
+                <p className="text-xs text-gray-400 mt-1">The phone number shown to customers when they tap this button.</p>
+              </div>
+            )}
+            {form.node_type === 'action' && form.action_type === 'show_location' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address / Location</label>
+                <input value={form.action_config?.address || ''} onChange={(e) => setForm({ ...form, action_config: { ...form.action_config, address: e.target.value } })} className={inputClass} placeholder="e.g. 123 Main St, City" />
+                <p className="text-xs text-gray-400 mt-1">The address or location info shown to the customer.</p>
+              </div>
+            )}
+            {form.node_type === 'action' && form.action_type === 'open_link' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                <input value={form.action_config?.url || ''} onChange={(e) => setForm({ ...form, action_config: { ...form.action_config, url: e.target.value } })} className={inputClass} placeholder="e.g. https://yourbusiness.com" />
+                <p className="text-xs text-gray-400 mt-1">The web link opened when the customer taps this button.</p>
               </div>
             )}
             <ModalActions onCancel={() => setModalOpen(false)} />
@@ -223,6 +246,7 @@ function TreeView({ nodes, onAdd, onEdit, onDelete, depth }) {
     switch (type) {
       case 'menu': return '📂';
       case 'flow_entry': return '📝';
+      case 'catalog_entry': return '📋';
       case 'info': return 'ℹ️';
       case 'action': return '⚡';
       default: return '📱';
@@ -233,6 +257,7 @@ function TreeView({ nodes, onAdd, onEdit, onDelete, depth }) {
     switch (type) {
       case 'menu': return 'Sub-menu';
       case 'flow_entry': return 'Start Form';
+      case 'catalog_entry': return 'Catalog';
       case 'info': return 'Info';
       case 'action': return 'Action';
       default: return type;
@@ -240,7 +265,7 @@ function TreeView({ nodes, onAdd, onEdit, onDelete, depth }) {
   };
 
   return (
-    <ul className={depth > 0 ? 'ml-6 border-l-2 border-indigo-100 pl-4' : ''}>
+    <ul className={depth > 0 ? 'ml-6 border-l-2 border-emerald-100 pl-4' : ''}>
       {nodes.map((node) => (
         <li key={node.id} className="py-1.5">
           <div className="flex items-center gap-3 group p-2 rounded-xl hover:bg-gray-50 transition-colors">
@@ -253,7 +278,7 @@ function TreeView({ nodes, onAdd, onEdit, onDelete, depth }) {
               {node.type === 'menu' && (
                 <button onClick={() => onAdd(node.id)} className="text-xs text-emerald-600 hover:text-emerald-800 cursor-pointer px-2 py-1 rounded-lg hover:bg-emerald-50 transition-colors">+ Child</button>
               )}
-              <button onClick={() => onEdit(node.id)} className="text-xs text-indigo-600 hover:text-indigo-800 cursor-pointer px-2 py-1 rounded-lg hover:bg-indigo-50 transition-colors">Edit</button>
+              <button onClick={() => onEdit(node.id)} className="text-xs text-emerald-600 hover:text-emerald-800 cursor-pointer px-2 py-1 rounded-lg hover:bg-emerald-50 transition-colors">Edit</button>
               <button onClick={() => onDelete(node.id)} className="text-xs text-red-500 hover:text-red-700 cursor-pointer px-2 py-1 rounded-lg hover:bg-red-50 transition-colors">Delete</button>
             </div>
           </div>

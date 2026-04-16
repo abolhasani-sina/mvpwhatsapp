@@ -6,7 +6,7 @@ import Register from './pages/Register';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import BusinessProfile from './pages/BusinessProfile';
-import Services from './pages/Services';
+import CatalogBuilder from './pages/CatalogBuilder';
 import MenuBuilder from './pages/MenuBuilder';
 import FlowBuilder from './pages/FlowBuilder';
 import Requests from './pages/Requests';
@@ -15,7 +15,8 @@ import AssignmentRules from './pages/AssignmentRules';
 import Notifications from './pages/Notifications';
 import Sessions from './pages/Sessions';
 import SetupWizard from './pages/SetupWizard';
-import ConversationBuilder from './pages/ConversationBuilder';
+import WhatsAppTester from './pages/WhatsAppTester';
+import Guide from './pages/Guide';
 
 export default function App() {
   return (
@@ -33,9 +34,8 @@ export default function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="setup" element={<SetupWizard />} />
-        <Route path="builder" element={<ConversationBuilder />} />
         <Route path="profile" element={<BusinessProfile />} />
-        <Route path="services" element={<Services />} />
+        <Route path="catalog" element={<CatalogBuilder />} />
         <Route path="menu" element={<MenuBuilder />} />
         <Route path="flows" element={<FlowBuilder />} />
         <Route path="requests" element={<Requests />} />
@@ -43,6 +43,8 @@ export default function App() {
         <Route path="assignment-rules" element={<AssignmentRules />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="sessions" element={<Sessions />} />
+        <Route path="whatsapp-tester" element={<WhatsAppTester />} />
+        <Route path="guide" element={<Guide />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

@@ -69,6 +69,7 @@ async function reset(sessionId) {
     current_flow_id: null,
     current_flow_step: null,
     flow_data: null,
+    current_catalog_node_id: null,
     mode: 'automated',
   });
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { profileApi } from '../services/api';
+import { Spinner, inputClass } from '../components/UI';
 
 export default function BusinessProfile() {
   const [form, setForm] = useState({ name: '', phone: '', location: '', description: '' });
@@ -29,9 +30,7 @@ export default function BusinessProfile() {
     }
   };
 
-  if (loading) {
-    return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" /></div>;
-  }
+  if (loading) return <Spinner />;
 
   return (
     <div className="animate-fade-in">
@@ -39,7 +38,7 @@ export default function BusinessProfile() {
       <p className="text-sm text-gray-500 mb-6">Your business details shown to customers in WhatsApp. Keep them up to date.</p>
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 max-w-lg">
         {msg && (
-          <div className={`mb-4 p-3 text-sm rounded-lg ${msg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+          <div className={`mb-4 p-3 text-sm rounded-xl ${msg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
             {msg.text}
           </div>
         )}
@@ -47,25 +46,25 @@ export default function BusinessProfile() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
             <input required value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+              className={inputClass} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
             <input required value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+              className={inputClass} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
             <input value={form.location || ''} onChange={(e) => setForm({ ...form, location: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+              className={inputClass} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <textarea rows={3} value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+              className={inputClass} />
           </div>
           <button type="submit" disabled={saving}
-            className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors cursor-pointer">
+            className="px-4 py-2 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 disabled:opacity-50 transition-colors cursor-pointer">
             {saving ? 'Saving...' : 'Save'}
           </button>
         </form>

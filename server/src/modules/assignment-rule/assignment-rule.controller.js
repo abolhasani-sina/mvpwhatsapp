@@ -160,4 +160,27 @@ async function validateTriggerReference(triggerType, triggerId, tenantId) {
   }
 }
 
-module.exports = { listRules, getRule, createRule, updateRule, deleteRule };
+/**
+ * PATCH /api/v1/assignment-rules/remap-triggers
+ * Remap trigger_id references after a publish cycle regenerates entities.
+ */
+async function remapTriggers(req, res, next) {
+  try {
+    const { maps } = req.body;
+    if (!maps || typeof maps !== 'object') {
+      return res.status(400).json({ error: { status: 400, message: 'maps object is required' } });
+    }
+    const allowed = ['service', 'flow', 'menu_node'];
+    for (const key of Object.keys(maps)) {
+      if (!allowed.includes(key)) {
+        return res.status(400).json({ error: { status: 400, message: `Invalid trigger type: ${key}` } });
+      }
+    }
+    const updated = await ruleService.remapTriggers(maps, req.tenantId);
+    res.json({ data: { updated } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listRules, getRule, createRule, updateRule, deleteRule, remapTriggers };

@@ -2,10 +2,11 @@ import { useState, useEffect, useId } from 'react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { fetchStaff, uploadButtonMedia, deleteButtonMedia } from '../lib/api';
 
 const BEHAVIORS = [
   {
-    key: 'sub_buttons',
+    key: 'menu',
     label: 'Show more options',
     description: 'This button will show sub-buttons',
     icon: '▸',
@@ -16,18 +17,11 @@ const BEHAVIORS = [
     description: 'This button will show a description page',
     icon: 'ℹ',
   },
-  {
-    key: 'action',
-    label: 'Button Action',
-    description: 'What should happen when user clicks this button?',
-    icon: '⚡',
-  },
 ];
 
 const BEHAVIOR_LABELS = {
-  sub_buttons: '▸ more',
+  menu: '▸ more',
   info: 'ℹ info',
-  action: '⚡ action',
 };
 
 const CURRENCIES = [
@@ -109,12 +103,22 @@ const STEP_TYPES = [
   { value: 'text', label: 'Text input' },
   { value: 'choice', label: 'Choice buttons' },
   { value: 'choice_with_manual', label: 'Choice + manual' },
-  { value: 'select_service_from_menu', label: 'Select from existing menu (with preview)' },
+  { value: 'select_from_menu', label: 'Select from existing menu (with preview)' },
 ];
 
 function StepTypeLabel(type) {
   const found = STEP_TYPES.find((t) => t.value === type);
   return found ? found.label : type;
+}
+
+function getSuggestions(type) {
+  switch (type) {
+    case 'text': return ["What's your name?", "What's your phone number?", "Any additional notes?", "Can you describe your request?"];
+    case 'choice': return ['Choose an option', 'Select one', 'Which one do you prefer?'];
+    case 'choice_with_manual': return ['When would you like to come?', 'Pick a date', 'Select a time', 'Choose or enter manually'];
+    case 'select_from_menu': return ['Which service would you like?', 'What service are you interested in?', 'Select a service', 'Choose a category'];
+    default: return [];
+  }
 }
 
 function SortableStepItem({ step, idx, expandedStepId, setExpandedStepId, updateStep, removeStep, addOption, updateOption, removeOption, allButtons }) {
@@ -150,6 +154,17 @@ function SortableStepItem({ step, idx, expandedStepId, setExpandedStepId, update
             onChange={(e) => updateStep(step.id, 'question', e.target.value)}
             placeholder="e.g. What date would you like?"
           />
+          {(() => {
+            const suggestions = getSuggestions(step.type);
+            return suggestions.length > 0 ? (
+              <div style={flowBuilderStyles.suggestionsRow}>
+                <span style={flowBuilderStyles.suggestionsLabel}>💡</span>
+                {suggestions.map((s) => (
+                  <button key={s} style={flowBuilderStyles.suggestionChip} onClick={() => updateStep(step.id, 'question', s)}>{s}</button>
+                ))}
+              </div>
+            ) : null;
+          })()}
 
           <label style={styles.label}>Summary label</label>
           <input
@@ -172,7 +187,7 @@ function SortableStepItem({ step, idx, expandedStepId, setExpandedStepId, update
             </select>
           </div>
 
-          {step.type === 'select_service_from_menu' && (
+          {step.type === 'select_from_menu' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={styles.label}>Start from menu</label>
               <MenuRootPicker
@@ -229,7 +244,7 @@ function InfoActionFlowBuilder({ flowSteps, onUpdateSteps, genId, allButtons }) 
   }
 
   function addStep() {
-    const newStep = { id: genId(), question: '', type: 'text', key: `step_${flowSteps.length + 1}`, options: [] };
+    const newStep = { id: genId(), question: getSuggestions('text')[0] || '', type: 'text', key: `step_${flowSteps.length + 1}`, options: [] };
     onUpdateSteps([...flowSteps, newStep]);
     setExpandedStepId(newStep.id);
   }
@@ -307,7 +322,7 @@ function FlowBuilder({ flowSteps, buttonId, onUpdateButton, genId, allButtons, o
   }
 
   function addStep() {
-    const newStep = { id: genId(), question: '', type: 'text', key: `step_${flowSteps.length + 1}`, options: [] };
+    const newStep = { id: genId(), question: getSuggestions('text')[0] || '', type: 'text', key: `step_${flowSteps.length + 1}`, options: [] };
     updateSteps([...flowSteps, newStep]);
     setExpandedStepId(newStep.id);
   }
@@ -489,14 +504,34 @@ const flowBuilderStyles = {
     padding: '4px 0',
     textAlign: 'left',
   },
+  suggestionsRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '4px',
+    alignItems: 'center',
+    marginTop: '2px',
+  },
+  suggestionsLabel: {
+    fontSize: '12px',
+    flexShrink: 0,
+  },
+  suggestionChip: {
+    background: '#f0faf7',
+    border: '1px solid #d0ebe3',
+    borderRadius: '12px',
+    padding: '3px 10px',
+    fontSize: '11px',
+    color: '#00a884',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    whiteSpace: 'nowrap',
+    lineHeight: '1.4',
+  },
 };
 
-const ACTION_TYPES = [
+const ACTION_BUTTON_BEHAVIORS = [
   { key: 'start_flow', label: '📋 Start flow', desc: 'Ask step-by-step questions' },
-  { key: 'call', label: '📞 Call', desc: 'Open phone dialer' },
-  { key: 'link', label: '🔗 Link', desc: 'Open a URL' },
   { key: 'go_back', label: '← Back', desc: 'Return to previous screen' },
-  { key: 'navigate', label: '🔀 Navigate', desc: 'Go to another screen' },
 ];
 
 function flattenButtons(btns, depth = 0) {
@@ -508,26 +543,6 @@ function flattenButtons(btns, depth = 0) {
     }
   }
   return result;
-}
-
-function NavigationPicker({ value, onChange, allButtons }) {
-  const targets = flattenButtons(allButtons || []);
-  return (
-    <select
-      style={{ ...styles.input, padding: '8px' }}
-      value={value || ''}
-      onChange={(e) => onChange(e.target.value || null)}
-    >
-      <option value="">— Select destination —</option>
-      <option value="home">🏠 Home (main menu)</option>
-      <option value="parent">⬆ Parent menu</option>
-      {targets.map((t) => (
-        <option key={t.id} value={String(t.id)}>
-          {'\u00A0\u00A0'.repeat(t.depth)}{t.behavior === 'sub_buttons' ? '📂' : t.behavior === 'info' ? 'ℹ️' : t.behavior === 'action' ? '⚡' : '•'} {t.label}
-        </option>
-      ))}
-    </select>
-  );
 }
 
 function MenuRootPicker({ value, onChange, allButtons }) {
@@ -561,107 +576,11 @@ function MenuRootPicker({ value, onChange, allButtons }) {
   );
 }
 
-function ActionEditor({ selectedButton, onUpdateButton, genId, allButtons, openSections, setOpenSections }) {
-  const actionType = selectedButton.actionType || null;
-  const actionSummary = actionType ? (ACTION_TYPES.find((a) => a.key === actionType)?.label || null) : null;
 
-  return (
-    <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-      <Accordion
-        title="⚡ Action type"
-        open={openSections ? openSections.action : undefined}
-        onToggle={setOpenSections ? () => setOpenSections((prev) => ({ ...prev, action: !prev.action })) : undefined}
-        summary={actionSummary}
-      >
-        <p style={styles.accordionDesc}>What should happen when user clicks this button?</p>
-        <div style={styles.optionsList}>
-          {ACTION_TYPES.map((at) => {
-            const isSelected = actionType === at.key;
-            return (
-              <button
-                key={at.key}
-                style={{
-                  ...styles.optionCard,
-                  ...(isSelected ? styles.optionCardSelected : {}),
-                  padding: '10px',
-                }}
-                onClick={() => {
-                  const updates = { actionType: at.key };
-                  // Initialize empty flow steps when selecting start_flow
-                  if (at.key === 'start_flow' && !selectedButton.flowSteps) {
-                    updates.flowSteps = [
-                      { id: genId(), question: '', type: 'text', key: 'step_1', options: [] },
-                    ];
-                  }
-                  onUpdateButton(selectedButton.id, updates);
-                  if (setOpenSections) {
-                    setOpenSections((prev) => ({ ...prev, action: false, flow: true }));
-                  }
-                }}
-              >
-                <div style={styles.optionHeader}>
-                  <span style={{
-                    ...styles.optionLabel,
-                    ...(isSelected ? styles.optionLabelSelected : {}),
-                  }}>{at.label}</span>
-                </div>
-                <div style={styles.optionDesc}>{at.desc}</div>
-                {isSelected && <div style={styles.checkmark}>✓</div>}
-              </button>
-            );
-          })}
-        </div>
-      </Accordion>
 
-      {actionType === 'start_flow' && selectedButton.flowSteps && (
-        <FlowBuilder
-          flowSteps={selectedButton.flowSteps}
-          buttonId={selectedButton.id}
-          onUpdateButton={onUpdateButton}
-          genId={genId}
-          allButtons={allButtons}
-          open={openSections ? openSections.flow : undefined}
-          onToggle={setOpenSections ? () => setOpenSections((prev) => ({ ...prev, flow: !prev.flow })) : undefined}
-        />
-      )}
-
-      {actionType === 'call' && (
-        <Accordion title="📞 Phone number" defaultOpen>
-          <input
-            style={styles.input}
-            value={selectedButton.phoneNumber || ''}
-            onChange={(e) => onUpdateButton(selectedButton.id, { phoneNumber: e.target.value })}
-            placeholder="e.g. +1 555 123 4567"
-          />
-        </Accordion>
-      )}
-
-      {actionType === 'link' && (
-        <Accordion title="🔗 URL" defaultOpen>
-          <input
-            style={styles.input}
-            value={selectedButton.linkUrl || ''}
-            onChange={(e) => onUpdateButton(selectedButton.id, { linkUrl: e.target.value })}
-            placeholder="https://example.com"
-          />
-        </Accordion>
-      )}
-
-      {actionType === 'navigate' && (
-        <Accordion title="🔀 Destination" defaultOpen>
-          <NavigationPicker
-            value={selectedButton.navigateTarget}
-            onChange={(target) => onUpdateButton(selectedButton.id, { navigateTarget: target })}
-            allButtons={allButtons}
-          />
-        </Accordion>
-      )}
-    </div>
-  );
-}
-
-function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons }) {
+function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons, staff, businessId }) {
   const [emojiTarget, setEmojiTarget] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   function update(field, value) {
     onUpdateButton(buttonId, { infoPage: { ...infoPage, [field]: value } });
@@ -774,7 +693,75 @@ function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons 
         </label>
       </Accordion>
 
+      {/* Media */}
+      <Accordion title="📷 Media (Optional)" summary={infoPage.media && infoPage.media.length > 0 ? `${infoPage.media.length} file${infoPage.media.length !== 1 ? 's' : ''}` : null}>
+        <p style={styles.accordionDesc}>Upload images or files to show in this info page. The first image will appear as a header in WhatsApp.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {(infoPage.media || []).map((m, idx) => (
+            <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', background: '#f9f9f9', borderRadius: '8px', border: '1px solid #e8e8e8' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '6px', background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
+                {m.mediaType === 'image' ? '🖼️' : m.mediaType === 'video' ? '🎬' : m.mediaType === 'audio' ? '🎵' : '📄'}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '12px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.fileName}</div>
+                <div style={{ fontSize: '11px', color: '#888' }}>{m.mediaType}</div>
+              </div>
+              <button
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e53935', fontSize: '16px', padding: '4px' }}
+                title="Remove"
+                onClick={async () => {
+                  try {
+                    await deleteButtonMedia(businessId, m.id);
+                    update('media', (infoPage.media || []).filter((x) => x.id !== m.id));
+                  } catch (err) { console.error(err); }
+                }}
+              >✕</button>
+            </div>
+          ))}
+          <label style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+            padding: '12px', border: '2px dashed #ddd', borderRadius: '8px', cursor: uploading ? 'wait' : 'pointer',
+            color: '#888', fontSize: '13px', transition: 'border-color 0.2s',
+          }}>
+            <input
+              type="file"
+              accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+              style={{ display: 'none' }}
+              disabled={uploading}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setUploading(true);
+                try {
+                  const result = await uploadButtonMedia(businessId, buttonId, file);
+                  update('media', [...(infoPage.media || []), { id: result.id, fileName: result.fileName, mediaType: result.mediaType, sortOrder: result.sortOrder }]);
+                } catch (err) {
+                  alert(err.message);
+                } finally {
+                  setUploading(false);
+                  e.target.value = '';
+                }
+              }}
+            />
+            {uploading ? '⏳ Uploading...' : '+ Add photo or file'}
+          </label>
+          <p style={{ fontSize: '11px', color: '#aaa', margin: 0 }}>
+            Image: max 5MB (JPEG, PNG) · Video: max 16MB (MP4) · Doc: max 100MB (PDF)
+          </p>
+        </div>
+      </Accordion>
+
       {/* Actions */}
+      <Accordion title="❓ Extra Questions (Optional)" summary={infoPage.extraSteps && infoPage.extraSteps.length > 0 ? `${infoPage.extraSteps.length} step${infoPage.extraSteps.length !== 1 ? 's' : ''}` : null}>
+        <p style={styles.accordionDesc}>Add service-specific questions appended to the booking flow when "Book this" is clicked.</p>
+        <InfoActionFlowBuilder
+          flowSteps={infoPage.extraSteps || []}
+          onUpdateSteps={(newSteps) => update('extraSteps', newSteps)}
+          genId={genId}
+          allButtons={allButtons}
+        />
+      </Accordion>
+
       <Accordion title="👆 Buttons inside this page" defaultOpen>
         <p style={styles.accordionDesc}>These buttons will be shown after entering this page</p>
         <div style={styles.actionButtonsList}>
@@ -805,24 +792,24 @@ function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons 
 
                 {/* Action type selector */}
                 <div style={{ display: 'flex', gap: '4px' }}>
-                  {ACTION_TYPES.map((at) => (
+                  {ACTION_BUTTON_BEHAVIORS.map((at) => (
                     <button
                       key={at.key}
                       style={{
                         flex: 1,
                         padding: '6px 4px',
                         fontSize: '11px',
-                        fontWeight: ab.actionType === at.key ? 600 : 400,
-                        background: ab.actionType === at.key ? '#e8f5e9' : '#fff',
-                        border: ab.actionType === at.key ? '2px solid #00a884' : '1px solid #ddd',
+                        fontWeight: ab.behavior === at.key ? 600 : 400,
+                        background: ab.behavior === at.key ? '#e8f5e9' : '#fff',
+                        border: ab.behavior === at.key ? '2px solid #00a884' : '1px solid #ddd',
                         borderRadius: '6px',
                         cursor: 'pointer',
-                        color: ab.actionType === at.key ? '#00a884' : '#666',
+                        color: ab.behavior === at.key ? '#00a884' : '#666',
                       }}
                       onClick={() => {
-                        const changes = { actionType: at.key };
+                        const changes = { behavior: at.key };
                         if (at.key === 'start_flow' && !ab.flowSteps) {
-                          changes.flowSteps = [{ id: genId(), question: '', type: 'text', key: 'step_1', options: [] }];
+                          changes.flowSteps = [{ id: genId(), question: getSuggestions('text')[0] || '', type: 'text', key: 'step_1', options: [] }];
                         }
                         updateAb(changes);
                       }}
@@ -831,7 +818,7 @@ function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons 
                 </div>
 
                 {/* Conditional config based on action type */}
-                {ab.actionType === 'start_flow' && ab.flowSteps && (
+                {ab.behavior === 'start_flow' && ab.flowSteps && (
                   <InfoActionFlowBuilder
                     flowSteps={ab.flowSteps}
                     onUpdateSteps={(newSteps) => updateAb({ flowSteps: newSteps })}
@@ -840,31 +827,16 @@ function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons 
                   />
                 )}
 
-                {ab.actionType === 'call' && (
-                  <input
-                    style={styles.input}
-                    value={ab.phoneNumber || ''}
-                    onChange={(e) => updateAb({ phoneNumber: e.target.value })}
-                    placeholder="e.g. +1 555 123 4567"
+                {/* Per-button Delivery Settings */}
+                {ab.behavior === 'start_flow' && (
+                  <ButtonDelivery
+                    deliveryMethod={ab.deliveryMethod || 'none'}
+                    deliveryStaffId={ab.deliveryStaffId || ''}
+                    staff={staff}
+                    onChange={(changes) => updateAb(changes)}
                   />
                 )}
 
-                {ab.actionType === 'link' && (
-                  <input
-                    style={styles.input}
-                    value={ab.url || ''}
-                    onChange={(e) => updateAb({ url: e.target.value })}
-                    placeholder="https://example.com"
-                  />
-                )}
-
-                {ab.actionType === 'navigate' && (
-                  <NavigationPicker
-                    value={ab.navigateTarget}
-                    onChange={(target) => updateAb({ navigateTarget: target })}
-                    allButtons={allButtons}
-                  />
-                )}
               </div>
             );
           })}
@@ -872,7 +844,7 @@ function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons 
         <button
           style={styles.addChildButton}
           onClick={() => {
-            const updated = [...infoPage.actionButtons, { id: genId(), label: 'New button', actionType: 'start_flow', flowSteps: [{ id: genId(), question: '', type: 'text', key: 'step_1', options: [] }] }];
+            const updated = [...infoPage.actionButtons, { id: genId(), label: 'New button', behavior: 'start_flow', flowSteps: [{ id: genId(), question: getSuggestions('text')[0] || '', type: 'text', key: 'step_1', options: [] }], deliveryMethod: 'none', deliveryStaffId: '' }];
             onUpdateButton(buttonId, { infoPage: { ...infoPage, actionButtons: updated } });
           }}
         >+ Add action button</button>
@@ -885,23 +857,94 @@ function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons 
   );
 }
 
-export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedButton, onBehaviorChange, onBack, errorMessage, onAddChild, path, parentButton, visibleButtons, onAddButton, onSelectButton, onUpdateButton, genId, allButtons }) {
-  const [openSections, setOpenSections] = useState({ behavior: true, action: false, flow: false });
+function ButtonDelivery({ deliveryMethod, deliveryStaffId, staff, onChange }) {
+  const filteredStaff = (staff || []).filter((s) => {
+    if (deliveryMethod === 'email') return s.email;
+    if (deliveryMethod === 'telegram') return s.telegram_chat_id;
+    return true;
+  });
+
+  const selectedStaff = staff?.find((s) => s.id === Number(deliveryStaffId));
+  const validationError = (() => {
+    if (!selectedStaff || deliveryMethod === 'none') return null;
+    if (deliveryMethod === 'email' && !selectedStaff.email) return 'Selected staff has no email address.';
+    if (deliveryMethod === 'telegram' && !selectedStaff.telegram_chat_id) return 'Selected staff has no Telegram Chat ID.';
+    return null;
+  })();
+
+  return (
+    <div style={{ background: '#f0f8ff', borderRadius: '8px', padding: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <div style={{ fontSize: '12px', fontWeight: 600, color: '#555' }}>📨 Delivery</div>
+
+      <label style={{ fontSize: '11px', fontWeight: 500, color: '#888' }}>Delivery Method</label>
+      <select
+        value={deliveryMethod}
+        onChange={(e) => onChange({ deliveryMethod: e.target.value, deliveryStaffId: '' })}
+        style={{ ...styles.input, padding: '7px 8px', fontSize: '13px' }}
+      >
+        <option value="none">None</option>
+        <option value="email">✉ Email</option>
+        <option value="telegram">✈ Telegram</option>
+        <option value="whatsapp" disabled>WhatsApp (coming soon)</option>
+      </select>
+
+      {deliveryMethod !== 'none' && (
+        <>
+          <label style={{ fontSize: '11px', fontWeight: 500, color: '#888' }}>Assign to Staff</label>
+          <select
+            value={deliveryStaffId}
+            onChange={(e) => onChange({ deliveryStaffId: e.target.value ? Number(e.target.value) : '' })}
+            style={{ ...styles.input, padding: '7px 8px', fontSize: '13px' }}
+          >
+            <option value="">— Select staff —</option>
+            {filteredStaff.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}{s.role ? ` (${s.role})` : ''}
+                {deliveryMethod === 'email' && s.email ? ` — ${s.email}` : ''}
+                {deliveryMethod === 'telegram' && s.telegram_chat_id ? ` — ${s.telegram_chat_id}` : ''}
+              </option>
+            ))}
+          </select>
+
+          {filteredStaff.length === 0 && staff.length > 0 && (
+            <div style={{ fontSize: '11px', color: '#e53e3e' }}>
+              ⚠ No staff with {deliveryMethod === 'email' ? 'email' : 'Telegram chat ID'} configured. Add contact details in Staff page.
+            </div>
+          )}
+
+          {validationError && (
+            <div style={{ fontSize: '11px', color: '#e53e3e' }}>⚠ {validationError}</div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedButton, onBehaviorChange, onBack, errorMessage, onAddChild, path, parentButton, visibleButtons, onAddButton, onSelectButton, onUpdateButton, genId, allButtons, templates, onLoadTemplate, businessId, flowId }) {
+  const [openSections, setOpenSections] = useState({ behavior: true, flow: false });
+  const [staff, setStaff] = useState([]);
+
+  // Load staff for delivery dropdowns
+  useEffect(() => {
+    if (businessId) {
+      fetchStaff(businessId).then((list) => setStaff(list || []));
+    }
+  }, [businessId]);
 
   // Reset sections when selected button changes
   const selectedId = selectedButton ? selectedButton.id : null;
   useEffect(() => {
     if (selectedId) {
-      setOpenSections({ behavior: true, action: false, flow: false });
+      setOpenSections({ behavior: true, flow: false });
     }
   }, [selectedId]);
 
   // If a button is selected, show its settings
   if (selectedButton) {
     const hasChildren = selectedButton.children && selectedButton.children.length > 0;
-    const isSubButtons = selectedButton.behavior === 'sub_buttons';
+    const isSubButtons = selectedButton.behavior === 'menu';
     const isInfo = selectedButton.behavior === 'info';
-    const isAction = selectedButton.behavior === 'action';
     const behaviorSummary = selectedButton.behavior ? (BEHAVIORS.find((b) => b.key === selectedButton.behavior)?.label || null) : null;
 
     return (
@@ -944,7 +987,6 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
                     setOpenSections((prev) => ({
                       ...prev,
                       behavior: false,
-                      action: b.key === 'action',
                     }));
                   }}
                 >
@@ -971,18 +1013,8 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
             onUpdateButton={onUpdateButton}
             genId={genId}
             allButtons={allButtons}
-          />
-        )}
-
-        {/* Action editor section */}
-        {isAction && (
-          <ActionEditor
-            selectedButton={selectedButton}
-            onUpdateButton={onUpdateButton}
-            genId={genId}
-            allButtons={allButtons}
-            openSections={openSections}
-            setOpenSections={setOpenSections}
+            staff={staff}
+            businessId={businessId}
           />
         )}
 
@@ -1064,6 +1096,39 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
       <div style={styles.tipBox}>
         💡 Click any button on the phone to set what it does.
       </div>
+
+      {/* Template selector */}
+      {templates && templates.length > 0 && (
+        <div style={{ marginTop: '24px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#111', margin: '0 0 8px' }}>Load a template</h3>
+          <p style={{ fontSize: '12px', color: '#888', margin: '0 0 12px' }}>Start with a pre-built business template. This will replace your current setup.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {templates.map((tpl) => (
+              <button
+                key={tpl.key}
+                onClick={() => {
+                  if (window.confirm(`Load "${tpl.name}" template? This will replace your current buttons and welcome message.`)) {
+                    onLoadTemplate(tpl.key);
+                  }
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '10px 14px', background: '#fafafa', border: '1px solid #e0e0e0',
+                  borderRadius: '8px', cursor: 'pointer', textAlign: 'left', width: '100%',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#f0f0f0'; e.currentTarget.style.borderColor = '#00a884'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#fafafa'; e.currentTarget.style.borderColor = '#e0e0e0'; }}
+              >
+                <span style={{ fontSize: '22px' }}>{tpl.emoji}</span>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#111' }}>{tpl.name}</div>
+                  <div style={{ fontSize: '11px', color: '#888' }}>{tpl.description}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

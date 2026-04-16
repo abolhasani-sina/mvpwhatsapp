@@ -29,6 +29,10 @@ function formatTree(nodes) {
     id: node.id,
     title: node.label,
     type: node.node_type,
+    flow_id: node.flow_id || null,
+    action_type: node.action_type || null,
+    action_config: node.action_config || null,
+    catalog_node_id: node.catalog_node_id || null,
     children: node.children ? formatTree(node.children) : [],
   }));
 }

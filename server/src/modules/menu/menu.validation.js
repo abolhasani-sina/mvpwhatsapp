@@ -9,7 +9,7 @@
  * - info nodes: max 3 action buttons
  */
 
-const VALID_NODE_TYPES = ['menu', 'info', 'flow_entry', 'action'];
+const VALID_NODE_TYPES = ['menu', 'info', 'flow_entry', 'action', 'catalog_entry'];
 const VALID_ACTION_TYPES = ['show_phone', 'show_location', 'open_link', 'go_back'];
 const VALID_BUTTON_BEHAVIORS = ['trigger_flow', 'action'];
 const MAX_CHILDREN = 10;

@@ -29,7 +29,7 @@ function formatPrice(amount, currency) {
   return `${amount} ${currency || 'USD'}`;
 }
 
-export default function PhoneMockup({ welcomeMessage, buttons, selectedButtonId, onButtonClick, onButtonDoubleClick, onAddButton, parentButton, onGoBack, path, viewingInfoButton, onCloseInfoPreview, viewingActionButton, onCloseActionPreview, onReorderButtons, allButtons, onNavigateTo, onDeleteButton }) {
+export default function PhoneMockup({ businessName = 'Your Business', welcomeMessage, buttons, selectedButtonId, onButtonClick, onButtonDoubleClick, onAddButton, parentButton, onGoBack, path, viewingInfoButton, onCloseInfoPreview, onReorderButtons, allButtons, onNavigateTo, onDeleteButton, onSubmit }) {
   const [dragIndex, setDragIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [hoveredButtonId, setHoveredButtonId] = useState(null);
@@ -43,25 +43,10 @@ export default function PhoneMockup({ welcomeMessage, buttons, selectedButtonId,
   const [flowConfirmed, setFlowConfirmed] = useState(false);
   const [manualMode, setManualMode] = useState(false); // for choice_with_manual
   const [activeFlowButton, setActiveFlowButton] = useState(null); // button whose flow is running from info page
-  const [menuNavPath, setMenuNavPath] = useState([]); // for select_service_from_menu: tracks drill-down path [{id, label}]
+  const [menuNavPath, setMenuNavPath] = useState([]); // for select_from_menu: tracks drill-down path [{id, label}]
   const [menuNavMessages, setMenuNavMessages] = useState([]); // intermediate messages during menu navigation
   const [flowPreviewButton, setFlowPreviewButton] = useState(null); // button being previewed before confirm in flow
   const chatEndRef = useRef(null);
-
-  // Reset flow when action button changes
-  const actionId = viewingActionButton ? viewingActionButton.id : null;
-  useEffect(() => {
-    setFlowStep(0);
-    setFlowAnswers({});
-    setFlowTextInput('');
-    setFlowDone(false);
-    setFlowConfirmed(false);
-    setManualMode(false);
-    setActiveFlowButton(null);
-    setMenuNavPath([]);
-    setMenuNavMessages([]);
-    setFlowPreviewButton(null);
-  }, [actionId]);
 
   // Reset activeFlowButton when leaving info preview
   const infoId = viewingInfoButton ? viewingInfoButton.id : null;
@@ -181,139 +166,8 @@ export default function PhoneMockup({ welcomeMessage, buttons, selectedButtonId,
     dragNode.current = null;
   }
 
-  // Info page preview mode
-  if (viewingInfoButton && viewingInfoButton.infoPage) {
-    const info = viewingInfoButton.infoPage;
-    const preset = STYLE_PRESETS[info.style] || STYLE_PRESETS.clean;
-    const priceStr = formatPrice(info.amount, info.currency);
-
-    return (
-      <div style={styles.phone}>
-        <div style={styles.topBar}>
-          <div style={styles.topBarLeft}>
-            <div style={styles.avatar}>YB</div>
-            <div>
-              <div style={styles.businessName}>Your Business</div>
-              <div style={styles.status}>online</div>
-            </div>
-          </div>
-        </div>
-
-        <div style={styles.chatArea}>
-          <button style={styles.navBack} onClick={onCloseInfoPreview}>
-            ← Back
-          </button>
-
-          <div style={{
-            background: preset.cardBg,
-            borderRadius: preset.cardRadius,
-            padding: preset.cardPadding,
-            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: preset.gap,
-          }}>
-            <div style={{
-              fontSize: preset.titleSize,
-              fontWeight: preset.titleWeight,
-              color: preset.titleColor,
-              lineHeight: '1.3',
-            }}>{info.title || 'Untitled'}</div>
-
-            {info.description && (
-              <div style={{
-                fontSize: preset.descSize,
-                lineHeight: preset.descLineHeight,
-                color: preset.descColor,
-                whiteSpace: 'pre-wrap',
-              }}>{info.description}</div>
-            )}
-
-            {((info.showPrice !== false && priceStr) || (info.showDuration !== false && info.duration)) && (
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {info.showPrice !== false && priceStr && (
-                  <span style={{
-                    background: preset.metaBg,
-                    color: preset.metaColor,
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    padding: '5px 12px',
-                    borderRadius: '14px',
-                  }}>{priceStr}</span>
-                )}
-                {info.showDuration !== false && info.duration && (
-                  <span style={{
-                    background: '#f3f4f6',
-                    color: '#555',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    padding: '5px 12px',
-                    borderRadius: '14px',
-                  }}>⏱ {info.duration}</span>
-                )}
-              </div>
-            )}
-
-            {info.actionButtons && info.actionButtons.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
-                {info.actionButtons.map((ab) => {
-                  const isClickable =
-                    (ab.actionType === 'start_flow' && ab.flowSteps && ab.flowSteps.length > 0) ||
-                    (ab.actionType === 'call' && ab.phoneNumber) ||
-                    (ab.actionType === 'link' && ab.url) ||
-                    ab.actionType === 'go_back' ||
-                    (ab.actionType === 'navigate' && ab.navigateTarget);
-
-                  return (
-                    <button key={ab.id} style={{
-                      background: '#fff',
-                      border: '2px solid #d1d7db',
-                      borderRadius: '8px',
-                      padding: '10px 16px',
-                      fontSize: '14px',
-                      color: preset.metaColor,
-                      fontWeight: 500,
-                      cursor: isClickable ? 'pointer' : 'default',
-                      textAlign: 'center',
-                    }}
-                    onClick={() => {
-                      if (ab.actionType === 'start_flow' && ab.flowSteps && ab.flowSteps.length > 0) {
-                        setFlowStep(0);
-                        setFlowAnswers({});
-                        setFlowTextInput('');
-                        setFlowDone(false);
-                        setFlowConfirmed(false);
-                        setActiveFlowButton(ab);
-                      } else if (ab.actionType === 'call' && ab.phoneNumber) {
-                        alert('Would call: ' + ab.phoneNumber);
-                      } else if (ab.actionType === 'link' && ab.url) {
-                        alert('Would open: ' + ab.url);
-                      } else if (ab.actionType === 'go_back') {
-                        onCloseInfoPreview();
-                      } else if (ab.actionType === 'navigate' && ab.navigateTarget) {
-                        onNavigateTo(ab.navigateTarget);
-                      }
-                    }}
-                    >
-                      {ab.label}
-                      {ab.actionType === 'call' ? ' 📞' : ab.actionType === 'link' ? ' 🔗' : ab.actionType === 'go_back' ? ' ←' : ab.actionType === 'navigate' ? ' →' : ''}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div style={styles.bottomBar}>
-          <div style={styles.fakeInput}>Customers tap buttons above</div>
-        </div>
-      </div>
-    );
-  }
-
-  // Action flow from info page action button
-  if (activeFlowButton && activeFlowButton.flowSteps && activeFlowButton.flowSteps.length > 0 && activeFlowButton.actionType === 'start_flow') {
+  // Action flow from info page action button (must be checked BEFORE info page so flow takes priority)
+  if (activeFlowButton && activeFlowButton.flowSteps && activeFlowButton.flowSteps.length > 0 && activeFlowButton.behavior === 'start_flow') {
     const steps = activeFlowButton.flowSteps;
 
     function handleTextSubmit() {
@@ -343,8 +197,15 @@ export default function PhoneMockup({ welcomeMessage, buttons, selectedButtonId,
     }
 
     function handleEdit() {
-      setFlowStep(0);
-      setFlowAnswers({});
+      // When restarting, respect prefillService — skip step 1 again
+      const skipFirst = activeFlowButton.prefillService && steps[0] && steps[0].type === 'select_from_menu';
+      const startStep = skipFirst ? 1 : 0;
+      const prefillAnswers = {};
+      if (skipFirst) {
+        prefillAnswers[steps[0].key || 'step_0'] = activeFlowButton.prefillService;
+      }
+      setFlowStep(startStep);
+      setFlowAnswers(prefillAnswers);
       setFlowTextInput('');
       setFlowDone(false);
       setFlowConfirmed(false);
@@ -356,6 +217,48 @@ export default function PhoneMockup({ welcomeMessage, buttons, selectedButtonId,
 
     function handleConfirm() {
       setFlowConfirmed(true);
+
+      // Build structured submission data
+      const answers = {};
+      for (let i = 0; i < steps.length; i++) {
+        const s = steps[i];
+        const key = s.key || `step_${i}`;
+        const label = s.label || key;
+        let value = flowAnswers[key] || '';
+        if (s.type === 'select_from_menu' && value.includes(' > ')) {
+          value = value.split(' > ').pop();
+        }
+        answers[label] = value;
+      }
+
+      // Determine service name
+      const serviceName = activeFlowButton.prefillService
+        || flowAnswers[steps[0]?.key || 'step_0']
+        || 'Unknown Service';
+
+      const deliveryMethod = activeFlowButton.deliveryMethod || 'none';
+      const deliveryStaffId = activeFlowButton.deliveryStaffId || null;
+
+      // Simulate delivery
+      if (deliveryMethod === 'email') {
+        console.log(`📧 [DELIVERY] Sending email to staff #${deliveryStaffId}`, answers);
+      } else if (deliveryMethod === 'telegram') {
+        console.log(`✈️ [DELIVERY] Sending telegram to staff #${deliveryStaffId}`, answers);
+      } else if (deliveryMethod === 'whatsapp') {
+        console.log(`📱 [DELIVERY] WhatsApp delivery (coming soon) to staff #${deliveryStaffId}`, answers);
+      }
+
+      // Call onSubmit callback to create the submission
+      if (onSubmit) {
+        onSubmit({
+          serviceName,
+          answers,
+          deliveryMethod,
+          deliveryStaffId,
+          createdAt: new Date().toISOString(),
+          status: 'new',
+        });
+      }
     }
 
     function handleMenuBack() {
@@ -374,12 +277,14 @@ export default function PhoneMockup({ welcomeMessage, buttons, selectedButtonId,
     }
 
     const chatMessages = [];
+    // Skip rendering prefilled steps (e.g. step 1 when service is already known)
+    const firstVisibleStep = (activeFlowButton.prefillService && steps[0] && steps[0].type === 'select_from_menu') ? 1 : 0;
     const answeredCount = flowDone ? steps.length : flowStep;
-    for (let i = 0; i < answeredCount; i++) {
+    for (let i = firstVisibleStep; i < answeredCount; i++) {
       const s = steps[i];
       const key = s.key || `step_${i}`;
       let answerText = flowAnswers[key] || '';
-      if (s.type === 'select_service_from_menu' && answerText.includes(' > ')) {
+      if (s.type === 'select_from_menu' && answerText.includes(' > ')) {
         answerText = answerText.split(' > ').pop();
       }
       chatMessages.push({ type: 'question', text: s.question || `Step ${i + 1}` });
@@ -388,16 +293,16 @@ export default function PhoneMockup({ welcomeMessage, buttons, selectedButtonId,
 
     const currentStep = !flowDone && !flowConfirmed && !flowPreviewButton && steps[flowStep] ? steps[flowStep] : null;
     const showTextInput = currentStep && !flowDone && (currentStep.type === 'text' || manualMode);
-    const isMenuStep = currentStep && currentStep.type === 'select_service_from_menu';
+    const isMenuStep = currentStep && currentStep.type === 'select_from_menu';
     const menuButtons = isMenuStep ? getMenuButtons(menuNavPath, currentStep.menuRoot) : [];
 
     return (
       <div style={styles.phone}>
         <div style={styles.topBar}>
           <div style={styles.topBarLeft}>
-            <div style={styles.avatar}>YB</div>
+            <div style={styles.avatar}>{(businessName || 'YB').slice(0, 2).toUpperCase()}</div>
             <div>
-              <div style={styles.businessName}>Your Business</div>
+              <div style={styles.businessName}>{businessName}</div>
               <div style={styles.status}>online</div>
             </div>
           </div>
@@ -526,23 +431,37 @@ export default function PhoneMockup({ welcomeMessage, buttons, selectedButtonId,
           {flowDone && !flowConfirmed && (
             <>
               <div style={styles.bubble}>
-                <div style={styles.bubbleText}>Please review your information 👇</div>
-              </div>
-              <div style={flowStyles.summaryBubble}>
-                {steps.map((s, i) => {
-                  const key = s.key || `step_${i}`;
-                  let value = flowAnswers[key] || '—';
-                  if (s.type === 'select_service_from_menu' && value.includes(' > ')) {
-                    value = value.split(' > ').pop();
-                  }
-                  const label = s.label || s.question || s.key || `Step ${i + 1}`;
-                  const icon = s.type === 'select_service_from_menu' ? '🧾' : s.type === 'choice' || s.type === 'choice_with_manual' ? '✅' : '📝';
-                  return (
-                    <div key={s.id} style={flowStyles.summaryLine}>
-                      <span>{icon}</span> <span style={flowStyles.summaryLineLabel}>{label}:</span> <span style={flowStyles.summaryLineValue}>{value}</span>
+                <div style={styles.bubbleText}>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#111', marginBottom: '10px' }}>📋 Booking Summary</div>
+
+                  {/* Show prefilled service prominently */}
+                  {activeFlowButton.prefillService && (
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '4px', fontSize: '13.5px' }}>
+                      <span style={{ color: '#00a884' }}>•</span>
+                      <span><span style={{ color: '#555' }}>Service:</span> <span style={{ fontWeight: 600, color: '#111' }}>{activeFlowButton.prefillService}</span></span>
                     </div>
-                  );
-                })}
+                  )}
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {steps.map((s, i) => {
+                      if (i < firstVisibleStep) return null;
+                      const key = s.key || `step_${i}`;
+                      let value = flowAnswers[key] || '—';
+                      if (s.type === 'select_from_menu' && value.includes(' > ')) {
+                        value = value.split(' > ').pop();
+                      }
+                      const summaryLabel = s.label || `Step ${i + 1}`;
+                      return (
+                        <div key={s.id} style={{ fontSize: '13.5px', display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                          <span style={{ color: '#00a884' }}>•</span>
+                          <span><span style={{ color: '#555' }}>{summaryLabel}:</span> <span style={{ fontWeight: 600, color: '#111' }}>{value}</span></span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #f0f0f0', fontSize: '13px', color: '#666' }}>Does this look correct?</div>
+                </div>
               </div>
               <div style={flowStyles.summaryActions}>
                 <button style={flowStyles.confirmBtn} onClick={handleConfirm}>✔ Confirm</button>
@@ -553,7 +472,15 @@ export default function PhoneMockup({ welcomeMessage, buttons, selectedButtonId,
 
           {flowConfirmed && (
             <div style={styles.bubble}>
-              <div style={styles.bubbleText}>✅ Done! Your request has been submitted.</div>
+              <div style={styles.bubbleText}>
+                <div>✅ All done! We've received your request 🎉</div>
+                {activeFlowButton.deliveryMethod && activeFlowButton.deliveryMethod !== 'none' && (
+                  <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                    {activeFlowButton.deliveryMethod === 'email' && '📧 A confirmation has been sent via email.'}
+                    {activeFlowButton.deliveryMethod === 'telegram' && '✈️ A notification has been sent via Telegram.'}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -567,7 +494,7 @@ export default function PhoneMockup({ welcomeMessage, buttons, selectedButtonId,
               value={flowTextInput}
               onChange={(e) => setFlowTextInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleTextSubmit(); }}
-              placeholder={manualMode ? (currentStep.manualPlaceholder || 'Type your answer...') : 'Type your answer...'}
+              placeholder={manualMode ? (currentStep.manualPlaceholder || 'Type a message...') : 'Type a message...'}
             />
             <button style={flowStyles.sendBtn} onClick={handleTextSubmit}>Send</button>
           </div>
@@ -575,290 +502,145 @@ export default function PhoneMockup({ welcomeMessage, buttons, selectedButtonId,
 
         {!showTextInput && (
           <div style={styles.bottomBar}>
-            <div style={styles.fakeInput}>{flowDone ? (flowConfirmed ? 'Flow completed' : 'Review your answers') : flowPreviewButton ? 'Review service info' : 'Tap a choice above'}</div>
+            <div style={styles.fakeInput}>{flowDone ? (flowConfirmed ? 'Chat ended' : 'Review your details') : flowPreviewButton ? 'Review service info' : 'Choose an option'}</div>
           </div>
         )}
       </div>
     );
   }
 
-  // Action flow preview mode — conversational step-by-step
-  if (viewingActionButton && viewingActionButton.actionType === 'start_flow' && viewingActionButton.flowSteps && viewingActionButton.flowSteps.length > 0) {
-    const steps = viewingActionButton.flowSteps;
-
-    function handleTextSubmit() {
-      if (!flowTextInput.trim()) return;
-      const currentStep = steps[flowStep];
-      const newAnswers = { ...flowAnswers, [currentStep.key || `step_${flowStep}`]: flowTextInput.trim() };
-      setFlowAnswers(newAnswers);
-      setFlowTextInput('');
-      setManualMode(false);
-      if (flowStep + 1 >= steps.length) {
-        setFlowDone(true);
-      } else {
-        setFlowStep(flowStep + 1);
-      }
-    }
-
-    function handleChoiceSelect(label) {
-      const currentStep = steps[flowStep];
-      const newAnswers = { ...flowAnswers, [currentStep.key || `step_${flowStep}`]: label };
-      setFlowAnswers(newAnswers);
-      setManualMode(false);
-      if (flowStep + 1 >= steps.length) {
-        setFlowDone(true);
-      } else {
-        setFlowStep(flowStep + 1);
-      }
-    }
-
-    function handleEdit() {
-      setFlowStep(0);
-      setFlowAnswers({});
-      setFlowTextInput('');
-      setFlowDone(false);
-      setFlowConfirmed(false);
-      setManualMode(false);
-      setMenuNavPath([]);
-      setMenuNavMessages([]);
-      setFlowPreviewButton(null);
-    }
-
-    function handleConfirm() {
-      setFlowConfirmed(true);
-    }
-
-    function handleMenuBack() {
-      if (menuNavPath.length > 0) {
-        setMenuNavPath((prev) => prev.slice(0, -1));
-        setMenuNavMessages((prev) => prev.slice(0, -1));
-      } else if (flowStep > 0) {
-        const prevKey = steps[flowStep - 1].key || `step_${flowStep - 1}`;
-        const newAnswers = { ...flowAnswers };
-        delete newAnswers[prevKey];
-        setFlowAnswers(newAnswers);
-        setFlowStep(flowStep - 1);
-        setMenuNavPath([]);
-        setMenuNavMessages([]);
-      }
-    }
-
-    // Build chat history: all answered steps + current step
-    const chatMessages = [];
-    const answeredCount = flowDone ? steps.length : flowStep;
-    for (let i = 0; i < answeredCount; i++) {
-      const s = steps[i];
-      const key = s.key || `step_${i}`;
-      let answerText = flowAnswers[key] || '';
-      if (s.type === 'select_service_from_menu' && answerText.includes(' > ')) {
-        answerText = answerText.split(' > ').pop();
-      }
-      chatMessages.push({ type: 'question', text: s.question || `Step ${i + 1}` });
-      chatMessages.push({ type: 'answer', text: answerText });
-    }
-
-    const currentStep = !flowDone && !flowConfirmed && !flowPreviewButton && steps[flowStep] ? steps[flowStep] : null;
-    const showTextInput = currentStep && !flowDone && (currentStep.type === 'text' || manualMode);
-    const isMenuStep = currentStep && currentStep.type === 'select_service_from_menu';
-    const menuButtons = isMenuStep ? getMenuButtons(menuNavPath, currentStep.menuRoot) : [];
+  // Info page preview mode
+  if (viewingInfoButton && viewingInfoButton.infoPage) {
+    const info = viewingInfoButton.infoPage;
+    const preset = STYLE_PRESETS[info.style] || STYLE_PRESETS.clean;
+    const priceStr = formatPrice(info.amount, info.currency);
 
     return (
       <div style={styles.phone}>
         <div style={styles.topBar}>
           <div style={styles.topBarLeft}>
-            <div style={styles.avatar}>YB</div>
+            <div style={styles.avatar}>{(businessName || 'YB').slice(0, 2).toUpperCase()}</div>
             <div>
-              <div style={styles.businessName}>Your Business</div>
+              <div style={styles.businessName}>{businessName}</div>
               <div style={styles.status}>online</div>
             </div>
           </div>
         </div>
 
-        <div style={{ ...styles.chatArea, justifyContent: 'flex-start' }}>
-          <button style={styles.navBack} onClick={() => { handleEdit(); onCloseActionPreview(); }}>
+        <div style={styles.chatArea}>
+          <button style={styles.navBack} onClick={onCloseInfoPreview}>
             ← Back
           </button>
 
-          {/* Chat history */}
-          {chatMessages.map((msg, i) => (
-            msg.type === 'question' ? (
-              <div key={i} style={styles.bubble}>
-                <div style={styles.bubbleText}>{msg.text}</div>
+          <div style={{
+            background: preset.cardBg,
+            borderRadius: preset.cardRadius,
+            padding: preset.cardPadding,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: preset.gap,
+          }}>
+            <div style={{
+              fontSize: preset.titleSize,
+              fontWeight: preset.titleWeight,
+              color: preset.titleColor,
+              lineHeight: '1.3',
+            }}>{info.title || 'Untitled'}</div>
+
+            {info.description && (
+              <div style={{
+                fontSize: preset.descSize,
+                lineHeight: preset.descLineHeight,
+                color: preset.descColor,
+                whiteSpace: 'pre-wrap',
+              }}>{info.description}</div>
+            )}
+
+            {((info.showPrice !== false && priceStr) || (info.showDuration !== false && info.duration)) && (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {info.showPrice !== false && priceStr && (
+                  <span style={{
+                    background: preset.metaBg,
+                    color: preset.metaColor,
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    padding: '5px 12px',
+                    borderRadius: '14px',
+                  }}>{priceStr}</span>
+                )}
+                {info.showDuration !== false && info.duration && (
+                  <span style={{
+                    background: '#f3f4f6',
+                    color: '#555',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    padding: '5px 12px',
+                    borderRadius: '14px',
+                  }}>⏱ {info.duration}</span>
+                )}
               </div>
-            ) : (
-              <div key={i} style={flowStyles.userBubble}>
-                <div style={styles.bubbleText}>{msg.text}</div>
-              </div>
-            )
-          ))}
+            )}
 
-          {/* Current question */}
-          {currentStep && !flowDone && (
-            <>
-              <div style={styles.bubble}>
-                <div style={styles.bubbleText}>{currentStep.question || `Step ${flowStep + 1}`}</div>
-              </div>
+            {info.actionButtons && info.actionButtons.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+                {info.actionButtons.map((ab) => {
+                  const isClickable =
+                    (ab.behavior === 'start_flow' && ab.flowSteps && ab.flowSteps.length > 0) ||
+                    ab.behavior === 'go_back';
 
-              {/* Menu navigation intermediate messages */}
-              {isMenuStep && menuNavMessages.map((msg, i) => (
-                msg.type === 'answer' ? (
-                  <div key={`mn-${i}`} style={flowStyles.userBubble}>
-                    <div style={styles.bubbleText}>{msg.text}</div>
-                  </div>
-                ) : (
-                  <div key={`mn-${i}`} style={styles.bubble}>
-                    <div style={styles.bubbleText}>{msg.text}</div>
-                  </div>
-                )
-              ))}
-
-              {/* Menu service selection */}
-              {isMenuStep && menuButtons.length > 0 && (
-                <div style={flowStyles.choiceBtns}>
-                  {(menuNavPath.length > 0 || flowStep > 0) && (
-                    <button style={{ ...flowStyles.choiceBtn, color: '#888', fontStyle: 'italic' }} onClick={handleMenuBack}>
-                      ← Back
-                    </button>
-                  )}
-                  {menuButtons.map((btn) => (
-                    <button key={btn.id} style={flowStyles.choiceBtn} onClick={() => handleMenuSelect(btn, steps, flowStep)}>
-                      {btn.label}{btn.children && btn.children.length > 0 ? ' ▸' : ''}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {(currentStep.type === 'choice' || (currentStep.type === 'choice_with_manual' && !manualMode)) && (currentStep.options || []).length > 0 && (
-                <div style={flowStyles.choiceBtns}>
-                  {currentStep.options.map((opt) => (
-                    <button
-                      key={opt.id}
-                      style={flowStyles.choiceBtn}
-                      onClick={() => handleChoiceSelect(opt.label || 'Option')}
-                    >
-                      {opt.label || 'Option'}
-                    </button>
-                  ))}
-                  {currentStep.type === 'choice_with_manual' && (
-                    <button style={{ ...flowStyles.choiceBtn, fontStyle: 'italic', color: '#888' }} onClick={() => setManualMode(true)}>
-                      Manual input ✍️
-                    </button>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Service info preview before confirming */}
-          {flowPreviewButton && flowPreviewButton.infoPage && (() => {
-            const info = flowPreviewButton.infoPage;
-            const preset = STYLE_PRESETS[info.style] || STYLE_PRESETS.clean;
-            const priceStr = formatPrice(info.amount, info.currency);
-            return (
-              <>
-                <div style={flowStyles.userBubble}>
-                  <div style={styles.bubbleText}>{flowPreviewButton.label}</div>
-                </div>
-                <div style={{
-                  background: preset.cardBg,
-                  borderRadius: preset.cardRadius,
-                  padding: preset.cardPadding,
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: preset.gap,
-                  maxWidth: '85%',
-                }}>
-                  <div style={{ fontSize: preset.titleSize, fontWeight: preset.titleWeight, color: preset.titleColor, lineHeight: '1.3' }}>
-                    {info.title || flowPreviewButton.label}
-                  </div>
-                  {info.description && (
-                    <div style={{ fontSize: preset.descSize, lineHeight: preset.descLineHeight, color: preset.descColor, whiteSpace: 'pre-wrap' }}>
-                      {info.description}
-                    </div>
-                  )}
-                  {((info.showPrice !== false && priceStr) || (info.showDuration !== false && info.duration)) && (
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      {info.showPrice !== false && priceStr && (
-                        <span style={{ background: preset.metaBg, color: preset.metaColor, fontSize: '13px', fontWeight: 700, padding: '5px 12px', borderRadius: '14px' }}>{priceStr}</span>
-                      )}
-                      {info.showDuration !== false && info.duration && (
-                        <span style={{ background: '#f3f4f6', color: '#555', fontSize: '13px', fontWeight: 500, padding: '5px 12px', borderRadius: '14px' }}>⏱ {info.duration}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div style={flowStyles.choiceBtns}>
-                  <button style={{ ...flowStyles.choiceBtn, background: '#00a884', color: '#fff', border: '2px solid #00a884', fontWeight: 600 }} onClick={() => handlePreviewConfirm(steps, flowStep)}>
-                    Select this service ✔
-                  </button>
-                  <button style={{ ...flowStyles.choiceBtn, color: '#888', fontStyle: 'italic' }} onClick={handlePreviewBack}>
-                    ← Back
-                  </button>
-                </div>
-              </>
-            );
-          })()}
-
-          {/* Summary */}
-          {flowDone && !flowConfirmed && (
-            <>
-              <div style={styles.bubble}>
-                <div style={styles.bubbleText}>Please review your information 👇</div>
-              </div>
-              <div style={flowStyles.summaryBubble}>
-                {steps.map((s, i) => {
-                  const key = s.key || `step_${i}`;
-                  let value = flowAnswers[key] || '—';
-                  if (s.type === 'select_service_from_menu' && value.includes(' > ')) {
-                    value = value.split(' > ').pop();
-                  }
-                  const label = s.label || s.question || s.key || `Step ${i + 1}`;
-                  const icon = s.type === 'select_service_from_menu' ? '🧾' : s.type === 'choice' || s.type === 'choice_with_manual' ? '✅' : '📝';
                   return (
-                    <div key={s.id} style={flowStyles.summaryLine}>
-                      <span>{icon}</span> <span style={flowStyles.summaryLineLabel}>{label}:</span> <span style={flowStyles.summaryLineValue}>{value}</span>
-                    </div>
+                    <button key={ab.id} style={{
+                      background: '#fff',
+                      border: '2px solid #d1d7db',
+                      borderRadius: '8px',
+                      padding: '10px 16px',
+                      fontSize: '14px',
+                      color: preset.metaColor,
+                      fontWeight: 500,
+                      cursor: isClickable ? 'pointer' : 'default',
+                      textAlign: 'center',
+                    }}
+                    onClick={() => {
+                      console.log('CLICKED BUTTON:', ab);
+                      if (ab.behavior === 'start_flow' && ab.flowSteps && ab.flowSteps.length > 0) {
+                        // Build merged flow: baseFlow + infoPage.extraSteps appended
+                        let mergedSteps = ab.flowSteps;
+                        const extras = info.extraSteps;
+                        if (extras && extras.length > 0) {
+                          mergedSteps = [...ab.flowSteps, ...extras];
+                        }
+                        // If service is already known (prefillService), skip the select_from_menu step
+                        const skipFirst = ab.prefillService && mergedSteps[0] && mergedSteps[0].type === 'select_from_menu';
+                        const startStep = skipFirst ? 1 : 0;
+                        const prefillAnswers = {};
+                        if (skipFirst) {
+                          prefillAnswers[mergedSteps[0].key || 'step_0'] = ab.prefillService;
+                        }
+                        setFlowStep(startStep);
+                        setFlowAnswers(prefillAnswers);
+                        setFlowTextInput('');
+                        setFlowDone(false);
+                        setFlowConfirmed(false);
+                        setActiveFlowButton({ ...ab, flowSteps: mergedSteps });
+                      } else if (ab.behavior === 'go_back') {
+                        onCloseInfoPreview();
+                      }
+                    }}
+                    >
+                      {ab.label}
+                      {ab.behavior === 'go_back' ? ' ←' : ''}
+                    </button>
                   );
                 })}
               </div>
-              <div style={flowStyles.summaryActions}>
-                <button style={flowStyles.confirmBtn} onClick={handleConfirm}>✔ Confirm</button>
-                <button style={flowStyles.editBtn} onClick={handleEdit}>✏️ Edit</button>
-              </div>
-            </>
-          )}
-
-          {/* Confirmed */}
-          {flowConfirmed && (
-            <div style={styles.bubble}>
-              <div style={styles.bubbleText}>✅ Done! Your request has been submitted.</div>
-            </div>
-          )}
-
-          <div ref={chatEndRef} />
+            )}
+          </div>
         </div>
 
-        {/* Text input bar for text steps or manual mode */}
-        {showTextInput && (
-          <div style={flowStyles.inputBar}>
-            <input
-              style={flowStyles.textField}
-              value={flowTextInput}
-              onChange={(e) => setFlowTextInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleTextSubmit(); }}
-              placeholder={manualMode ? (currentStep.manualPlaceholder || 'Type your answer...') : 'Type your answer...'}
-            />
-            <button style={flowStyles.sendBtn} onClick={handleTextSubmit}>Send</button>
-          </div>
-        )}
-
-        {/* Bottom bar when not typing */}
-        {!showTextInput && (
-          <div style={styles.bottomBar}>
-            <div style={styles.fakeInput}>{flowDone ? (flowConfirmed ? 'Flow completed' : 'Review your answers') : flowPreviewButton ? 'Review service info' : 'Tap a choice above'}</div>
-          </div>
-        )}
+        <div style={styles.bottomBar}>
+          <div style={styles.fakeInput}>Tap a button to get started</div>
+        </div>
       </div>
     );
   }
@@ -869,9 +651,9 @@ export default function PhoneMockup({ welcomeMessage, buttons, selectedButtonId,
     <div style={styles.phone}>
       <div style={styles.topBar}>
         <div style={styles.topBarLeft}>
-          <div style={styles.avatar}>YB</div>
+          <div style={styles.avatar}>{(businessName || 'YB').slice(0, 2).toUpperCase()}</div>
           <div>
-            <div style={styles.businessName}>Your Business</div>
+            <div style={styles.businessName}>{businessName}</div>
             <div style={styles.status}>online</div>
           </div>
         </div>
@@ -953,29 +735,25 @@ export default function PhoneMockup({ welcomeMessage, buttons, selectedButtonId,
           + Add Button
         </button>
 
-        {buttons.some((b) => b.behavior === 'sub_buttons') && (
+        {buttons.some((b) => b.behavior === 'menu') && (
           <div style={styles.hint}>Double-click a "▸ more" button to go inside</div>
         )}
         {buttons.some((b) => b.behavior === 'info') && (
           <div style={styles.hint}>Double-click an "ℹ info" button to preview</div>
         )}
 
-        {buttons.some((b) => b.behavior === 'action') && (
-          <div style={styles.hint}>Double-click a "⚡ action" button to try the flow</div>
-        )}
       </div>
 
       <div style={styles.bottomBar}>
-        <div style={styles.fakeInput}>Customers tap buttons above</div>
+        <div style={styles.fakeInput}>Tap a button to get started</div>
       </div>
     </div>
   );
 }
 
 const BEHAVIOR_LABELS = {
-  sub_buttons: '▸ more',
+  menu: '▸ more',
   info: 'ℹ info',
-  action: '⚡ action',
 };
 
 const flowStyles = {
@@ -1004,32 +782,6 @@ const flowStyles = {
     cursor: 'pointer',
     textAlign: 'center',
     transition: 'border-color 0.15s',
-  },
-  summaryBubble: {
-    background: '#fff',
-    borderRadius: '0 8px 8px 8px',
-    padding: '14px 16px',
-    maxWidth: '85%',
-    boxShadow: '0 1px 1px rgba(0,0,0,0.08)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-  },
-  summaryLine: {
-    fontSize: '13.5px',
-    lineHeight: '1.6',
-    color: '#222',
-    display: 'flex',
-    gap: '6px',
-    alignItems: 'baseline',
-  },
-  summaryLineLabel: {
-    color: '#888',
-    fontSize: '12px',
-  },
-  summaryLineValue: {
-    fontWeight: 600,
-    color: '#111',
   },
   summaryActions: {
     display: 'flex',

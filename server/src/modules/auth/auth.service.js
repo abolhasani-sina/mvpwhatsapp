@@ -40,7 +40,7 @@ function generateAccessToken(user) {
 function generateRefreshToken(user) {
   return jwt.sign(
     { user_id: user.id },
-    authConfig.jwtSecret,
+    authConfig.jwtRefreshSecret,
     { expiresIn: authConfig.refreshTokenExpiry }
   );
 }
@@ -50,6 +50,13 @@ function generateRefreshToken(user) {
  */
 function verifyToken(token) {
   return jwt.verify(token, authConfig.jwtSecret);
+}
+
+/**
+ * Verify and decode a refresh token (uses separate secret).
+ */
+function verifyRefreshToken(token) {
+  return jwt.verify(token, authConfig.jwtRefreshSecret);
 }
 
 /**
@@ -85,7 +92,7 @@ async function login(email, password) {
  * Refresh: verify refresh token, issue new access token.
  */
 async function refresh(refreshToken) {
-  const decoded = verifyToken(refreshToken);
+  const decoded = verifyRefreshToken(refreshToken);
   const user = await db('users').where({ id: decoded.user_id }).first();
   if (!user) {
     return null;

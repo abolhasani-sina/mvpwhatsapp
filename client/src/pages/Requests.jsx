@@ -27,13 +27,23 @@ export default function Requests() {
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await requestsApi.list(filter || undefined);
-      setRequests(res.data.data);
+      const [reqRes, assRes] = await Promise.all([
+        requestsApi.list(filter || undefined),
+        assigneesApi.list().catch(() => ({ data: { data: [] } })),
+      ]);
+      setRequests(reqRes.data.data);
+      setAssignees(assRes.data.data);
     } catch { setError('Failed to load requests'); }
     finally { setLoading(false); }
   }, [filter]);
 
   useEffect(() => { fetchRequests(); }, [fetchRequests]);
+
+  const getAssigneeName = (id) => {
+    if (!id) return null;
+    const a = assignees.find(a => a.id === id);
+    return a ? a.name : 'Unknown';
+  };
 
   const fetchAssignees = async () => {
     try { const res = await assigneesApi.list(); setAssignees(res.data.data); }
@@ -99,13 +109,13 @@ export default function Requests() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {requests.map((r) => (
-                    <tr key={r.id} className={`hover:bg-gray-50 cursor-pointer ${selected?.id === r.id ? 'bg-indigo-50' : ''}`} onClick={() => viewDetails(r)}>
+                    <tr key={r.id} className={`hover:bg-gray-50 cursor-pointer ${selected?.id === r.id ? 'bg-emerald-50' : ''}`} onClick={() => viewDetails(r)}>
                       <td className="px-4 py-3 font-mono text-xs">{r.phone_number || '—'}</td>
                       <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
-                      <td className="px-4 py-3 text-xs text-gray-500">{r.assigned_to_id ? '✓' : '—'}</td>
+                      <td className="px-4 py-3 text-xs text-gray-500">{r.assigned_to_id ? getAssigneeName(r.assigned_to_id) : '—'}</td>
                       <td className="px-4 py-3 text-xs text-gray-500">{new Date(r.created_at).toLocaleDateString()}</td>
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => openAssign(r)} className="text-xs text-indigo-600 hover:text-indigo-800 cursor-pointer">Assign</button>
+                        <button onClick={() => openAssign(r)} className="text-xs text-emerald-600 hover:text-emerald-800 cursor-pointer">Assign</button>
                       </td>
                     </tr>
                   ))}
@@ -126,7 +136,7 @@ export default function Requests() {
               <div><span className="text-gray-500">Phone:</span> {selected.phone_number || '—'}</div>
               <div><span className="text-gray-500">Status:</span> <StatusBadge status={selected.status} /></div>
               <div><span className="text-gray-500">Flow ID:</span> <span className="font-mono text-xs break-all">{selected.source_flow_id || '—'}</span></div>
-              <div><span className="text-gray-500">Assigned:</span> {selected.assigned_to_id || 'Unassigned'}</div>
+              <div><span className="text-gray-500">Assigned:</span> {selected.assigned_to_id ? getAssigneeName(selected.assigned_to_id) : 'Unassigned'}</div>
               <div><span className="text-gray-500">Created:</span> {new Date(selected.created_at).toLocaleString()}</div>
               {selected.data && (
                 <div>

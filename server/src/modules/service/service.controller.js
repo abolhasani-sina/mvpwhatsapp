@@ -94,4 +94,30 @@ async function deleteService(req, res, next) {
   }
 }
 
-module.exports = { listServices, createService, getService, updateService, deleteService };
+/**
+ * GET /api/v1/services/tree
+ * Returns services as a nested tree structure.
+ */
+async function getTree(req, res, next) {
+  try {
+    const tree = await serviceService.listHierarchy(req.tenantId);
+    res.json({ data: tree });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/v1/services/leaves
+ * Returns only leaf services (no children).
+ */
+async function getLeaves(req, res, next) {
+  try {
+    const leaves = await serviceService.getLeafServices(req.tenantId);
+    res.json({ data: leaves });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listServices, createService, getService, updateService, deleteService, getTree, getLeaves };

@@ -21,6 +21,8 @@ export default function WhatsAppPreview({ tree = [], businessName = 'Your Busine
     if (node.type === 'menu' && node.children?.length > 0) {
       newMessages.push({ from: 'bot', text: `You selected "${label}". Please choose:` });
       setNavStack([...navStack, node]);
+    } else if (node.type === 'catalog_entry') {
+      newMessages.push({ from: 'bot', text: `📋 Browsing your Business Catalog...\n\nThe customer will see your service categories and can drill down to individual services, view prices, and book directly.` });
     } else if (node.type === 'flow_entry') {
       newMessages.push({ from: 'bot', text: `📝 Starting form for "${label}"...\n\nThe customer will now answer your form questions step by step.` });
     } else if (node.type === 'info') {
@@ -54,6 +56,7 @@ export default function WhatsAppPreview({ tree = [], businessName = 'Your Busine
     switch (type) {
       case 'menu': return '📂';
       case 'flow_entry': return '📝';
+      case 'catalog_entry': return '📋';
       case 'info': return 'ℹ️';
       case 'action': return '⚡';
       default: return '📱';

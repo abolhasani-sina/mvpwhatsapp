@@ -9,6 +9,7 @@ router.use(authenticate, tenantScope);
 
 router.get('/', controller.listRules);
 router.post('/', controller.createRule);
+router.patch('/remap-triggers', controller.remapTriggers);
 router.get('/:id', controller.getRule);
 router.put('/:id', controller.updateRule);
 router.delete('/:id', controller.deleteRule);

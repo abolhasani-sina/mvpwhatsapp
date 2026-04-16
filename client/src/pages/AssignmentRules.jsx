@@ -127,12 +127,12 @@ export default function AssignmentRules() {
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-2xl font-bold text-gray-900">Auto Assignment</h1>
-        <button onClick={openCreate} className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-all shadow-sm cursor-pointer">+ Add Rule</button>
+        <button onClick={openCreate} className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition-all shadow-sm cursor-pointer">+ Add Rule</button>
       </div>
       <p className="text-sm text-gray-500 mb-4">Automatically route customer requests to the right team member. Rules are checked by priority (lowest number = checked first).</p>
 
       {/* Connection banner */}
-      <div className="mb-6 p-5 bg-gradient-to-r from-indigo-50/80 to-emerald-50/80 rounded-2xl border border-indigo-100">
+      <div className="mb-6 p-5 bg-gradient-to-r from-emerald-50/80 to-emerald-50/80 rounded-2xl border border-emerald-100">
         <p className="text-sm font-semibold text-gray-800 mb-2">🔗 How auto-assignment works</p>
         <div className="flex items-center gap-2 text-xs text-gray-600 mb-2 flex-wrap">
           <span className="bg-white px-2.5 py-1 rounded-lg border border-gray-200 font-medium">📝 Customer completes form</span>
@@ -143,7 +143,7 @@ export default function AssignmentRules() {
           <span className="text-gray-400">→</span>
           <span className="bg-white px-2.5 py-1 rounded-lg border border-gray-200 font-medium">👤 Assigned to team member</span>
         </div>
-        <p className="text-xs text-gray-500">If no rule matches, the request stays unassigned and appears in your <button onClick={() => navigate('/dashboard/requests')} className="text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer">Customer Requests</button> for manual handling.</p>
+        <p className="text-xs text-gray-500">If no rule matches, the request stays unassigned and appears in your <button onClick={() => navigate('/dashboard/requests')} className="text-emerald-600 hover:text-emerald-800 font-medium cursor-pointer">Customer Requests</button> for manual handling.</p>
       </div>
 
       <ErrorMsg msg={error} onDismiss={() => setError(null)} />
@@ -151,16 +151,16 @@ export default function AssignmentRules() {
       {assignees.length === 0 && !loading && (
         <div className="mb-4 p-4 bg-amber-50 text-amber-800 text-sm rounded-xl border border-amber-200 flex items-center gap-2">
           <span>⚠️</span>
-          <span>You need to <button onClick={() => navigate('/dashboard/assignees')} className="text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer underline">add team members</button> before creating assignment rules.</span>
+          <span>You need to <button onClick={() => navigate('/dashboard/assignees')} className="text-emerald-600 hover:text-emerald-800 font-semibold cursor-pointer underline">add team members</button> before creating assignment rules.</span>
         </div>
       )}
 
       {loading ? <Spinner /> : rules.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 px-6 py-16 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-2xl mx-auto mb-4">🎯</div>
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-2xl mx-auto mb-4">🎯</div>
           <p className="font-semibold text-gray-900 mb-1">No assignment rules yet</p>
           <p className="text-sm text-gray-500 mb-6 max-w-xs mx-auto">Create rules so customer requests are automatically assigned to the right team member.</p>
-          <button onClick={openCreate} className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-all shadow-sm cursor-pointer">+ Add First Rule</button>
+          <button onClick={openCreate} className="px-5 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition-all shadow-sm cursor-pointer">+ Add First Rule</button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -169,7 +169,7 @@ export default function AssignmentRules() {
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">Priority {r.priority}</span>
+                    <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Priority {r.priority}</span>
                     {r.is_active ? (
                       <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Active</span>
                     ) : (
@@ -183,11 +183,11 @@ export default function AssignmentRules() {
                   </p>
                   <p className="text-sm text-gray-900 mt-1">
                     <span className="text-gray-500">Assign to</span>{' '}
-                    <span className="font-semibold text-indigo-600">👤 {resolveAssigneeName(r)}</span>
+                    <span className="font-semibold text-emerald-600">👤 {resolveAssigneeName(r)}</span>
                   </p>
                 </div>
                 <div className="flex gap-2 ml-4">
-                  <button onClick={() => openEdit(r)} className="text-xs text-indigo-600 hover:text-indigo-800 cursor-pointer px-2 py-1 rounded hover:bg-indigo-50 transition-colors">Edit</button>
+                  <button onClick={() => openEdit(r)} className="text-xs text-emerald-600 hover:text-emerald-800 cursor-pointer px-2 py-1 rounded hover:bg-emerald-50 transition-colors">Edit</button>
                   <button onClick={() => handleDelete(r.id)} className="text-xs text-red-600 hover:text-red-800 cursor-pointer px-2 py-1 rounded hover:bg-red-50 transition-colors">Delete</button>
                 </div>
               </div>
@@ -199,9 +199,9 @@ export default function AssignmentRules() {
       {/* Link to related pages */}
       {rules.length > 0 && (
         <div className="mt-6 flex gap-4 text-xs">
-          <button onClick={() => navigate('/dashboard/flows')} className="text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer">📝 Manage Forms →</button>
-          <button onClick={() => navigate('/dashboard/assignees')} className="text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer">👥 Manage Team Members →</button>
-          <button onClick={() => navigate('/dashboard/services')} className="text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer">🛍️ Manage Services →</button>
+          <button onClick={() => navigate('/dashboard/flows')} className="text-emerald-600 hover:text-emerald-800 font-medium cursor-pointer">📝 Manage Forms →</button>
+          <button onClick={() => navigate('/dashboard/assignees')} className="text-emerald-600 hover:text-emerald-800 font-medium cursor-pointer">👥 Manage Team Members →</button>
+          <button onClick={() => navigate('/dashboard/services')} className="text-emerald-600 hover:text-emerald-800 font-medium cursor-pointer">🛍️ Manage Services →</button>
         </div>
       )}
 

@@ -14,9 +14,11 @@ export const profileApi = {
   update: (data) => client.put('/profile', data),
 };
 
-// Services
+// Services (Business Catalog)
 export const servicesApi = {
   list: () => client.get('/services'),
+  getTree: () => client.get('/services/tree'),
+  getLeaves: () => client.get('/services/leaves'),
   get: (id) => client.get(`/services/${id}`),
   create: (data) => client.post('/services', data),
   update: (id, data) => client.put(`/services/${id}`, data),
@@ -71,6 +73,7 @@ export const assignmentRulesApi = {
   create: (data) => client.post('/assignment-rules', data),
   update: (id, data) => client.put(`/assignment-rules/${id}`, data),
   delete: (id) => client.delete(`/assignment-rules/${id}`),
+  remapTriggers: (maps) => client.patch('/assignment-rules/remap-triggers', { maps }),
 };
 
 // Notifications
@@ -85,6 +88,8 @@ export const sessionsApi = {
   list: () => client.get('/sessions'),
   takeover: (id) => client.put(`/sessions/${id}/takeover`),
   release: (id) => client.put(`/sessions/${id}/release`),
+  publish: () => client.post('/sessions/publish'),
+  reset: (phone) => client.delete('/sessions/reset', { data: phone ? { phone } : {} }),
 };
 
 // WhatsApp Simulate

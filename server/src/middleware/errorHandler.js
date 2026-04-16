@@ -9,10 +9,15 @@ function errorHandler(err, _req, res, _next) {
 
   console.error(err);
 
+  // In production, don't leak internal error details for 500s
+  const safeMessage = (process.env.NODE_ENV === 'production' && status >= 500)
+    ? 'Internal server error'
+    : message;
+
   res.status(status).json({
     error: {
       status,
-      message,
+      message: safeMessage,
     },
   });
 }

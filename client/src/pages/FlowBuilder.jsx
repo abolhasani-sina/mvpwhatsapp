@@ -82,21 +82,22 @@ export default function FlowBuilder() {
   // Step CRUD
   const openCreateStep = () => {
     setEditingStep(null);
-    setStepForm({ label: '', type: 'text_input', step_order: steps.length + 1, config: '{}' });
+    setStepForm({ label: '', type: 'text_input', step_order: steps.length + 1, config: '{}', _options: [] });
     setStepModal(true);
   };
   const openEditStep = (s) => {
     setEditingStep(s);
-    setStepForm({ label: s.label, type: s.type, step_order: s.step_order, config: typeof s.config === 'object' ? JSON.stringify(s.config, null, 2) : (s.config || '{}') });
+    const cfg = typeof s.config === 'object' ? s.config : (() => { try { return JSON.parse(s.config); } catch { return {}; } })();
+    setStepForm({ label: s.label, type: s.type, step_order: s.step_order, config: typeof s.config === 'object' ? JSON.stringify(s.config, null, 2) : (s.config || '{}'), _options: cfg.options || [] });
     setStepModal(true);
   };
 
   const handleStepSubmit = async (e) => {
     e.preventDefault();
     try {
-      let config;
-      try { config = JSON.parse(stepForm.config); } catch { setError('Invalid config JSON'); return; }
-      const payload = { ...stepForm, config };
+      const needsOptions = ['select_option', 'select_date', 'select_time'].includes(stepForm.type);
+      const config = needsOptions ? { options: stepForm._options.filter(o => o.trim()) } : {};
+      const payload = { label: stepForm.label, type: stepForm.type, step_order: stepForm.step_order, config };
       if (editingStep) {
         await flowsApi.updateStep(selectedFlow.id, editingStep.id, payload);
       } else {
@@ -119,7 +120,7 @@ export default function FlowBuilder() {
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-2xl font-bold text-gray-900">Forms</h1>
-        <button onClick={openCreateFlow} className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-all shadow-sm cursor-pointer">+ New Form</button>
+        <button onClick={openCreateFlow} className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition-all shadow-sm cursor-pointer">+ New Form</button>
       </div>
       <p className="text-sm text-gray-500 mb-6">Forms collect information from your WhatsApp customers step by step — like name, date, and service. Each completed form creates a <strong className="text-gray-700">Customer Request</strong>.</p>
       <ErrorMsg msg={error} onDismiss={() => setError(null)} />
@@ -129,17 +130,17 @@ export default function FlowBuilder() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80">
           <div className="px-4 py-3 border-b border-gray-200"><h2 className="font-semibold text-gray-900">Your Forms</h2></div>
           {flows.length === 0 ? (
-            <div className="px-4 py-12 text-center"><p className="text-3xl mb-2">📝</p><p className="font-medium text-gray-900 mb-1 text-sm">No forms yet</p><p className="text-xs text-gray-500 mb-3">Create a form to collect customer information step by step on WhatsApp.</p><button onClick={openCreateFlow} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer">+ Create Your First Form</button></div>
+            <div className="px-4 py-12 text-center"><p className="text-3xl mb-2">📝</p><p className="font-medium text-gray-900 mb-1 text-sm">No forms yet</p><p className="text-xs text-gray-500 mb-3">Create a form to collect customer information step by step on WhatsApp.</p><button onClick={openCreateFlow} className="text-xs text-emerald-600 hover:text-emerald-800 font-medium cursor-pointer">+ Create Your First Form</button></div>
           ) : (
             <ul className="divide-y divide-gray-100">
               {flows.map((f) => (
-                <li key={f.id} className={`px-4 py-3 cursor-pointer hover:bg-gray-50 flex items-center justify-between ${selectedFlow?.id === f.id ? 'bg-indigo-50' : ''}`} onClick={() => selectFlow(f)}>
+                <li key={f.id} className={`px-4 py-3 cursor-pointer hover:bg-gray-50 flex items-center justify-between ${selectedFlow?.id === f.id ? 'bg-emerald-50' : ''}`} onClick={() => selectFlow(f)}>
                   <div>
                     <p className="font-medium text-sm text-gray-900">{f.name}</p>
                     <p className="text-xs text-gray-500">{f.is_active ? '🟢 Active' : '⚪ Inactive'}</p>
                   </div>
                   <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                    <button onClick={() => openEditFlow(f)} className="text-xs text-indigo-600 hover:text-indigo-800 cursor-pointer">Edit</button>
+                    <button onClick={() => openEditFlow(f)} className="text-xs text-emerald-600 hover:text-emerald-800 cursor-pointer">Edit</button>
                     <button onClick={() => handleDeleteFlow(f.id)} className="text-xs text-red-600 hover:text-red-800 cursor-pointer">Del</button>
                   </div>
                 </li>
@@ -152,7 +153,7 @@ export default function FlowBuilder() {
         <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200/80">
           <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <h2 className="font-semibold text-gray-900">{selectedFlow ? `Questions: ${selectedFlow.name}` : 'Select a form'}</h2>
-            {selectedFlow && <button onClick={openCreateStep} className="text-sm text-indigo-600 hover:text-indigo-800 cursor-pointer">+ Add Question</button>}
+            {selectedFlow && <button onClick={openCreateStep} className="text-sm text-emerald-600 hover:text-emerald-800 cursor-pointer">+ Add Question</button>}
           </div>
           {!selectedFlow ? (
             <p className="px-4 py-12 text-gray-400 text-center text-sm">Select a form from the list to manage its questions.</p>
@@ -161,7 +162,7 @@ export default function FlowBuilder() {
           ) : steps.length === 0 ? (
             <div className="px-4 py-8 text-center">
               <p className="text-gray-500 text-sm mb-2">No questions yet. Add questions to collect customer information.</p>
-              <button onClick={openCreateStep} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer">+ Add First Question</button>
+              <button onClick={openCreateStep} className="text-xs text-emerald-600 hover:text-emerald-800 font-medium cursor-pointer">+ Add First Question</button>
             </div>
           ) : (
             <div>
@@ -170,8 +171,8 @@ export default function FlowBuilder() {
                   <div key={s.id} className="px-4 py-3 flex items-center justify-between group hover:bg-gray-50">
                     <div className="flex items-center gap-3">
                       <div className="flex flex-col items-center">
-                        <span className="w-7 h-7 flex items-center justify-center bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full">{i + 1}</span>
-                        {i < steps.length - 1 && <div className="w-0.5 h-4 bg-indigo-200 mt-1" />}
+                        <span className="w-7 h-7 flex items-center justify-center bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">{i + 1}</span>
+                        {i < steps.length - 1 && <div className="w-0.5 h-4 bg-emerald-200 mt-1" />}
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-900">{s.label}</p>
@@ -179,7 +180,7 @@ export default function FlowBuilder() {
                       </div>
                     </div>
                     <div className="opacity-0 group-hover:opacity-100 flex gap-2 transition-opacity">
-                      <button onClick={() => openEditStep(s)} className="text-xs text-indigo-600 hover:text-indigo-800 cursor-pointer">Edit</button>
+                      <button onClick={() => openEditStep(s)} className="text-xs text-emerald-600 hover:text-emerald-800 cursor-pointer">Edit</button>
                       <button onClick={() => handleDeleteStep(s.id)} className="text-xs text-red-600 hover:text-red-800 cursor-pointer">Del</button>
                     </div>
                   </div>
@@ -187,7 +188,7 @@ export default function FlowBuilder() {
               </div>
 
               {/* Connection banner */}
-              <div className="m-4 p-4 bg-gradient-to-r from-emerald-50 to-indigo-50 rounded-lg border border-emerald-200/60">
+              <div className="m-4 p-4 bg-gradient-to-r from-emerald-50 to-emerald-50 rounded-lg border border-emerald-200/60">
                 <p className="text-xs font-semibold text-gray-700 mb-2">🔗 What happens when a customer completes this form?</p>
                 <div className="flex items-center gap-2 text-xs text-gray-600 mb-3">
                   <span className="bg-white px-2 py-1 rounded border border-gray-200 font-medium">📝 Form filled</span>
@@ -197,7 +198,7 @@ export default function FlowBuilder() {
                   <span className="bg-white px-2 py-1 rounded border border-gray-200 font-medium">👤 Auto-assigned</span>
                 </div>
                 <p className="text-xs text-gray-500 mb-2">A <strong>Customer Request</strong> is created automatically. If you have assignment rules, it gets routed to the right team member.</p>
-                <button onClick={() => navigate('/dashboard/assignment-rules')} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer">🎯 Configure who handles these requests →</button>
+                <button onClick={() => navigate('/dashboard/assignment-rules')} className="text-xs text-emerald-600 hover:text-emerald-800 font-medium cursor-pointer">🎯 Configure who handles these requests →</button>
               </div>
             </div>
           )}
@@ -224,18 +225,32 @@ export default function FlowBuilder() {
       {stepModal && (
         <Modal title={editingStep ? 'Edit Question' : 'New Question'} onClose={() => setStepModal(false)}>
           <form onSubmit={handleStepSubmit} className="space-y-4">
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Label *</label>
-              <input required value={stepForm.label} onChange={(e) => setStepForm({ ...stepForm, label: e.target.value })} className={inputClass} /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Question Text *</label>
+              <input required value={stepForm.label} onChange={(e) => setStepForm({ ...stepForm, label: e.target.value })} className={inputClass} placeholder="What should the bot ask?" /></div>
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Question Type *</label>
-                <select value={stepForm.type} onChange={(e) => setStepForm({ ...stepForm, type: e.target.value })} className={selectClass}>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Answer Type *</label>
+                <select value={stepForm.type} onChange={(e) => setStepForm({ ...stepForm, type: e.target.value, _options: ['select_option', 'select_date', 'select_time'].includes(e.target.value) ? (stepForm._options.length > 0 ? stepForm._options : ['']) : [] })} className={selectClass}>
                   {STEP_TYPES.map((t) => <option key={t} value={t}>{STEP_TYPE_LABELS[t] || t}</option>)}
                 </select></div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Order *</label>
                 <input type="number" min={1} required value={stepForm.step_order} onChange={(e) => setStepForm({ ...stepForm, step_order: Number(e.target.value) })} className={inputClass} /></div>
             </div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Config (JSON)</label>
-              <textarea rows={4} value={stepForm.config} onChange={(e) => setStepForm({ ...stepForm, config: e.target.value })} className={inputClass + ' font-mono text-xs'} /></div>
+            {['select_option', 'select_date', 'select_time'].includes(stepForm.type) && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Options</label>
+                <div className="space-y-2">
+                  {(stepForm._options || []).map((opt, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 w-5 text-right">{i + 1}.</span>
+                      <input value={opt} onChange={(e) => { const o = [...stepForm._options]; o[i] = e.target.value; setStepForm({ ...stepForm, _options: o }); }} className={inputClass + ' flex-1'} placeholder="Option text" />
+                      <button type="button" onClick={() => setStepForm({ ...stepForm, _options: stepForm._options.filter((_, j) => j !== i) })} className="text-red-400 hover:text-red-600 text-xs cursor-pointer">✕</button>
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => setStepForm({ ...stepForm, _options: [...(stepForm._options || []), ''] })} className="text-xs text-emerald-600 hover:text-emerald-800 font-medium cursor-pointer">+ Add option</button>
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-gray-400">{stepForm.type === 'text_input' ? 'Customer types a free-text answer.' : stepForm.type === 'number_input' ? 'Customer enters a number.' : stepForm.type === 'select_service' ? 'Customer picks from your services list automatically.' : stepForm.type === 'summary' ? 'Displays all collected answers for review.' : stepForm.type === 'confirm' ? 'Final yes/no confirmation to submit.' : ''}</p>
             <ModalActions onCancel={() => setStepModal(false)} />
           </form>
         </Modal>

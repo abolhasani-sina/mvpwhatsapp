@@ -1,8 +1,13 @@
 const engine = require('./whatsapp.engine');
 const whatsappService = require('./whatsapp.service');
-const sessionService = require('./session.service');
-const formatter = require('./whatsapp.formatter');
 const db = require('../../config/database');
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUuid(str) { return UUID_RE.test(str); }
+
+// In-memory deduplication cache for webhook message IDs
+const processedMessages = new Set();
+const DEDUP_CACHE_MAX = 10000;
 
 /**
  * GET /api/v1/webhook/whatsapp
@@ -38,14 +43,6 @@ async function handleWebhook(req, res) {
   try {
     const body = req.body;
 
-    // Log incoming webhook payload
-    console.log('[Webhook] Full payload:', JSON.stringify(body, null, 2));
-    const msg = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-    if (msg) {
-      console.log('[Webhook] Sender:', msg.from);
-      console.log('[Webhook] Message:', msg.text?.body || msg.interactive?.button_reply?.id || msg.interactive?.list_reply?.id || '(non-text)');
-    }
-
     // Extract message data from Meta webhook payload
     const entry = body.entry && body.entry[0];
     if (!entry) return;
@@ -59,10 +56,24 @@ async function handleWebhook(req, res) {
     const message = value.messages[0];
     const phoneNumber = message.from;
 
+    // Deduplication: skip already-processed messages
+    const messageId = message.id;
+    if (messageId && processedMessages.has(messageId)) {
+      console.log('[Webhook] Duplicate message ignored:', messageId);
+      return;
+    }
+    if (messageId) {
+      processedMessages.add(messageId);
+      if (processedMessages.size > DEDUP_CACHE_MAX) {
+        const oldest = processedMessages.values().next().value;
+        processedMessages.delete(oldest);
+      }
+    }
+
+    // Extract message content based on type
     const isInteractive = message.type === 'interactive';
     const isText = message.type === 'text';
 
-    // Extract message content based on type
     let messageText = '';
     if (isInteractive) {
       if (message.interactive.type === 'button_reply') {
@@ -78,7 +89,6 @@ async function handleWebhook(req, res) {
 
     // Business resolution — look up business by phone_number_id
     const phoneNumberId = value.metadata && value.metadata.phone_number_id;
-    console.log('[Webhook] Phone Number ID:', phoneNumberId);
 
     const account = await db('whatsapp_accounts')
       .where({ phone_number_id: phoneNumberId, is_active: true })
@@ -90,22 +100,11 @@ async function handleWebhook(req, res) {
     }
 
     const businessId = account.business_id;
-    console.log('[Webhook] Using businessId:', businessId);
+    const messageType = isInteractive ? 'interactive' : 'text';
+    console.log('[Webhook] Incoming from:', phoneNumber, '| business:', businessId, '| type:', messageType, '| text:', messageText);
 
-    // Dual mode: check if user is in a flow
-    const session = await sessionService.load(phoneNumber, businessId);
-    const inFlow = session && session.current_flow_id;
-
-    // Menu mode: only interactive buttons allowed
-    if (!inFlow && !isInteractive) {
-      console.log('[Webhook] Menu mode — rejecting text input from:', phoneNumber);
-      await whatsappService.sendMessages(null, null, [
-        formatter.textMessage(phoneNumber, 'Please use the buttons below 👇'),
-      ]);
-      return;
-    }
-
-    const responseMessages = await engine.handleIncomingMessage(phoneNumber, businessId, messageText);
+    // Delegate ALL logic to engine — controller makes no decisions
+    const responseMessages = await engine.handleIncomingMessage(phoneNumber, businessId, messageText, messageType);
 
     if (responseMessages && responseMessages.length > 0) {
       await whatsappService.sendMessages(null, null, responseMessages);
@@ -137,7 +136,9 @@ async function simulateMessage(req, res, next) {
       });
     }
 
-    const responseMessages = await engine.handleIncomingMessage(phone_number, business_id, message);
+    const isNumeric = /^\d+$/.test(message);
+    const messageType = isNumeric ? 'interactive' : 'text';
+    const responseMessages = await engine.handleIncomingMessage(phone_number, business_id, message, messageType);
 
     // Log mock sends
     for (const msg of responseMessages) {

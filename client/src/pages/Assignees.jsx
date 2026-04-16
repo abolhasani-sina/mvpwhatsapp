@@ -35,7 +35,7 @@ export default function Assignees() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this assignee?')) return;
+    if (!confirm('Delete this team member?')) return;
     try { await assigneesApi.delete(id); fetch(); }
     catch { setError('Failed to delete'); }
   };
@@ -49,13 +49,13 @@ export default function Assignees() {
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-2xl font-bold text-gray-900">Team Members</h1>
-        <button onClick={openCreate} className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-all shadow-sm cursor-pointer">+ Add Member</button>
+        <button onClick={openCreate} className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition-all shadow-sm cursor-pointer">+ Add Member</button>
       </div>
       <p className="text-sm text-gray-500 mb-6">Manage your {profile.teamNoun} who handle {profile.customerNoun} requests. Add members so requests can be auto-assigned.</p>
       <ErrorMsg msg={error} onDismiss={() => setError(null)} />
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 overflow-hidden">
         {loading ? <Spinner /> : assignees.length === 0 ? (
-          <div className="px-6 py-16 text-center"><div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-2xl mx-auto mb-4">👥</div><p className="font-semibold text-gray-900 mb-1">No team members yet</p><p className="text-sm text-gray-500 mb-6 max-w-xs mx-auto">Add team members so customer requests can be assigned to them automatically.</p><button onClick={openCreate} className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-all shadow-sm cursor-pointer">+ Add First Member</button></div>
+          <div className="px-6 py-16 text-center"><div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-2xl mx-auto mb-4">👥</div><p className="font-semibold text-gray-900 mb-1">No team members yet</p><p className="text-sm text-gray-500 mb-6 max-w-xs mx-auto">Add team members so customer requests can be assigned to them automatically.</p><button onClick={openCreate} className="px-5 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition-all shadow-sm cursor-pointer">+ Add First Member</button></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -71,7 +71,7 @@ export default function Assignees() {
                     <td className="px-6 py-3"><StatusBadge status={a.is_active ? 'active' : 'inactive'} /></td>
                     <td className="px-6 py-3"><div className="flex gap-2">
                       <button onClick={() => toggleActive(a)} className="text-xs cursor-pointer text-gray-600 hover:text-gray-800">{a.is_active ? 'Deactivate' : 'Activate'}</button>
-                      <button onClick={() => openEdit(a)} className="text-xs text-indigo-600 hover:text-indigo-800 cursor-pointer">Edit</button>
+                      <button onClick={() => openEdit(a)} className="text-xs text-emerald-600 hover:text-emerald-800 cursor-pointer">Edit</button>
                       <button onClick={() => handleDelete(a.id)} className="text-xs text-red-600 hover:text-red-800 cursor-pointer">Delete</button>
                     </div></td>
                   </tr>
@@ -83,7 +83,7 @@ export default function Assignees() {
       </div>
 
       {modalOpen && (
-        <Modal title={editing ? 'Edit Assignee' : 'New Assignee'} onClose={() => setModalOpen(false)}>
+        <Modal title={editing ? 'Edit Team Member' : 'New Team Member'} onClose={() => setModalOpen(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
               <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} /></div>
