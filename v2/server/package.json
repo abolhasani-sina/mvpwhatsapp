@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node src/server.js"
+    "dev": "node src/server.js",
+    "logs:readable": "node src/scripts/readable-errors.js",
+    "logs:readable:50": "node src/scripts/readable-errors.js 50"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

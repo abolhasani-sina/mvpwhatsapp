@@ -22,6 +22,7 @@ import {
   updateConfigRules, uploadMediaRules,
 } from './middleware/validators.js';
 import { createLogger } from './logger.js';
+import { getReadableErrorLogs, getRawErrorLogs } from './log-insights.js';
 
 const log = createLogger('routes');
 
@@ -32,6 +33,20 @@ const router = Router();
 
 // Apply authentication to all API routes
 router.use(authenticate);
+
+// ──────────────────────────────────────────────
+// ERROR LOGS (Owner-friendly, authenticated)
+// ──────────────────────────────────────────────
+router.get('/logs/errors/readable', (req, res) => {
+  const limit = Number(req.query.limit || 30);
+  const result = getReadableErrorLogs(limit);
+  res.json({ data: result });
+});
+
+router.get('/logs/errors/raw', (req, res) => {
+  const limit = Number(req.query.limit || 100);
+  res.json({ data: getRawErrorLogs(limit) });
+});
 
 // ──────────────────────────────────────────────
 // BUSINESS

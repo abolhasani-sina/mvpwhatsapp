@@ -21,18 +21,20 @@ const SENSITIVE_KEYS = ['password', 'password_hash', 'token', 'refreshToken', 'a
   'authorization', 'bot_token', 'telegram_bot_token', 'cookie', 'secret', 'encryption_key'];
 
 // ── Create pino logger ──
-const transport = isDev
-  ? { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:yyyy-mm-dd HH:MM:ss', ignore: 'pid,hostname' } }
-  : {
-      targets: [
-        // stdout as JSON for production (consumed by log aggregators)
-        { target: 'pino/file', options: { destination: 1 }, level: 'info' },
-        // application log file
-        { target: 'pino/file', options: { destination: join(logsDir, 'application.log') }, level: 'info' },
-        // error log file
-        { target: 'pino/file', options: { destination: join(logsDir, 'error.log') }, level: 'error' },
-      ],
-    };
+const transport = {
+  targets: [
+    // Human-readable terminal output in development
+    ...(isDev
+      ? [{ target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:yyyy-mm-dd HH:MM:ss', ignore: 'pid,hostname' }, level: 'debug' }]
+      : [{ target: 'pino/file', options: { destination: 1 }, level: 'info' }]),
+    // Persist all app logs for diagnostics (dev + prod)
+    { target: 'pino/file', options: { destination: join(logsDir, 'application.log') }, level: 'info' },
+    // Dedicated error stream for easier troubleshooting (dev + prod)
+    { target: 'pino/file', options: { destination: join(logsDir, 'error.log') }, level: 'error' },
+    // Audit events stream (currently same level; routes can log specific audit events)
+    { target: 'pino/file', options: { destination: join(logsDir, 'audit.log') }, level: 'info' },
+  ],
+};
 
 const logger = pino({
   level: process.env.LOG_LEVEL || (isDev ? 'debug' : 'info'),
