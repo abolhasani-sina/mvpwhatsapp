@@ -309,7 +309,7 @@ export async function handleWebhook(businessId, updateBody) {
 
 // Cleanup old telegram_updates records (keep last 24 hours)
 export function cleanupTelegramUpdates() {
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   const result = db.prepare('DELETE FROM telegram_updates WHERE processed_at < ?').run(cutoff);
   if (result.changes > 0) console.log(`[TG Bot] Cleaned up ${result.changes} old update records`);
 }

@@ -29,7 +29,7 @@ function isDuplicateCallback(businessId, channel, customerId, input) {
   const raw = `${input.callbackData || ''}|${input.text || ''}`;
   const hash = crypto.createHash('sha256').update(raw).digest('hex').slice(0, 32);
 
-  const cutoff = new Date(Date.now() - DEDUP_WINDOW_SEC * 1000).toISOString();
+  const cutoff = new Date(Date.now() - DEDUP_WINDOW_SEC * 1000).toISOString().replace('T', ' ').slice(0, 19);
   const existing = db.prepare(
     'SELECT id FROM processed_callbacks WHERE business_id = ? AND channel = ? AND customer_id = ? AND callback_hash = ? AND processed_at > ?'
   ).get(businessId, channel, customerId, hash, cutoff);
@@ -47,7 +47,7 @@ function isDuplicateCallback(businessId, channel, customerId, input) {
 
 // Cleanup old dedup records (called periodically)
 export function cleanupDedupRecords() {
-  const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   const result = db.prepare('DELETE FROM processed_callbacks WHERE processed_at < ?').run(cutoff);
   if (result.changes > 0) botLog('info', 'dedup_cleanup', { deleted: result.changes });
 }
@@ -70,7 +70,7 @@ function deduplicateMessages(messages) {
 
 // Cleanup stale sessions (conversations with last_activity > 30 min)
 export function cleanupStaleSessions() {
-  const cutoff = new Date(Date.now() - SESSION_TIMEOUT_MS).toISOString();
+  const cutoff = new Date(Date.now() - SESSION_TIMEOUT_MS).toISOString().replace('T', ' ').slice(0, 19);
   const result = db.prepare(
     "UPDATE conversations SET status = 'completed', updated_at = datetime('now') WHERE status = 'active' AND last_activity < ?"
   ).run(cutoff);
@@ -389,8 +389,9 @@ export function processIncoming(businessId, channelUserId, channel, userName, in
 
   const customer = getOrCreateCustomer(businessId, channel, channelUserId, userName);
 
-  // ── Callback deduplication ──
-  if (isDuplicateCallback(businessId, channel, customer.id, input)) {
+  // ── Callback deduplication (skip for reset commands) ──
+  const isResetCommand = input.text === '/start' || input.text === '/menu' || input.callbackData === 'main_menu' || input.callbackData === 'new_booking';
+  if (!isResetCommand && isDuplicateCallback(businessId, channel, customer.id, input)) {
     return []; // silently skip duplicate
   }
 

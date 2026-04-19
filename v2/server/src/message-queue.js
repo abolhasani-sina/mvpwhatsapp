@@ -30,7 +30,7 @@ export function enqueueMessage(businessId, channel, chatId, message) {
 // Process pending messages
 // ═════════════════════════════════════════════════════════════════
 export async function processMessageQueue() {
-  const now = new Date().toISOString();
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
   const pending = db.prepare(
     "SELECT * FROM message_queue WHERE status = 'pending' AND next_retry_at <= ? ORDER BY created_at ASC LIMIT 50"
   ).all(now);
@@ -57,7 +57,7 @@ export async function processMessageQueue() {
       } else {
         // Schedule retry with exponential backoff
         const backoffSec = Math.pow(2, attempts);
-        const nextRetry = new Date(Date.now() + backoffSec * 1000).toISOString();
+        const nextRetry = new Date(Date.now() + backoffSec * 1000).toISOString().replace('T', ' ').slice(0, 19);
         db.prepare(
           "UPDATE message_queue SET attempt_count = ?, next_retry_at = ?, error_message = ? WHERE id = ?"
         ).run(attempts, nextRetry, err.message, item.id);
@@ -131,7 +131,7 @@ async function sendTelegramMessage(businessId, chatId, message) {
 // Monthly cleanup: archive old sent/exhausted messages
 // ═════════════════════════════════════════════════════════════════
 export function cleanupMessageQueue() {
-  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   const result = db.prepare(
     "DELETE FROM message_queue WHERE status IN ('sent', 'exhausted') AND created_at < ?"
   ).run(cutoff);
