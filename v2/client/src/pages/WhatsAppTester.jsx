@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { API_BASE } from '../lib/api';
+import { authFetch } from '../lib/auth';
 
 const API = API_BASE;
 
@@ -366,7 +367,7 @@ function MediaHeader({ media, businessId, cacheRef }) {
     if (!media || !media.id) return;
     const cached = cacheRef.current.get(media.id);
     if (cached) { setSrc(cached); return; }
-    fetch(`${API}/business/${businessId}/media/${media.id}`)
+    authFetch(`${API}/business/${businessId}/media/${media.id}`)
       .then(r => r.json())
       .then(json => {
         if (json.data?.data) {
@@ -516,7 +517,7 @@ export default function WhatsAppTester({ businessId }) {
   useEffect(() => {
     if (!businessId) return;
     setLoading(true);
-    fetch(`${API}/business/${businessId}/builder`)
+    authFetch(`${API}/business/${businessId}/builder`)
       .then(r => r.json())
       .then(json => {
         setBuilderData(json.data);
@@ -558,7 +559,7 @@ export default function WhatsAppTester({ businessId }) {
         const deliveryStaffId = prev?.deliveryStaffId || null;
 
         // POST real submission
-        fetch(`${API}/business/${businessId}/submissions`, {
+        authFetch(`${API}/business/${businessId}/submissions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data: answers, flowId, deliveryMethod, deliveryStaffId }),

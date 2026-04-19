@@ -10,19 +10,28 @@ export default function Register({ onNavigate }) {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
 
-  function handleSubmit(e) {
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e) {
     e.preventDefault();
     setError('');
     if (!name || !email || !password) {
       setError('Please fill in all fields');
       return;
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
       return;
     }
-    register(email, password, name);
-    onNavigate('dashboard');
+    setLoading(true);
+    try {
+      await register(email, password, name);
+      onNavigate('dashboard');
+    } catch (err) {
+      setError(err.message || 'Registration failed');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -76,7 +85,7 @@ export default function Register({ onNavigate }) {
                   type={showPw ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min 6 characters"
+                  placeholder="Min 8 characters"
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all placeholder:text-gray-400 pr-11"
                 />
                 <button
@@ -95,9 +104,10 @@ export default function Register({ onNavigate }) {
 
             <button
               type="submit"
-              className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors shadow-sm text-sm"
+              disabled={loading}
+              className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors shadow-sm text-sm disabled:opacity-50"
             >
-              Create account
+              {loading ? 'Creating account...' : 'Create account'}
             </button>
           </form>
 

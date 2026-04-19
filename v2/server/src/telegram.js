@@ -1,4 +1,5 @@
 import db from './db.js';
+import { decryptField } from './middleware/encryption.js';
 
 // Resolve bot token: env var first, then per-business settings
 function getBotToken(businessId) {
@@ -7,7 +8,7 @@ function getBotToken(businessId) {
   const settings = db.prepare(
     'SELECT telegram_bot_token FROM settings WHERE business_id = ?'
   ).get(businessId);
-  return settings?.telegram_bot_token || null;
+  return settings?.telegram_bot_token ? decryptField(settings.telegram_bot_token) : null;
 }
 
 export async function sendTelegramNotification(businessId, text) {

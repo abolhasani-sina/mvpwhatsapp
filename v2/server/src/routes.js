@@ -9,45 +9,57 @@ import * as whatsappRenderer from './renderers/whatsapp.js';
 import * as telegramRenderer from './renderers/telegram.js';
 import * as instagramRenderer from './renderers/instagram.js';
 import { startPolling, stopPolling, getPollingStatus, handleWebhook } from './telegram-bot.js';
+import { authenticate } from './middleware/auth.js';
+import { tenantScope, tenantScopeResource, tenantScopeFlow } from './middleware/tenant.js';
+import { encryptField, decryptField } from './middleware/encryption.js';
+import {
+  validate,
+  createBusinessRules, updateBusinessRules,
+  saveBuilderRules, applyTemplateRules,
+  createStaffRules, updateStaffRules,
+  updateStatusRules, updateSettingsRules,
+  addDestinationRules, updateDestinationsRules,
+  updateConfigRules, uploadMediaRules,
+} from './middleware/validators.js';
 
 const RENDERERS = { whatsapp: whatsappRenderer, telegram: telegramRenderer, instagram: instagramRenderer };
 const { renderWelcome, renderFlowStep, renderInfoPage, renderConfirmation, renderFullFlow } = whatsappRenderer;
 
 const router = Router();
 
+// Apply authentication to all API routes
+router.use(authenticate);
+
 // ──────────────────────────────────────────────
 // BUSINESS
 // ──────────────────────────────────────────────
 
-// Get business for user (mock user_id = 1)
-router.get('/business', (_req, res) => {
+// Get business for authenticated user
+router.get('/business', (req, res) => {
   const biz = db.prepare(
     'SELECT * FROM businesses WHERE user_id = ? ORDER BY id DESC LIMIT 1'
-  ).get(1);
+  ).get(req.userId);
   if (!biz) return res.json({ data: null });
   res.json({ data: biz });
 });
 
 // Get specific business
-router.get('/business/:id', (req, res) => {
+router.get('/business/:id', tenantScope, (req, res) => {
   const biz = db.prepare('SELECT * FROM businesses WHERE id = ?').get(req.params.id);
   if (!biz) return res.status(404).json({ error: 'Business not found' });
   res.json({ data: biz });
 });
 
 // Create business from template
-router.post('/business', (req, res) => {
+router.post('/business', createBusinessRules, validate, (req, res) => {
   const { templateKey, businessName, templateData } = req.body;
-  if (!templateKey || !templateData) {
-    return res.status(400).json({ error: 'templateKey and templateData required' });
-  }
-  const businessId = seedBusiness(1, businessName || 'My Business', templateKey, templateData);
+  const businessId = seedBusiness(req.userId, businessName || 'My Business', templateKey, templateData);
   const biz = db.prepare('SELECT * FROM businesses WHERE id = ?').get(businessId);
   res.json({ data: biz });
 });
 
 // Update business name/phone
-router.put('/business/:id', (req, res) => {
+router.put('/business/:id', tenantScope, updateBusinessRules, validate, (req, res) => {
   const { name, phone } = req.body;
   const biz = db.prepare('SELECT * FROM businesses WHERE id = ?').get(req.params.id);
   if (!biz) return res.status(404).json({ error: 'Business not found' });
@@ -60,18 +72,15 @@ router.put('/business/:id', (req, res) => {
 });
 
 // Delete business (for re-selecting template)
-router.delete('/business/:id', (req, res) => {
+router.delete('/business/:id', tenantScope, (req, res) => {
   db.prepare('DELETE FROM businesses WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
 
 // Apply template to existing business (preserves staff, settings, submissions)
-router.post('/business/:id/apply-template', (req, res) => {
+router.post('/business/:id/apply-template', tenantScope, applyTemplateRules, validate, (req, res) => {
   const businessId = Number(req.params.id);
   const { templateKey, templateData } = req.body;
-  if (!templateKey || !templateData) {
-    return res.status(400).json({ error: 'templateKey and templateData required' });
-  }
 
   const biz = db.prepare('SELECT * FROM businesses WHERE id = ?').get(businessId);
   if (!biz) return res.status(404).json({ error: 'Business not found' });
@@ -179,14 +188,14 @@ router.post('/business/:id/apply-template', (req, res) => {
 // BOT CONFIG (welcome message)
 // ──────────────────────────────────────────────
 
-router.get('/business/:id/config', (req, res) => {
+router.get('/business/:id/config', tenantScope, (req, res) => {
   const config = db.prepare(
     'SELECT * FROM bot_configs WHERE business_id = ?'
   ).get(req.params.id);
   res.json({ data: config || null });
 });
 
-router.put('/business/:id/config', (req, res) => {
+router.put('/business/:id/config', tenantScope, updateConfigRules, validate, (req, res) => {
   const { welcomeMessage } = req.body;
   const existing = db.prepare('SELECT id FROM bot_configs WHERE business_id = ?').get(req.params.id);
   if (existing) {
@@ -202,7 +211,7 @@ router.put('/business/:id/config', (req, res) => {
 // tree shaped exactly like the frontend expects
 // ──────────────────────────────────────────────
 
-router.get('/business/:id/builder', (req, res) => {
+router.get('/business/:id/builder', tenantScope, (req, res) => {
   const businessId = req.params.id;
 
   const biz = db.prepare('SELECT * FROM businesses WHERE id = ?').get(businessId);
@@ -385,13 +394,9 @@ router.get('/business/:id/builder', (req, res) => {
 // and replaces everything in the DB
 // ──────────────────────────────────────────────
 
-router.put('/business/:id/builder', (req, res) => {
+router.put('/business/:id/builder', tenantScope, saveBuilderRules, validate, (req, res) => {
   const businessId = Number(req.params.id);
   const { welcomeMessage, buttons } = req.body;
-
-  if (!welcomeMessage || !Array.isArray(buttons)) {
-    return res.status(400).json({ error: 'Missing welcome message or buttons' });
-  }
 
   // Validate: buttons with children must have menu behavior
   function validateButtons(btns) {
@@ -585,14 +590,14 @@ router.put('/business/:id/builder', (req, res) => {
 // BUTTONS CRUD (individual)
 // ──────────────────────────────────────────────
 
-router.get('/business/:id/buttons', (req, res) => {
+router.get('/business/:id/buttons', tenantScope, (req, res) => {
   const btns = db.prepare(
     'SELECT * FROM buttons WHERE business_id = ? ORDER BY sort_order'
   ).all(req.params.id);
   res.json({ data: btns });
 });
 
-router.post('/business/:id/buttons', (req, res) => {
+router.post('/business/:id/buttons', tenantScope, (req, res) => {
   const { parentId, label, behavior } = req.body;
   const maxOrder = db.prepare(
     'SELECT MAX(sort_order) as mx FROM buttons WHERE business_id = ? AND parent_id IS ?'
@@ -604,7 +609,7 @@ router.post('/business/:id/buttons', (req, res) => {
   res.json({ data: { id: Number(result.lastInsertRowid) } });
 });
 
-router.put('/buttons/:id', (req, res) => {
+router.put('/buttons/:id', tenantScopeResource('buttons'), (req, res) => {
   const { label, behavior } = req.body;
   const btn = db.prepare('SELECT * FROM buttons WHERE id = ?').get(req.params.id);
   if (!btn) return res.status(404).json({ error: 'Button not found' });
@@ -616,7 +621,7 @@ router.put('/buttons/:id', (req, res) => {
   res.json({ success: true });
 });
 
-router.delete('/buttons/:id', (req, res) => {
+router.delete('/buttons/:id', tenantScopeResource('buttons'), (req, res) => {
   db.prepare('DELETE FROM buttons WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
@@ -625,7 +630,7 @@ router.delete('/buttons/:id', (req, res) => {
 // FLOWS
 // ──────────────────────────────────────────────
 
-router.get('/business/:id/flows', (req, res) => {
+router.get('/business/:id/flows', tenantScope, (req, res) => {
   const flows = db.prepare(
     'SELECT * FROM flows WHERE business_id = ?'
   ).all(req.params.id);
@@ -636,7 +641,7 @@ router.get('/business/:id/flows', (req, res) => {
 // ANALYTICS / DASHBOARD
 // ──────────────────────────────────────────────
 
-router.get('/business/:id/analytics', (req, res) => {
+router.get('/business/:id/analytics', tenantScope, (req, res) => {
   const businessId = req.params.id;
 
   const totalSubs = db.prepare(
@@ -694,7 +699,7 @@ router.get('/business/:id/analytics', (req, res) => {
 // SUBMISSIONS
 // ──────────────────────────────────────────────
 
-router.post('/business/:id/submissions', (req, res) => {
+router.post('/business/:id/submissions', tenantScope, (req, res) => {
   try {
     const { data, flowId, deliveryMethod, deliveryStaffId } = req.body;
     const result = db.prepare(
@@ -794,7 +799,7 @@ router.post('/business/:id/submissions', (req, res) => {
   }
 });
 
-router.get('/business/:id/submissions', (req, res) => {
+router.get('/business/:id/submissions', tenantScope, (req, res) => {
   const subs = db.prepare(
     `SELECT s.*, st.name as assigned_name
      FROM submissions s
@@ -807,17 +812,13 @@ router.get('/business/:id/submissions', (req, res) => {
   });
 });
 
-router.put('/submissions/:id/status', (req, res) => {
+router.put('/submissions/:id/status', tenantScopeResource('submissions'), updateStatusRules, validate, (req, res) => {
   const { status } = req.body;
-  const allowed = ['new', 'in_progress', 'done', 'cancelled'];
-  if (!allowed.includes(status)) {
-    return res.status(400).json({ error: 'Invalid status' });
-  }
   db.prepare('UPDATE submissions SET status = ? WHERE id = ?').run(status, req.params.id);
   res.json({ success: true });
 });
 
-router.put('/submissions/:id/assign', (req, res) => {
+router.put('/submissions/:id/assign', tenantScopeResource('submissions'), (req, res) => {
   const { staffId } = req.body;
   db.prepare('UPDATE submissions SET assigned_to = ? WHERE id = ?').run(
     staffId || null,
@@ -836,25 +837,22 @@ router.put('/submissions/:id/assign', (req, res) => {
 // STAFF
 // ──────────────────────────────────────────────
 
-router.get('/business/:id/staff', (req, res) => {
+router.get('/business/:id/staff', tenantScope, (req, res) => {
   const staff = db.prepare(
     'SELECT * FROM staff WHERE business_id = ? AND active = 1 ORDER BY name'
   ).all(req.params.id);
   res.json({ data: staff });
 });
 
-router.post('/business/:id/staff', (req, res) => {
+router.post('/business/:id/staff', tenantScope, createStaffRules, validate, (req, res) => {
   const { name, role, email, telegram_chat_id } = req.body;
-  if (!name || !name.trim()) {
-    return res.status(400).json({ error: 'Name is required' });
-  }
   const result = db.prepare(
     'INSERT INTO staff (business_id, name, role, email, telegram_chat_id) VALUES (?, ?, ?, ?, ?)'
   ).run(req.params.id, name.trim(), role || '', email || '', telegram_chat_id || '');
   res.json({ data: { id: Number(result.lastInsertRowid) } });
 });
 
-router.put('/staff/:id', (req, res) => {
+router.put('/staff/:id', tenantScopeResource('staff'), updateStaffRules, validate, (req, res) => {
   const { name, role, email, telegram_chat_id } = req.body;
   const existing = db.prepare('SELECT * FROM staff WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Staff not found' });
@@ -864,7 +862,7 @@ router.put('/staff/:id', (req, res) => {
   res.json({ success: true });
 });
 
-router.delete('/staff/:id', (req, res) => {
+router.delete('/staff/:id', tenantScopeResource('staff'), (req, res) => {
   db.prepare('UPDATE staff SET active = 0 WHERE id = ?').run(req.params.id);
   db.prepare('UPDATE submissions SET assigned_to = NULL WHERE assigned_to = ?').run(req.params.id);
   res.json({ success: true });
@@ -874,26 +872,32 @@ router.delete('/staff/:id', (req, res) => {
 // SETTINGS (Telegram config)
 // ──────────────────────────────────────────────
 
-router.get('/business/:id/settings', (req, res) => {
+router.get('/business/:id/settings', tenantScope, (req, res) => {
   const settings = db.prepare(
     'SELECT * FROM settings WHERE business_id = ?'
   ).get(req.params.id);
+  if (settings) {
+    // Decrypt sensitive fields before returning
+    settings.telegram_bot_token = decryptField(settings.telegram_bot_token);
+  }
   res.json({ data: settings || { telegram_bot_token: '', telegram_chat_id: '', business_email: '', whatsapp_number: '' } });
 });
 
-router.put('/business/:id/settings', (req, res) => {
+router.put('/business/:id/settings', tenantScope, updateSettingsRules, validate, (req, res) => {
   const { telegramBotToken, telegramChatId, businessEmail, whatsappNumber } = req.body;
+  // Encrypt sensitive fields before storing
+  const encryptedToken = telegramBotToken ? encryptField(telegramBotToken) : '';
   const existing = db.prepare(
     'SELECT id FROM settings WHERE business_id = ?'
   ).get(req.params.id);
   if (existing) {
     db.prepare(
       'UPDATE settings SET telegram_bot_token = ?, telegram_chat_id = ?, business_email = ?, whatsapp_number = ? WHERE business_id = ?'
-    ).run(telegramBotToken || '', telegramChatId || '', businessEmail || '', whatsappNumber || '', req.params.id);
+    ).run(encryptedToken, telegramChatId || '', businessEmail || '', whatsappNumber || '', req.params.id);
   } else {
     db.prepare(
       'INSERT INTO settings (business_id, telegram_bot_token, telegram_chat_id, business_email, whatsapp_number) VALUES (?, ?, ?, ?, ?)'
-    ).run(req.params.id, telegramBotToken || '', telegramChatId || '', businessEmail || '', whatsappNumber || '');
+    ).run(req.params.id, encryptedToken, telegramChatId || '', businessEmail || '', whatsappNumber || '');
   }
   res.json({ success: true });
 });
@@ -902,7 +906,7 @@ router.put('/business/:id/settings', (req, res) => {
 // FLOW DESTINATIONS
 // ──────────────────────────────────────────────
 
-router.get('/flows/:id/destinations', (req, res) => {
+router.get('/flows/:id/destinations', tenantScopeFlow, (req, res) => {
   const dests = db.prepare(
     `SELECT fd.*, s.name as staff_name, s.email, s.telegram_chat_id
      FROM flow_destinations fd
@@ -912,14 +916,8 @@ router.get('/flows/:id/destinations', (req, res) => {
   res.json({ data: dests });
 });
 
-router.post('/flows/:id/destinations', (req, res) => {
+router.post('/flows/:id/destinations', tenantScopeFlow, addDestinationRules, validate, (req, res) => {
   const { channel, staffId } = req.body;
-  if (!channel || !staffId) {
-    return res.status(400).json({ error: 'channel and staffId are required' });
-  }
-  if (!['email', 'telegram'].includes(channel)) {
-    return res.status(400).json({ error: 'channel must be email or telegram' });
-  }
   const staff = db.prepare('SELECT * FROM staff WHERE id = ?').get(staffId);
   if (!staff) return res.status(404).json({ error: 'Staff not found' });
   if (channel === 'email' && !staff.email) {
@@ -941,19 +939,10 @@ router.post('/flows/:id/destinations', (req, res) => {
   res.json({ data: { id: Number(result.lastInsertRowid) } });
 });
 
-router.put('/flows/:id/destinations', (req, res) => {
+router.put('/flows/:id/destinations', tenantScopeFlow, updateDestinationsRules, validate, (req, res) => {
   const { destinations } = req.body;
-  if (!Array.isArray(destinations)) {
-    return res.status(400).json({ error: 'destinations array required' });
-  }
   // Validate all destinations before saving
   for (const dest of destinations) {
-    if (!dest.channel || !dest.staffId) {
-      return res.status(400).json({ error: 'Each destination needs channel and staffId' });
-    }
-    if (!['email', 'telegram'].includes(dest.channel)) {
-      return res.status(400).json({ error: 'channel must be email or telegram' });
-    }
     const staff = db.prepare('SELECT * FROM staff WHERE id = ?').get(dest.staffId);
     if (!staff) return res.status(400).json({ error: `Staff ${dest.staffId} not found` });
     if (dest.channel === 'email' && !staff.email) {
@@ -974,7 +963,7 @@ router.put('/flows/:id/destinations', (req, res) => {
   res.json({ success: true });
 });
 
-router.delete('/flows/:id/destinations/:destId', (req, res) => {
+router.delete('/flows/:id/destinations/:destId', tenantScopeFlow, (req, res) => {
   db.prepare('DELETE FROM flow_destinations WHERE id = ? AND flow_id = ?').run(
     req.params.destId, req.params.id
   );
@@ -986,7 +975,7 @@ router.delete('/flows/:id/destinations/:destId', (req, res) => {
 // flow as WhatsApp Cloud API message payloads
 // ──────────────────────────────────────────────
 
-router.get('/business/:id/whatsapp-preview', (req, res) => {
+router.get('/business/:id/whatsapp-preview', tenantScope, (req, res) => {
   const businessId = Number(req.params.id);
 
   const biz = db.prepare('SELECT * FROM businesses WHERE id = ?').get(businessId);
@@ -1107,17 +1096,10 @@ const ALLOWED_MEDIA_TYPES = ['image', 'video', 'document', 'audio'];
 const MAX_FILE_SIZES = { image: 5 * 1024 * 1024, video: 16 * 1024 * 1024, document: 100 * 1024 * 1024, audio: 16 * 1024 * 1024 };
 
 // Upload media to a button (base64)
-router.post('/business/:id/buttons/:buttonId/media', (req, res) => {
+router.post('/business/:id/buttons/:buttonId/media', tenantScope, uploadMediaRules, validate, (req, res) => {
   const businessId = Number(req.params.id);
   const buttonId = Number(req.params.buttonId);
   const { fileName, mediaType, data } = req.body;
-
-  if (!fileName || !mediaType || !data) {
-    return res.status(400).json({ error: 'Missing fileName, mediaType, or data' });
-  }
-  if (!ALLOWED_MEDIA_TYPES.includes(mediaType)) {
-    return res.status(400).json({ error: 'Invalid media type' });
-  }
 
   // Tenant isolation: verify button belongs to this business
   const btn = db.prepare('SELECT id FROM buttons WHERE id = ? AND business_id = ?').get(buttonId, businessId);
@@ -1140,7 +1122,7 @@ router.post('/business/:id/buttons/:buttonId/media', (req, res) => {
 });
 
 // Delete media
-router.delete('/business/:id/media/:mediaId', (req, res) => {
+router.delete('/business/:id/media/:mediaId', tenantScope, (req, res) => {
   const businessId = Number(req.params.id);
   const mediaId = Number(req.params.mediaId);
 
@@ -1153,7 +1135,7 @@ router.delete('/business/:id/media/:mediaId', (req, res) => {
 });
 
 // Get media for a button
-router.get('/business/:id/buttons/:buttonId/media', (req, res) => {
+router.get('/business/:id/buttons/:buttonId/media', tenantScope, (req, res) => {
   const businessId = Number(req.params.id);
   const buttonId = Number(req.params.buttonId);
 
@@ -1165,7 +1147,7 @@ router.get('/business/:id/buttons/:buttonId/media', (req, res) => {
 });
 
 // Get media data (actual file content) by ID
-router.get('/business/:id/media/:mediaId', (req, res) => {
+router.get('/business/:id/media/:mediaId', tenantScope, (req, res) => {
   const businessId = Number(req.params.id);
   const mediaId = Number(req.params.mediaId);
 
@@ -1182,26 +1164,20 @@ router.get('/business/:id/media/:mediaId', (req, res) => {
 // ──────────────────────────────────────────────
 
 // Start polling for a business
-router.post('/business/:id/telegram-bot/start', (req, res) => {
+router.post('/business/:id/telegram-bot/start', tenantScope, (req, res) => {
   const result = startPolling(Number(req.params.id));
   res.json(result);
 });
 
 // Stop polling for a business
-router.post('/business/:id/telegram-bot/stop', (req, res) => {
+router.post('/business/:id/telegram-bot/stop', tenantScope, (req, res) => {
   const result = stopPolling(Number(req.params.id));
   res.json(result);
 });
 
 // Get polling status
-router.get('/business/:id/telegram-bot/status', (req, res) => {
+router.get('/business/:id/telegram-bot/status', tenantScope, (req, res) => {
   const result = getPollingStatus(Number(req.params.id));
-  res.json(result);
-});
-
-// Webhook endpoint (alternative to polling)
-router.post('/telegram/webhook/:id', async (req, res) => {
-  const result = await handleWebhook(Number(req.params.id), req.body);
   res.json(result);
 });
 

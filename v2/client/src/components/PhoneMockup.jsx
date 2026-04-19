@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { API_BASE } from '../lib/api';
+import { authFetch } from '../lib/auth';
 
 function MediaImage({ mediaId, businessId, alt }) {
   const [src, setSrc] = useState(null);
   useEffect(() => {
     if (!mediaId || !businessId) return;
-    fetch(`${API_BASE}/business/${businessId}/media/${mediaId}`)
+    authFetch(`${API_BASE}/business/${businessId}/media/${mediaId}`)
       .then(r => r.json())
       .then(json => { if (json.data?.data) setSrc(json.data.data); })
       .catch(() => {});

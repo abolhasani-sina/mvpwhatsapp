@@ -5,6 +5,7 @@
 
 import db from './db.js';
 import { processIncoming } from './bot-engine.js';
+import { decryptField } from './middleware/encryption.js';
 
 const TG_API = 'https://api.telegram.org/bot';
 
@@ -20,7 +21,7 @@ function getBotToken(businessId) {
   const settings = db.prepare(
     'SELECT telegram_bot_token FROM settings WHERE business_id = ?'
   ).get(businessId);
-  return settings?.telegram_bot_token || null;
+  return settings?.telegram_bot_token ? decryptField(settings.telegram_bot_token) : null;
 }
 
 async function tgCall(token, method, body) {

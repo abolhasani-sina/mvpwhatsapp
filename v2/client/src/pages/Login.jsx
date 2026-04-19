@@ -9,15 +9,24 @@ export default function Login({ onNavigate }) {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
 
-  function handleSubmit(e) {
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e) {
     e.preventDefault();
     setError('');
     if (!email || !password) {
       setError('Please fill in all fields');
       return;
     }
-    login(email, password);
-    onNavigate('dashboard');
+    setLoading(true);
+    try {
+      await login(email, password);
+      onNavigate('dashboard');
+    } catch (err) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -80,9 +89,10 @@ export default function Login({ onNavigate }) {
 
             <button
               type="submit"
-              className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors shadow-sm text-sm"
+              disabled={loading}
+              className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors shadow-sm text-sm disabled:opacity-50"
             >
-              Sign in
+              {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
 

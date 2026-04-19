@@ -1,4 +1,5 @@
 import db from './db.js';
+import bcrypt from 'bcryptjs';
 
 export function migrate() {
   db.exec(`
@@ -6,8 +7,20 @@ export function migrate() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
+      name TEXT DEFAULT '',
       created_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS refresh_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
+    CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);
 
     CREATE TABLE IF NOT EXISTS businesses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -203,13 +216,28 @@ export function migrate() {
     CREATE INDEX IF NOT EXISTS idx_button_media_business ON button_media(business_id);
   `);
 
-  // Ensure a mock user exists (user_id = 1)
+  // Ensure a demo user exists (user_id = 1)
   const existingUser = db.prepare('SELECT id FROM users WHERE id = 1').get();
   if (!existingUser) {
-    db.prepare('INSERT INTO users (id, email, password) VALUES (1, ?, ?)').run(
+    const hashedPw = bcrypt.hashSync('demo1234', 12);
+    db.prepare('INSERT INTO users (id, email, password, name) VALUES (1, ?, ?, ?)').run(
       'demo@example.com',
-      'demo'
+      hashedPw,
+      'Demo User'
     );
+  } else {
+    // Migrate plaintext password to bcrypt if needed
+    const user = db.prepare('SELECT password FROM users WHERE id = 1').get();
+    if (user && !user.password.startsWith('$2')) {
+      const hashedPw = bcrypt.hashSync('demo1234', 12);
+      db.prepare('UPDATE users SET password = ? WHERE id = 1').run(hashedPw);
+    }
+  }
+
+  // Add name column to users if missing
+  const userCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+  if (!userCols.includes('name')) {
+    db.exec("ALTER TABLE users ADD COLUMN name TEXT DEFAULT ''");
   }
 
   // Add columns if missing (safe ALTER TABLE migrations)
