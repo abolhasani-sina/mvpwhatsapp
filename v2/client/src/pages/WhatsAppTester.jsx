@@ -477,6 +477,24 @@ export default function WhatsAppTester({ businessId }) {
   const mediaCacheRef = useRef(new Map());
   const conversationStateRef = useRef(null);
   const lastTapRef = useRef({ id: null, ts: 0 });
+  const processingRef = useRef(false); // blocks all button clicks during bot response
+  const sessionTimerRef = useRef(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  // Session timeout indicator (30 min)
+  const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+
+  function resetSessionTimer() {
+    setSessionExpired(false);
+    if (sessionTimerRef.current) clearTimeout(sessionTimerRef.current);
+    sessionTimerRef.current = setTimeout(() => {
+      setSessionExpired(true);
+    }, SESSION_TIMEOUT_MS);
+  }
+
+  useEffect(() => {
+    return () => { if (sessionTimerRef.current) clearTimeout(sessionTimerRef.current); };
+  }, []);
 
   useEffect(() => {
     conversationStateRef.current = conversationState;
@@ -542,6 +560,7 @@ export default function WhatsAppTester({ businessId }) {
     setWaitingForText(false);
     setListOverlay(null);
     setTextInput('');
+    resetSessionTimer();
   }, []);
 
   // ── Advance to next flow step or confirmation ──
@@ -593,6 +612,10 @@ export default function WhatsAppTester({ businessId }) {
     setListOverlay(null);
     const engine = engineRef.current;
     if (!engine) return;
+
+    // Block all clicks while processing a previous action
+    if (processingRef.current) return;
+
     const now = timeStamp();
     const id = item.id;
 
@@ -601,6 +624,13 @@ export default function WhatsAppTester({ businessId }) {
       return;
     }
     lastTapRef.current = { id, ts: Date.now() };
+
+    // Lock processing until bot response is rendered
+    processingRef.current = true;
+    setTimeout(() => { processingRef.current = false; }, 600);
+
+    // Reset session inactivity timer
+    resetSessionTimer();
 
     // Add user message
     setMessages(prev => [...prev, { from: 'user', text: item.title, time: now }]);
@@ -1001,6 +1031,23 @@ export default function WhatsAppTester({ businessId }) {
           )}
 
           {messages.map((msg, i) => renderMessage(msg, i))}
+
+          {/* Session expired indicator */}
+          {sessionExpired && (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 24px' }}>
+              <div style={{
+                background: '#fff3cd', borderRadius: 8, padding: '10px 16px', textAlign: 'center',
+                fontSize: 13, color: '#856404', lineHeight: 1.4, maxWidth: 280,
+              }}>
+                ⏰ Session expired (30 min inactivity).
+                <button onClick={() => { startConversation(); }} style={{
+                  display: 'block', margin: '8px auto 0', padding: '6px 16px', fontSize: 12,
+                  background: '#00a884', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer',
+                }}>Restart Conversation</button>
+              </div>
+            </div>
+          )}
+
           <div ref={chatEndRef} />
         </div>
 

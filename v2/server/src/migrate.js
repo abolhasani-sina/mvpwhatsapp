@@ -270,4 +270,65 @@ export function migrate() {
   if (!abCols.includes('delivery_staff_id')) {
     db.exec("ALTER TABLE action_buttons ADD COLUMN delivery_staff_id INTEGER DEFAULT NULL");
   }
+
+  // ── Phase 7 tables ──
+
+  // 7.1 — Callback deduplication (prevent double-click double-process)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS processed_callbacks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      channel TEXT NOT NULL,
+      customer_id INTEGER NOT NULL,
+      callback_hash TEXT NOT NULL,
+      processed_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_processed_callbacks_lookup
+      ON processed_callbacks(business_id, channel, customer_id, callback_hash);
+  `);
+
+  // 7.1 — Telegram update_id tracking (prevent re-processing same update)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS telegram_updates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      update_id INTEGER NOT NULL,
+      processed_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_telegram_updates_unique
+      ON telegram_updates(business_id, update_id);
+  `);
+
+  // 7.4 — Message queue for reliable delivery with retries
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS message_queue (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      channel TEXT NOT NULL DEFAULT 'telegram',
+      chat_id TEXT NOT NULL,
+      message_json TEXT NOT NULL,
+      status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'sent', 'failed', 'exhausted')),
+      attempt_count INTEGER DEFAULT 0,
+      max_attempts INTEGER DEFAULT 5,
+      next_retry_at TEXT DEFAULT (datetime('now')),
+      error_message TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now')),
+      processed_at TEXT,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_message_queue_pending
+      ON message_queue(status, next_retry_at) WHERE status = 'pending';
+    CREATE INDEX IF NOT EXISTS idx_message_queue_business
+      ON message_queue(business_id);
+  `);
+
+  // Add last_activity to conversations (for session timeout)
+  const convCols = db.prepare("PRAGMA table_info(conversations)").all().map(c => c.name);
+  if (!convCols.includes('last_activity')) {
+    db.exec("ALTER TABLE conversations ADD COLUMN last_activity TEXT DEFAULT (datetime('now'))");
+    // Backfill existing conversations
+    db.exec("UPDATE conversations SET last_activity = updated_at WHERE last_activity IS NULL");
+  }
 }

@@ -6,6 +6,7 @@
 import db from './db.js';
 import { processIncoming } from './bot-engine.js';
 import { decryptField } from './middleware/encryption.js';
+import { enqueueMessage } from './message-queue.js';
 
 const TG_API = 'https://api.telegram.org/bot';
 
@@ -103,45 +104,57 @@ async function sendPhotoFromDb(token, chatId, mediaId, caption) {
 // 2. SEND RESPONSES — convert internal messages to Telegram API
 // ═════════════════════════════════════════════════════════════════
 
-async function sendInternalMessages(token, chatId, messages) {
+async function sendInternalMessages(token, chatId, messages, businessId) {
   for (const msg of messages) {
     if (msg.type === 'image') {
+      // Images still sent directly (binary multipart — not suitable for queue)
       await sendPhotoFromDb(token, chatId, msg.mediaId, msg.caption);
-    } else if (msg.type === 'text') {
-      await tgCall(token, 'sendMessage', {
-        chat_id: chatId,
-        text: formatTgText(msg.body),
-        parse_mode: 'HTML',
-      });
-    } else if (msg.type === 'buttons') {
-      const keyboard = msg.buttons.map(btn => [{
-        text: btn.title,
-        callback_data: btn.id.slice(0, 64),
-      }]);
-      await tgCall(token, 'sendMessage', {
-        chat_id: chatId,
-        text: formatTgText(msg.body),
-        parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: keyboard },
-      });
-    } else if (msg.type === 'list') {
-      // Lists → inline keyboard with all rows
-      const keyboard = [];
-      for (const section of (msg.sections || [])) {
-        for (const row of (section.rows || [])) {
-          keyboard.push([{
-            text: row.title,
-            callback_data: row.id.slice(0, 64),
-          }]);
-        }
+    } else {
+      // Queue text/button/list messages for reliable delivery
+      if (businessId) {
+        enqueueMessage(businessId, 'telegram', chatId, msg);
+      } else {
+        // Fallback to direct send if no businessId
+        await sendDirectMessage(token, chatId, msg);
       }
-      await tgCall(token, 'sendMessage', {
-        chat_id: chatId,
-        text: formatTgText(msg.body),
-        parse_mode: 'HTML',
-        reply_markup: keyboard.length > 0 ? { inline_keyboard: keyboard } : undefined,
-      });
     }
+  }
+}
+
+async function sendDirectMessage(token, chatId, msg) {
+  if (msg.type === 'text') {
+    await tgCall(token, 'sendMessage', {
+      chat_id: chatId,
+      text: formatTgText(msg.body),
+      parse_mode: 'HTML',
+    });
+  } else if (msg.type === 'buttons') {
+    const keyboard = msg.buttons.map(btn => [{
+      text: btn.title,
+      callback_data: String(btn.id).slice(0, 64),
+    }]);
+    await tgCall(token, 'sendMessage', {
+      chat_id: chatId,
+      text: formatTgText(msg.body),
+      parse_mode: 'HTML',
+      reply_markup: { inline_keyboard: keyboard },
+    });
+  } else if (msg.type === 'list') {
+    const keyboard = [];
+    for (const section of (msg.sections || [])) {
+      for (const row of (section.rows || [])) {
+        keyboard.push([{
+          text: row.title,
+          callback_data: String(row.id).slice(0, 64),
+        }]);
+      }
+    }
+    await tgCall(token, 'sendMessage', {
+      chat_id: chatId,
+      text: formatTgText(msg.body),
+      parse_mode: 'HTML',
+      reply_markup: keyboard.length > 0 ? { inline_keyboard: keyboard } : undefined,
+    });
   }
 }
 
@@ -157,7 +170,25 @@ function formatTgText(text) {
 // 3. PROCESS INCOMING UPDATE
 // ═════════════════════════════════════════════════════════════════
 
+// Track processed update_ids to prevent re-processing
+function isUpdateProcessed(businessId, updateId) {
+  try {
+    db.prepare(
+      'INSERT INTO telegram_updates (business_id, update_id) VALUES (?, ?)'
+    ).run(businessId, updateId);
+    return false; // new — not processed before
+  } catch {
+    return true; // UNIQUE constraint violation = already processed
+  }
+}
+
 async function handleUpdate(businessId, token, update) {
+  // Deduplicate by update_id
+  if (update.update_id && isUpdateProcessed(businessId, update.update_id)) {
+    console.log(`[TG Bot] Skipping duplicate update_id ${update.update_id} for business ${businessId}`);
+    return;
+  }
+
   let chatId, text, callbackData, userName;
 
   if (update.callback_query) {
@@ -178,7 +209,7 @@ async function handleUpdate(businessId, token, update) {
 
   const input = { text: text || null, callbackData: callbackData || null };
   const responses = processIncoming(businessId, String(chatId), 'telegram', userName, input);
-  await sendInternalMessages(token, chatId, responses);
+  await sendInternalMessages(token, chatId, responses, businessId);
 }
 
 // ═════════════════════════════════════════════════════════════════
@@ -274,4 +305,11 @@ export async function handleWebhook(businessId, updateBody) {
   if (!token) return { error: 'No bot token configured' };
   await handleUpdate(businessId, token, updateBody);
   return { ok: true };
+}
+
+// Cleanup old telegram_updates records (keep last 24 hours)
+export function cleanupTelegramUpdates() {
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const result = db.prepare('DELETE FROM telegram_updates WHERE processed_at < ?').run(cutoff);
+  if (result.changes > 0) console.log(`[TG Bot] Cleaned up ${result.changes} old update records`);
 }

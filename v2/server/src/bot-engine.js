@@ -10,6 +10,72 @@
 
 import db from './db.js';
 import { sendTelegramNotification } from './telegram.js';
+import crypto from 'crypto';
+
+// ── Session timeout (30 minutes) ──
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+// ── Dedup window (5 seconds) ──
+const DEDUP_WINDOW_SEC = 5;
+
+// Simple structured logger
+function botLog(level, event, data = {}) {
+  const entry = { ts: new Date().toISOString(), level, event, ...data };
+  if (level === 'error') console.error('[BotEngine]', JSON.stringify(entry));
+  else console.log('[BotEngine]', JSON.stringify(entry));
+}
+
+// ── Callback deduplication ──
+function isDuplicateCallback(businessId, channel, customerId, input) {
+  const raw = `${input.callbackData || ''}|${input.text || ''}`;
+  const hash = crypto.createHash('sha256').update(raw).digest('hex').slice(0, 32);
+
+  const cutoff = new Date(Date.now() - DEDUP_WINDOW_SEC * 1000).toISOString();
+  const existing = db.prepare(
+    'SELECT id FROM processed_callbacks WHERE business_id = ? AND channel = ? AND customer_id = ? AND callback_hash = ? AND processed_at > ?'
+  ).get(businessId, channel, customerId, hash, cutoff);
+
+  if (existing) {
+    botLog('warn', 'duplicate_callback_blocked', { businessId, channel, customerId, hash });
+    return true;
+  }
+
+  db.prepare(
+    'INSERT INTO processed_callbacks (business_id, channel, customer_id, callback_hash) VALUES (?, ?, ?, ?)'
+  ).run(businessId, channel, customerId, hash);
+  return false;
+}
+
+// Cleanup old dedup records (called periodically)
+export function cleanupDedupRecords() {
+  const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const result = db.prepare('DELETE FROM processed_callbacks WHERE processed_at < ?').run(cutoff);
+  if (result.changes > 0) botLog('info', 'dedup_cleanup', { deleted: result.changes });
+}
+
+// ── Message deduplication by signature ──
+function deduplicateMessages(messages) {
+  const seen = new Set();
+  const deduped = [];
+  for (const msg of messages) {
+    const sig = JSON.stringify({ type: msg.type, body: msg.body, buttons: msg.buttons, sections: msg.sections });
+    if (seen.has(sig)) {
+      botLog('warn', 'duplicate_message_removed', { type: msg.type, body: (msg.body || '').slice(0, 50) });
+      continue;
+    }
+    seen.add(sig);
+    deduped.push(msg);
+  }
+  return deduped;
+}
+
+// Cleanup stale sessions (conversations with last_activity > 30 min)
+export function cleanupStaleSessions() {
+  const cutoff = new Date(Date.now() - SESSION_TIMEOUT_MS).toISOString();
+  const result = db.prepare(
+    "UPDATE conversations SET status = 'completed', updated_at = datetime('now') WHERE status = 'active' AND last_activity < ?"
+  ).run(cutoff);
+  if (result.changes > 0) botLog('info', 'stale_session_cleanup', { completed: result.changes });
+}
 
 // ═════════════════════════════════════════════════════════════════
 // 1. DATA LOADING
@@ -313,6 +379,8 @@ function completeConversation(conversationId) {
  * @returns {Array} Array of internal messages to send back
  */
 export function processIncoming(businessId, channelUserId, channel, userName, input) {
+  botLog('info', 'process_start', { businessId, channel, channelUserId, input: { text: input.text, cb: input.callbackData } });
+
   const data = loadBuilderData(businessId);
   if (!data) return [{ type: 'text', body: 'Sorry, this bot is not configured yet.' }];
 
@@ -320,14 +388,41 @@ export function processIncoming(businessId, channelUserId, channel, userName, in
   const steps = flow?.steps || [];
 
   const customer = getOrCreateCustomer(businessId, channel, channelUserId, userName);
+
+  // ── Callback deduplication ──
+  if (isDuplicateCallback(businessId, channel, customer.id, input)) {
+    return []; // silently skip duplicate
+  }
+
   let conversation = getActiveConversation(customer.id, businessId, channel);
+
+  // ── Session timeout check ──
+  let sessionExpired = false;
+  if (conversation && conversation.last_activity) {
+    const lastActive = new Date(conversation.last_activity + 'Z').getTime();
+    if (Date.now() - lastActive > SESSION_TIMEOUT_MS) {
+      botLog('info', 'session_timeout', { conversationId: conversation.id, customerId: customer.id });
+      completeConversation(conversation.id);
+      conversation = null;
+      sessionExpired = true;
+    }
+  }
+
+  // Update last_activity for active conversations
+  if (conversation) {
+    db.prepare("UPDATE conversations SET last_activity = datetime('now') WHERE id = ?").run(conversation.id);
+  }
 
   // If no active conversation or user sends /start, create fresh
   if (!conversation || input.text === '/start') {
     if (conversation) completeConversation(conversation.id);
     conversation = createConversation(customer.id, businessId, channel);
     const welcome = buildWelcomeMsg(welcomeMessage, buttons);
-    return [welcome];
+    const responses = sessionExpired
+      ? [{ type: 'text', body: '⏰ Your session expired. Starting fresh!' }, welcome]
+      : [welcome];
+    botLog('info', 'process_end', { businessId, responseCount: responses.length, phase: 'welcome_new' });
+    return deduplicateMessages(responses);
   }
 
   const state = JSON.parse(conversation.state || '{}');
@@ -535,13 +630,32 @@ function submitAndConfirm(conversation, state, data, businessId) {
   const { flow } = data;
   const steps = flow?.steps || [];
 
-  // Create submission
-  const result = db.prepare(
-    'INSERT INTO submissions (business_id, data, status, flow_id) VALUES (?, ?, ?, ?)'
-  ).run(businessId, JSON.stringify(state.answers), 'new', flow?.id || null);
-  const subId = Number(result.lastInsertRowid);
+  // Wrap submission + state update in a transaction for atomicity
+  const txn = db.transaction(() => {
+    // Create submission
+    const result = db.prepare(
+      'INSERT INTO submissions (business_id, data, status, flow_id) VALUES (?, ?, ?, ?)'
+    ).run(businessId, JSON.stringify(state.answers), 'new', flow?.id || null);
+    const subId = Number(result.lastInsertRowid);
 
-  // Handle delivery (same logic as routes.js submission endpoint)
+    // Update state to confirmed
+    state.phase = 'confirmed';
+    updateConversationState(conversation.id, state);
+
+    return subId;
+  });
+
+  let subId;
+  try {
+    subId = txn();
+  } catch (err) {
+    botLog('error', 'submit_failed', { businessId, conversationId: conversation.id, error: err.message });
+    return [{ type: 'text', body: 'Sorry, something went wrong. Please try again.' }];
+  }
+
+  botLog('info', 'submission_created', { businessId, submissionId: subId, conversationId: conversation.id });
+
+  // Handle delivery (fire-and-forget, outside transaction)
   const biz = db.prepare('SELECT name FROM businesses WHERE id = ?').get(businessId);
   const summary = Object.entries(state.answers)
     .filter(([k]) => !k.startsWith('_'))
@@ -549,16 +663,11 @@ function submitAndConfirm(conversation, state, data, businessId) {
     .join('\n');
   const msg = `📋 New Booking #${subId}\n${biz ? biz.name : 'Business'}\n\n${summary}`;
 
-  // Delivery to staff (owner notification)
   try {
     sendTelegramNotification(businessId, msg);
   } catch {
-    // telegram notification may fail silently
+    botLog('warn', 'telegram_notify_failed', { businessId, submissionId: subId });
   }
 
-  // Update state to confirmed
-  state.phase = 'confirmed';
-  updateConversationState(conversation.id, state);
-
-  return [buildConfirmationMsg(state.answers, steps)];
+  return deduplicateMessages([buildConfirmationMsg(state.answers, steps)]);
 }

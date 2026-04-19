@@ -82,6 +82,9 @@ app.post('/builder/save', (req, res) => {
 
 // ── Public webhook (no auth — called by Telegram servers) ──
 import { handleWebhook } from './telegram-bot.js';
+import { cleanupTelegramUpdates } from './telegram-bot.js';
+import { cleanupDedupRecords, cleanupStaleSessions } from './bot-engine.js';
+import { processMessageQueue } from './message-queue.js';
 app.post('/api/telegram/webhook/:id', async (req, res) => {
   const result = await handleWebhook(Number(req.params.id), req.body);
   res.json(result);
@@ -93,6 +96,18 @@ app.use('/api', routes);
 
 // Cleanup expired refresh tokens every hour
 setInterval(cleanupExpiredTokens, 60 * 60 * 1000);
+
+// Cleanup stale sessions every 5 minutes
+setInterval(cleanupStaleSessions, 5 * 60 * 1000);
+
+// Cleanup dedup records every 5 minutes
+setInterval(cleanupDedupRecords, 5 * 60 * 1000);
+
+// Cleanup old telegram update records every hour
+setInterval(cleanupTelegramUpdates, 60 * 60 * 1000);
+
+// Process message queue every 5 seconds
+setInterval(processMessageQueue, 5 * 1000);
 
 // ── Global error handler (hide stack traces from clients) ──
 app.use((err, _req, res, _next) => {
