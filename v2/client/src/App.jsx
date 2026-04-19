@@ -11,6 +11,7 @@ import StaffManager from './components/StaffManager';
 import SettingsPage from './pages/SettingsPage';
 import WhatsAppTester from './pages/WhatsAppTester';
 import AdminLayout from './components/AdminLayout';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function AppRoutes() {
   const { user, loading, logout } = useAuth();
@@ -72,8 +73,10 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

@@ -21,6 +21,9 @@ import {
   addDestinationRules, updateDestinationsRules,
   updateConfigRules, uploadMediaRules,
 } from './middleware/validators.js';
+import { createLogger } from './logger.js';
+
+const log = createLogger('routes');
 
 const RENDERERS = { whatsapp: whatsappRenderer, telegram: telegramRenderer, instagram: instagramRenderer };
 const { renderWelcome, renderFlowStep, renderInfoPage, renderConfirmation, renderFullFlow } = whatsappRenderer;
@@ -179,7 +182,7 @@ router.post('/business/:id/apply-template', tenantScope, applyTemplateRules, val
     txn();
     res.json({ success: true });
   } catch (err) {
-    console.error('Failed to apply template:', err);
+    log.error({ err }, 'failed to apply template');
     res.status(500).json({ error: 'Failed to apply template' });
   }
 });
@@ -581,7 +584,7 @@ router.put('/business/:id/builder', tenantScope, saveBuilderRules, validate, (re
     txn();
     res.json({ success: true });
   } catch (err) {
-    console.error('Failed to save builder:', err);
+    log.error({ err }, 'failed to save builder');
     res.status(500).json({ error: 'Failed to save builder data' });
   }
 });
@@ -751,10 +754,10 @@ router.post('/business/:id/submissions', tenantScope, (req, res) => {
           sentChatIds.add(staffMember.telegram_chat_id);
           staffDelivered = true;
         } else if (deliveryMethod === 'telegram' && !staffMember.telegram_chat_id) {
-          console.warn(`[Telegram] Staff "${staffMember.name}" (id=${staffMember.id}) has no telegram_chat_id — falling back to owner`);
+          log.warn({ staffId: staffMember.id, staffName: staffMember.name }, 'staff has no telegram_chat_id — falling back to owner');
         }
         if (deliveryMethod === 'email' && staffMember.email) {
-          console.log(`[EMAIL] Sending to ${staffMember.email}: Submission #${subId}`);
+          log.info({ email: staffMember.email, submissionId: subId }, 'email notification sent');
           staffDelivered = true;
         }
       }
@@ -776,7 +779,7 @@ router.post('/business/:id/submissions', tenantScope, (req, res) => {
           staffDelivered = true;
         }
         if (dest.channel === 'email' && dest.email) {
-          console.log(`[EMAIL] Would send to ${dest.email}: Submission #${subId}`);
+          log.info({ email: dest.email, submissionId: subId }, 'email notification queued');
           staffDelivered = true;
         }
       }
@@ -794,7 +797,7 @@ router.post('/business/:id/submissions', tenantScope, (req, res) => {
 
     res.json({ data: { id: subId, status: 'new' } });
   } catch (err) {
-    console.error('Failed to create submission:', err);
+    log.error({ err }, 'failed to create submission');
     res.status(500).json({ error: 'Failed to create submission' });
   }
 });

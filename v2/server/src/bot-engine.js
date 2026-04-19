@@ -11,17 +11,19 @@
 import db from './db.js';
 import { sendTelegramNotification } from './telegram.js';
 import crypto from 'crypto';
+import { createLogger } from './logger.js';
+import { botProcessingDuration, submissionsCreated } from './metrics.js';
+
+const log = createLogger('bot-engine');
 
 // ── Session timeout (30 minutes) ──
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 // ── Dedup window (5 seconds) ──
 const DEDUP_WINDOW_SEC = 5;
 
-// Simple structured logger
+// Structured logger — now uses pino
 function botLog(level, event, data = {}) {
-  const entry = { ts: new Date().toISOString(), level, event, ...data };
-  if (level === 'error') console.error('[BotEngine]', JSON.stringify(entry));
-  else console.log('[BotEngine]', JSON.stringify(entry));
+  log[level]({ event, ...data }, event);
 }
 
 // ── Callback deduplication ──
@@ -379,6 +381,15 @@ function completeConversation(conversationId) {
  * @returns {Array} Array of internal messages to send back
  */
 export function processIncoming(businessId, channelUserId, channel, userName, input) {
+  const endTimer = botProcessingDuration.startTimer({ channel });
+  try {
+    return _processIncoming(businessId, channelUserId, channel, userName, input);
+  } finally {
+    endTimer();
+  }
+}
+
+function _processIncoming(businessId, channelUserId, channel, userName, input) {
   botLog('info', 'process_start', { businessId, channel, channelUserId, input: { text: input.text, cb: input.callbackData } });
 
   const data = loadBuilderData(businessId);
@@ -655,6 +666,7 @@ function submitAndConfirm(conversation, state, data, businessId) {
   }
 
   botLog('info', 'submission_created', { businessId, submissionId: subId, conversationId: conversation.id });
+  submissionsCreated.inc();
 
   // Handle delivery (fire-and-forget, outside transaction)
   const biz = db.prepare('SELECT name FROM businesses WHERE id = ?').get(businessId);

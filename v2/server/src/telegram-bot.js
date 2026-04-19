@@ -7,6 +7,10 @@ import db from './db.js';
 import { processIncoming } from './bot-engine.js';
 import { decryptField } from './middleware/encryption.js';
 import { enqueueMessage } from './message-queue.js';
+import { createLogger } from './logger.js';
+import { telegramMessagesReceived, telegramPollingErrors } from './metrics.js';
+
+const log = createLogger('telegram-bot');
 
 const TG_API = 'https://api.telegram.org/bot';
 
@@ -32,14 +36,14 @@ async function tgCall(token, method, body) {
     body: JSON.stringify(body),
   });
   const json = await res.json();
-  if (!json.ok) console.error(`[TG Bot] ${method} error:`, json.description);
+  if (!json.ok) log.error({ method, error: json.description }, `tgCall ${method} error`);
   return json;
 }
 
 async function sendPhotoFromDb(token, chatId, mediaId, caption) {
   const media = db.prepare('SELECT data, file_name, media_type FROM button_media WHERE id = ?').get(mediaId);
   if (!media || !media.data) {
-    console.warn(`[TG Bot] Media ${mediaId} not found or has no data`);
+    log.warn({ mediaId }, 'media not found or has no data');
     return;
   }
 
@@ -93,10 +97,10 @@ async function sendPhotoFromDb(token, chatId, mediaId, caption) {
       body,
     });
     const json = await res.json();
-    if (!json.ok) console.error(`[TG Bot] sendPhoto error:`, json.description);
-    else console.log(`[TG Bot] Photo sent to chat ${chatId} (media ${mediaId})`);
+    if (!json.ok) log.error({ chatId, mediaId, error: json.description }, 'sendPhoto error');
+    else log.debug({ chatId, mediaId }, 'photo sent');
   } catch (err) {
-    console.error(`[TG Bot] sendPhoto network error:`, err.message);
+    log.error({ chatId, mediaId, err }, 'sendPhoto network error');
   }
 }
 
@@ -183,9 +187,11 @@ function isUpdateProcessed(businessId, updateId) {
 }
 
 async function handleUpdate(businessId, token, update) {
+  telegramMessagesReceived.inc();
+
   // Deduplicate by update_id
   if (update.update_id && isUpdateProcessed(businessId, update.update_id)) {
-    console.log(`[TG Bot] Skipping duplicate update_id ${update.update_id} for business ${businessId}`);
+    log.debug({ businessId, updateId: update.update_id }, 'skipping duplicate update_id');
     return;
   }
 
@@ -218,20 +224,20 @@ async function handleUpdate(businessId, token, update) {
 
 export function startPolling(businessId) {
   if (activePollers.has(businessId)) {
-    console.log(`[TG Bot] Already polling for business ${businessId}`);
+    log.info({ businessId }, 'already polling');
     return { status: 'already_running' };
   }
 
   const token = getBotToken(businessId);
   if (!token) {
-    console.warn(`[TG Bot] No bot token for business ${businessId}`);
+    log.warn({ businessId }, 'no bot token configured');
     return { status: 'no_token' };
   }
 
   const controller = new AbortController();
   activePollers.set(businessId, controller);
 
-  console.log(`[TG Bot] Starting polling for business ${businessId}`);
+  log.info({ businessId }, 'starting polling');
   pollLoop(businessId, token, controller.signal);
 
   return { status: 'started' };
@@ -243,7 +249,7 @@ export function stopPolling(businessId) {
 
   controller.abort();
   activePollers.delete(businessId);
-  console.log(`[TG Bot] Stopped polling for business ${businessId}`);
+  log.info({ businessId }, 'stopped polling');
   return { status: 'stopped' };
 }
 
@@ -269,7 +275,8 @@ async function pollLoop(businessId, token, signal) {
 
       const json = await res.json();
       if (!json.ok) {
-        console.error(`[TG Bot] getUpdates error for business ${businessId}:`, json.description);
+        log.error({ businessId, error: json.description }, 'getUpdates error');
+        telegramPollingErrors.inc();
         await sleep(5000);
         continue;
       }
@@ -279,17 +286,19 @@ async function pollLoop(businessId, token, signal) {
         try {
           await handleUpdate(businessId, token, update);
         } catch (err) {
-          console.error(`[TG Bot] Error handling update ${update.update_id}:`, err.message);
+          log.error({ businessId, updateId: update.update_id, err }, 'error handling update');
+          telegramPollingErrors.inc();
         }
       }
     } catch (err) {
       if (signal.aborted) break;
-      console.error(`[TG Bot] Poll error for business ${businessId}:`, err.message);
+      log.error({ businessId, err }, 'poll error');
+      telegramPollingErrors.inc();
       await sleep(5000);
     }
   }
 
-  console.log(`[TG Bot] Polling loop ended for business ${businessId}`);
+  log.info({ businessId }, 'polling loop ended');
 }
 
 function sleep(ms) {
@@ -311,5 +320,5 @@ export async function handleWebhook(businessId, updateBody) {
 export function cleanupTelegramUpdates() {
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   const result = db.prepare('DELETE FROM telegram_updates WHERE processed_at < ?').run(cutoff);
-  if (result.changes > 0) console.log(`[TG Bot] Cleaned up ${result.changes} old update records`);
+  if (result.changes > 0) log.info({ deleted: result.changes }, 'cleaned up old update records');
 }

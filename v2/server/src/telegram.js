@@ -1,5 +1,8 @@
 import db from './db.js';
 import { decryptField } from './middleware/encryption.js';
+import { createLogger } from './logger.js';
+
+const log = createLogger('telegram');
 
 // Resolve bot token: env var first, then per-business settings
 function getBotToken(businessId) {
@@ -26,7 +29,7 @@ export async function sendTelegramNotification(businessId, text) {
 export async function sendTelegramToChat(businessId, chatId, text) {
   const token = getBotToken(businessId);
   if (!token) {
-    console.warn('[Telegram] No bot token found — set TELEGRAM_BOT_TOKEN env var or configure in settings');
+    log.warn('no bot token found — set TELEGRAM_BOT_TOKEN env var or configure in settings');
     return;
   }
   await sendTelegramMessage(token, chatId, text);
@@ -47,11 +50,11 @@ async function sendTelegramMessage(botToken, chatId, text) {
     });
     const json = await res.json();
     if (!json.ok) {
-      console.error('[Telegram] API error:', json.description);
+      log.error({ chatId, error: json.description }, 'telegram API error');
     } else {
-      console.log(`[Telegram] Message sent to chat ${chatId}`);
+      log.debug({ chatId }, 'message sent');
     }
   } catch (err) {
-    console.error('[Telegram] Network error:', err.message);
+    log.error({ chatId, err }, 'telegram network error');
   }
 }

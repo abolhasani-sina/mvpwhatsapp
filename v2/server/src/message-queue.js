@@ -6,6 +6,9 @@
 
 import db from './db.js';
 import { decryptField } from './middleware/encryption.js';
+import { createLogger } from './logger.js';
+
+const log = createLogger('message-queue');
 
 const TG_API = 'https://api.telegram.org/bot';
 
@@ -53,7 +56,7 @@ export async function processMessageQueue() {
         db.prepare(
           "UPDATE message_queue SET status = 'exhausted', attempt_count = ?, error_message = ? WHERE id = ?"
         ).run(attempts, err.message, item.id);
-        console.error(`[MsgQueue] Message ${item.id} exhausted after ${attempts} attempts: ${err.message}`);
+        log.error({ messageId: item.id, attempts, err }, 'message exhausted after max attempts');
       } else {
         // Schedule retry with exponential backoff
         const backoffSec = Math.pow(2, attempts);
@@ -61,7 +64,7 @@ export async function processMessageQueue() {
         db.prepare(
           "UPDATE message_queue SET attempt_count = ?, next_retry_at = ?, error_message = ? WHERE id = ?"
         ).run(attempts, nextRetry, err.message, item.id);
-        console.warn(`[MsgQueue] Message ${item.id} failed (attempt ${attempts}), retry at ${nextRetry}: ${err.message}`);
+        log.warn({ messageId: item.id, attempts, nextRetry, err }, 'message failed, scheduling retry');
       }
     }
   }
@@ -69,11 +72,11 @@ export async function processMessageQueue() {
   // Alert if queue is growing too large
   const pendingCount = db.prepare("SELECT COUNT(*) as cnt FROM message_queue WHERE status = 'pending'").get().cnt;
   if (pendingCount > 100) {
-    console.error(`[MsgQueue] WARNING: ${pendingCount} pending messages — Telegram API may be down`);
+    log.error({ pendingCount }, 'WARNING: too many pending messages — Telegram API may be down');
   }
   const failedCount = db.prepare("SELECT COUNT(*) as cnt FROM message_queue WHERE status = 'exhausted'").get().cnt;
   if (failedCount > 50) {
-    console.error(`[MsgQueue] WARNING: ${failedCount} exhausted messages — manual investigation needed`);
+    log.error({ failedCount }, 'WARNING: too many exhausted messages — manual investigation needed');
   }
 }
 
@@ -135,5 +138,5 @@ export function cleanupMessageQueue() {
   const result = db.prepare(
     "DELETE FROM message_queue WHERE status IN ('sent', 'exhausted') AND created_at < ?"
   ).run(cutoff);
-  if (result.changes > 0) console.log(`[MsgQueue] Cleaned up ${result.changes} old queue entries`);
+  if (result.changes > 0) log.info({ deleted: result.changes }, 'cleaned up old queue entries');
 }

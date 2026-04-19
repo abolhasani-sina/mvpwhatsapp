@@ -7,9 +7,19 @@ import { migrate } from './migrate.js';
 import routes from './routes.js';
 import authRoutes from './auth-routes.js';
 import { cleanupExpiredTokens } from './middleware/auth.js';
+import { createLogger } from './logger.js';
+import { requestLogger } from './middleware/requestLogger.js';
+import { metricsMiddleware, getMetrics, getContentType, messageQueueDepth, activeConversations } from './metrics.js';
+import healthRouter from './middleware/healthCheck.js';
+import { errorHandler, setupProcessErrorHandlers } from './middleware/errorHandler.js';
+import db from './db.js';
 
+const log = createLogger('server');
 const app = express();
 const PORT = process.env.PORT || 4000;
+
+// ── Process-level error handlers ──
+setupProcessErrorHandlers();
 
 // ── Security Headers ──
 app.use(helmet());
@@ -19,6 +29,10 @@ app.use(cors({
   origin: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map(s => s.trim()) : '*',
   credentials: true,
 }));
+
+// ── Observability middleware (before rate limiting so all requests are logged) ──
+app.use(requestLogger);
+app.use(metricsMiddleware);
 
 // ── Rate Limiting ──
 const limiter = rateLimit({
@@ -54,30 +68,40 @@ app.use(express.json({ limit: '10mb' }));
 
 // Run migrations on startup
 migrate();
-console.log('Database migrated.');
+log.info('database migrated');
 
+// ── Health check (no auth required) ──
+app.use('/api', healthRouter);
+
+// ── Prometheus metrics endpoint (no auth) ──
+app.get('/metrics', async (_req, res) => {
+  res.set('Content-Type', getContentType());
+  res.end(await getMetrics());
+});
+
+// ── Legacy health endpoint (backward compat) ──
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
 // ── Legacy endpoints (backward compat during transition) ──
-import db from './db.js';
-
 app.get('/builder', (_req, res) => {
-  // Try to load the latest business for mock user 1
   const biz = db.prepare(
     'SELECT * FROM businesses WHERE user_id = 1 ORDER BY id DESC LIMIT 1'
   ).get();
   if (!biz) return res.json({ data: null });
-
-  // Load full builder data via the same logic as /api/business/:id/builder
-  // For backward compat just return null and let frontend use new API
   res.json({ data: null });
 });
 
 app.post('/builder/save', (req, res) => {
-  // Legacy endpoint — no-op, frontend will switch to new API
   res.json({ success: true });
+});
+
+// ── Client error reporting (no auth — sent from ErrorBoundary) ──
+app.post('/api/client-error', (req, res) => {
+  const { message, stack, componentStack, url, timestamp } = req.body || {};
+  log.error({ clientError: true, message, stack, componentStack, url, timestamp }, 'client-side error');
+  res.json({ received: true });
 });
 
 // ── Public webhook (no auth — called by Telegram servers) ──
@@ -109,15 +133,19 @@ setInterval(cleanupTelegramUpdates, 60 * 60 * 1000);
 // Process message queue every 5 seconds
 setInterval(processMessageQueue, 5 * 1000);
 
-// ── Global error handler (hide stack traces from clients) ──
-app.use((err, _req, res, _next) => {
-  if (err.type === 'entity.parse.failed') {
-    return res.status(400).json({ error: 'Invalid JSON in request body' });
-  }
-  console.error('[Error]', err.message);
-  res.status(err.status || 500).json({ error: 'Internal server error' });
-});
+// ── Update gauge metrics every 30 seconds ──
+setInterval(() => {
+  try {
+    const pending = db.prepare("SELECT COUNT(*) as cnt FROM message_queue WHERE status = 'pending'").get();
+    messageQueueDepth.set(pending.cnt);
+    const active = db.prepare("SELECT COUNT(*) as cnt FROM conversations WHERE status = 'active'").get();
+    activeConversations.set(active.cnt);
+  } catch { /* ignore metric update failures */ }
+}, 30_000);
+
+// ── Global error handler ──
+app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`V2 server running on http://localhost:${PORT}`);
+  log.info({ port: PORT }, `V2 server running on http://localhost:${PORT}`);
 });
