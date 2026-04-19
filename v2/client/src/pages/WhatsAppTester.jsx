@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { API_BASE } from '../lib/api';
 
-const API = 'http://localhost:4000/api';
+const API = API_BASE;
 
 // ─── WhatsApp Design Tokens ──────────────────────────────────────────
 const WA = {
@@ -21,6 +22,60 @@ const WA = {
   overlayBg: 'rgba(0,0,0,0.45)',
   chatPattern: `url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='p' width='80' height='80' patternUnits='userSpaceOnUse'%3E%3Cpath d='M0 40 Q20 20 40 40 Q60 60 80 40' fill='none' stroke='%23d1cdc7' stroke-width='0.5' opacity='0.3'/%3E%3Ccircle cx='10' cy='10' r='1.5' fill='%23d1cdc7' opacity='0.2'/%3E%3Ccircle cx='70' cy='60' r='1' fill='%23d1cdc7' opacity='0.15'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='200' height='200' fill='url(%23p)'/%3E%3C/svg%3E")`,
 };
+
+// ─── Telegram Design Tokens ──────────────────────────────────────────
+const TG = {
+  bg: '#e6ebee',
+  headerBg: '#517da2',
+  headerText: '#fff',
+  bubbleBot: '#ffffff',
+  bubbleUser: '#effdde',
+  textPrimary: '#000000',
+  textSecondary: '#8e8e93',
+  buttonPill: '#e3f0ff',
+  buttonText: '#3390ec',
+  buttonBorder: '#bdd8f5',
+  listBtnBg: '#3390ec',
+  listBtnText: '#fff',
+  timestamp: '#8e8e93',
+  inputBg: '#f0f2f5',
+  overlayBg: 'rgba(0,0,0,0.45)',
+  chatPattern: 'none',
+  statusBarBg: '#4a7296',
+  appName: 'Telegram',
+  encryptionMsg: null,
+};
+
+// ─── Instagram Design Tokens ─────────────────────────────────────────
+const IG = {
+  bg: '#ffffff',
+  headerBg: '#ffffff',
+  headerText: '#262626',
+  bubbleBot: '#efefef',
+  bubbleUser: '#3797f0',
+  bubbleUserText: '#ffffff',
+  textPrimary: '#262626',
+  textSecondary: '#8e8e8e',
+  buttonPill: '#eff3f4',
+  buttonText: '#3797f0',
+  buttonBorder: '#dbdbdb',
+  listBtnBg: '#3797f0',
+  listBtnText: '#fff',
+  timestamp: '#8e8e8e',
+  inputBg: '#efefef',
+  overlayBg: 'rgba(0,0,0,0.45)',
+  chatPattern: 'none',
+  statusBarBg: '#ffffff',
+  appName: 'Instagram',
+  encryptionMsg: null,
+};
+
+const CHANNEL_THEMES = { whatsapp: WA, telegram: TG, instagram: IG };
+const CHANNEL_TABS = [
+  { key: 'whatsapp', label: 'WhatsApp', icon: '💬', color: '#25D366' },
+  { key: 'telegram', label: 'Telegram', icon: '✈️', color: '#0088cc' },
+  { key: 'instagram', label: 'Instagram', icon: '📸', color: '#E1306C' },
+];
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 function timeStamp() {
@@ -241,54 +296,62 @@ function createEngine(builderData) {
 // WhatsApp Message Renderers (Visual)
 // ═══════════════════════════════════════════════════════════════════════
 
-function BotBubble({ children, time }) {
+function BotBubble({ children, time, theme }) {
+  const t = theme || WA;
+  const isIG = t === IG;
   return (
     <div style={{ display: 'flex', justifyContent: 'flex-start', padding: '2px 12px', maxWidth: '100%' }}>
       <div style={{
-        background: WA.bubbleBot, borderRadius: '0 8px 8px 8px', padding: '6px 8px 4px',
-        maxWidth: '85%', boxShadow: '0 1px 0.5px rgba(11,20,26,0.13)', position: 'relative',
+        background: t.bubbleBot, borderRadius: isIG ? '18px 18px 18px 4px' : '0 8px 8px 8px', padding: '6px 8px 4px',
+        maxWidth: '85%', boxShadow: isIG ? 'none' : '0 1px 0.5px rgba(11,20,26,0.13)', position: 'relative',
       }}>
         {children}
         <div style={{ textAlign: 'right', marginTop: 2 }}>
-          <span style={{ fontSize: 11, color: WA.timestamp }}>{time}</span>
+          <span style={{ fontSize: 11, color: t.timestamp }}>{time}</span>
         </div>
       </div>
     </div>
   );
 }
 
-function UserBubble({ text, time }) {
+function UserBubble({ text, time, theme }) {
+  const t = theme || WA;
+  const isIG = t === IG;
   return (
     <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '2px 12px' }}>
       <div style={{
-        background: WA.bubbleUser, borderRadius: '8px 0 8px 8px', padding: '6px 8px 4px',
-        maxWidth: '85%', boxShadow: '0 1px 0.5px rgba(11,20,26,0.13)',
+        background: t.bubbleUser, borderRadius: isIG ? '18px 18px 4px 18px' : '8px 0 8px 8px', padding: '6px 8px 4px',
+        maxWidth: '85%', boxShadow: isIG ? 'none' : '0 1px 0.5px rgba(11,20,26,0.13)',
       }}>
-        <div style={{ fontSize: 14, color: WA.textPrimary, lineHeight: 1.45, wordBreak: 'break-word' }}>
+        <div style={{ fontSize: 14, color: isIG ? (t.bubbleUserText || t.textPrimary) : t.textPrimary, lineHeight: 1.45, wordBreak: 'break-word' }}>
           {text}
         </div>
         <div style={{ textAlign: 'right', marginTop: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 3 }}>
-          <span style={{ fontSize: 11, color: WA.timestamp }}>{time}</span>
-          <svg width="16" height="11" viewBox="0 0 16 11"><path d="M11.07 0L5.44 5.63 3.28 3.47 2 4.75l3.44 3.44 6.91-6.91z" fill="#53bdeb"/><path d="M14.07 0L8.44 5.63 7.28 4.47 6 5.75l2.44 2.44 6.91-6.91z" fill="#53bdeb"/></svg>
+          <span style={{ fontSize: 11, color: isIG ? '#ffffffaa' : t.timestamp }}>{time}</span>
+          {!isIG && <svg width="16" height="11" viewBox="0 0 16 11"><path d="M11.07 0L5.44 5.63 3.28 3.47 2 4.75l3.44 3.44 6.91-6.91z" fill="#53bdeb"/><path d="M14.07 0L8.44 5.63 7.28 4.47 6 5.75l2.44 2.44 6.91-6.91z" fill="#53bdeb"/></svg>}
         </div>
       </div>
     </div>
   );
 }
 
-function QuickReplyButtons({ buttons, onSelect }) {
+function QuickReplyButtons({ buttons, onSelect, theme }) {
+  const t = theme || WA;
+  const isTG = t === TG;
+  const isIG = t === IG;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '4px 12px 6px', maxWidth: '85%' }}>
+    <div style={{ display: 'flex', flexDirection: isTG ? 'row' : 'column', flexWrap: isTG ? 'wrap' : 'nowrap', gap: 6, padding: '4px 12px 6px', maxWidth: '85%' }}>
       {buttons.map((btn, i) => (
         <button key={btn.id || i} onClick={() => onSelect(btn)}
           style={{
-            background: '#fff', border: `1px solid ${WA.buttonBorder}`, borderRadius: 8,
-            padding: '9px 14px', fontSize: 14, fontWeight: 500, color: WA.buttonText,
+            background: isTG ? t.buttonPill : '#fff',
+            border: `1px solid ${t.buttonBorder}`, borderRadius: isIG ? 18 : isTG ? 16 : 8,
+            padding: isTG ? '7px 14px' : '9px 14px', fontSize: 14, fontWeight: 500, color: t.buttonText,
             cursor: 'pointer', textAlign: 'center', transition: 'background 0.15s',
-            boxShadow: '0 1px 0.5px rgba(11,20,26,0.08)',
+            boxShadow: isIG ? 'none' : '0 1px 0.5px rgba(11,20,26,0.08)',
           }}
-          onMouseEnter={e => e.target.style.background = WA.buttonPill}
-          onMouseLeave={e => e.target.style.background = '#fff'}
+          onMouseEnter={e => e.target.style.background = t.buttonPill}
+          onMouseLeave={e => e.target.style.background = isTG ? t.buttonPill : '#fff'}
         >
           {btn.title}
         </button>
@@ -406,9 +469,43 @@ export default function WhatsAppTester({ businessId }) {
   const [textInput, setTextInput] = useState('');
   const [waitingForText, setWaitingForText] = useState(false);
   const [conversationState, setConversationState] = useState(null);
+  const [previewChannel, setPreviewChannel] = useState('whatsapp');
+  const [activeChannel, setActiveChannel] = useState('whatsapp');
   const chatEndRef = useRef(null);
   const engineRef = useRef(null);
   const mediaCacheRef = useRef(new Map());
+  const conversationStateRef = useRef(null);
+  const lastTapRef = useRef({ id: null, ts: 0 });
+
+  useEffect(() => {
+    conversationStateRef.current = conversationState;
+  }, [conversationState]);
+
+  function appendBotMessage(msg) {
+    if (!msg) return;
+    setMessages(prev => {
+      const last = prev[prev.length - 1];
+      if (last?.from === 'bot' && JSON.stringify(last.msg) === JSON.stringify(msg)) {
+        return prev;
+      }
+      return [...prev, { from: 'bot', msg, time: timeStamp() }];
+    });
+  }
+
+  function appendBotMessages(items) {
+    if (!items || items.length === 0) return;
+    setMessages(prev => {
+      const next = [...prev];
+      for (const msg of items) {
+        const last = next[next.length - 1];
+        if (last?.from === 'bot' && JSON.stringify(last.msg) === JSON.stringify(msg)) {
+          continue;
+        }
+        next.push({ from: 'bot', msg, time: timeStamp() });
+      }
+      return next;
+    });
+  }
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -446,19 +543,68 @@ export default function WhatsAppTester({ businessId }) {
     setTextInput('');
   }, []);
 
+  // ── Advance to next flow step or confirmation ──
+  const advanceFlow = useCallback((nextIdx, answers) => {
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    if (nextIdx >= engine.steps.length) {
+      // All steps done → submit to server + show confirmation
+      const flowId = builderData?.flow?.id || null;
+
+      // Read delivery info from current state
+      setConversationState(prev => {
+        const deliveryMethod = prev?.deliveryMethod || 'none';
+        const deliveryStaffId = prev?.deliveryStaffId || null;
+
+        // POST real submission
+        fetch(`${API}/business/${businessId}/submissions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: answers, flowId, deliveryMethod, deliveryStaffId }),
+        }).catch(err => console.error('Failed to submit:', err));
+
+        return { ...prev, phase: 'confirmed', answers };
+      });
+
+      setTimeout(() => {
+        const conf = engine.getConfirmation(answers);
+        appendBotMessage(conf);
+        setWaitingForText(false);
+      }, 400);
+      return;
+    }
+
+    setTimeout(() => {
+      const stepMsg = engine.getFlowStepMessage(nextIdx);
+      if (stepMsg) {
+        appendBotMessage(stepMsg);
+        setConversationState(prev => ({
+          ...prev, flowStep: nextIdx, answers,
+        }));
+        setWaitingForText(stepMsg.type === 'text');
+      }
+    }, 400);
+  }, [builderData, businessId]);
+
   // ── Handle user selecting a button/list item ──
   const handleSelect = useCallback((item) => {
     setListOverlay(null);
     const engine = engineRef.current;
     if (!engine) return;
-    const state = conversationState;
     const now = timeStamp();
+    const id = item.id;
+
+    // Ignore same button/list tap if it occurs too quickly (double click/tap).
+    if (lastTapRef.current.id === id && now && Date.now() - lastTapRef.current.ts < 450) {
+      return;
+    }
+    lastTapRef.current = { id, ts: Date.now() };
 
     // Add user message
     setMessages(prev => [...prev, { from: 'user', text: item.title, time: now }]);
 
     // Determine next action based on item id
-    const id = item.id;
 
     // ── Main Menu / New Booking → restart
     if (id === 'main_menu' || id === 'new_booking') {
@@ -470,7 +616,7 @@ export default function WhatsAppTester({ businessId }) {
     if (id === 'go_back') {
       setTimeout(() => {
         const welcome = engine.getWelcome();
-        setMessages(prev => [...prev, { from: 'bot', msg: welcome, time: timeStamp() }]);
+        appendBotMessage(welcome);
         setConversationState(prev => ({ ...prev, phase: 'welcome' }));
       }, 400);
       return;
@@ -483,21 +629,18 @@ export default function WhatsAppTester({ businessId }) {
       if (!btn) return;
 
       if (btn.behavior === 'menu') {
-        // Show categories as a simple list
         setTimeout(() => {
           const menuMsg = engine.getChildrenList(btn.children || [], 'Here are our service categories — pick one to explore! ✨', 'Browse Services');
-          setMessages(prev => [...prev, { from: 'bot', msg: menuMsg, time: timeStamp() }]);
+          appendBotMessage(menuMsg);
           setConversationState(prev => ({ ...prev, phase: 'browsing_menu', menuPath: [btnId] }));
         }, 400);
         return;
       }
 
       if (btn.behavior === 'info') {
-        // Show info page — send each media as separate message, then text+buttons
         setTimeout(() => {
           const infoMsgs = engine.getInfoMessage(btn);
-          const botMessages = infoMsgs.map(m => ({ from: 'bot', msg: m, time: timeStamp() }));
-          setMessages(prev => [...prev, ...botMessages]);
+          appendBotMessages(infoMsgs);
           setConversationState(prev => ({ ...prev, phase: 'viewing_info', currentInfo: btn }));
         }, 400);
         return;
@@ -511,22 +654,19 @@ export default function WhatsAppTester({ businessId }) {
       if (!btn) return;
 
       if (btn.behavior === 'menu' && btn.children?.length) {
-        // Drill into category — show its children
         setTimeout(() => {
           const cleanLabel = btn.label.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim();
           const menuMsg = engine.getChildrenList(btn.children, `Great choice! Here\'s what we offer in *${cleanLabel}* 👇`, 'Browse');
-          setMessages(prev => [...prev, { from: 'bot', msg: menuMsg, time: timeStamp() }]);
+          appendBotMessage(menuMsg);
           setConversationState(prev => ({ ...prev, menuPath: [...prev.menuPath, btnId] }));
         }, 400);
         return;
       }
 
       if (btn.behavior === 'info' && btn.infoPage) {
-        // Show info page — send each media as separate message, then text+buttons
         setTimeout(() => {
           const infoMsgs = engine.getInfoMessage(btn);
-          const botMessages = infoMsgs.map(m => ({ from: 'bot', msg: m, time: timeStamp() }));
-          setMessages(prev => [...prev, ...botMessages]);
+          appendBotMessages(infoMsgs);
           setConversationState(prev => ({ ...prev, phase: 'viewing_info', currentInfo: btn }));
         }, 400);
         return;
@@ -536,39 +676,45 @@ export default function WhatsAppTester({ businessId }) {
     // ── Book button from info page → start flow ──
     if (id.startsWith('book_')) {
       const actionBtnId = Number(id.replace('book_', ''));
-      const serviceLabel = state?.currentInfo?.label || '';
-      // Find the action button to get delivery info
-      const infoBtn = state?.currentInfo;
+      const prevState = conversationStateRef.current || {};
+      const serviceLabel = prevState.currentInfo?.label || '';
+      const infoBtn = prevState.currentInfo;
       const actionBtn = infoBtn?.infoPage?.actionButtons?.find(a => a.id === actionBtnId);
       const deliveryMethod = actionBtn?.deliveryMethod || 'none';
       const deliveryStaffId = actionBtn?.deliveryStaffId || null;
 
       setTimeout(() => {
-        const newAnswers = { ...state.answers };
-        // Check if first step is select_from_menu — pre-fill with this service
+        const newAnswers = { ...(prevState.answers || {}) };
         if (engine.steps.length > 0 && engine.steps[0].type === 'select_from_menu') {
           newAnswers[engine.steps[0].label || engine.steps[0].key] = serviceLabel;
-          // Skip to step 1
           const stepMsg = engine.getFlowStepMessage(1);
           if (stepMsg) {
-            setMessages(prev => [...prev, { from: 'bot', msg: stepMsg, time: timeStamp() }]);
-            setConversationState(prev => ({
-              ...prev, phase: 'flow', flowStep: 1, answers: newAnswers,
-              deliveryMethod, deliveryStaffId,
+            appendBotMessage(stepMsg);
+            setConversationState(p => ({
+              ...p,
+              phase: 'flow',
+              flowStep: 1,
+              answers: newAnswers,
+              deliveryMethod,
+              deliveryStaffId,
             }));
-            if (stepMsg.type === 'text') setWaitingForText(true);
+            setWaitingForText(stepMsg.type === 'text');
           }
           return;
         }
-        // Else start from step 0
+
         const stepMsg = engine.getFlowStepMessage(0);
         if (stepMsg) {
-          setMessages(prev => [...prev, { from: 'bot', msg: stepMsg, time: timeStamp() }]);
-          setConversationState(prev => ({
-            ...prev, phase: 'flow', flowStep: 0, answers: newAnswers,
-            deliveryMethod, deliveryStaffId,
+          appendBotMessage(stepMsg);
+          setConversationState(p => ({
+            ...p,
+            phase: 'flow',
+            flowStep: 0,
+            answers: newAnswers,
+            deliveryMethod,
+            deliveryStaffId,
           }));
-          if (stepMsg.type === 'text') setWaitingForText(true);
+          setWaitingForText(stepMsg.type === 'text');
         }
       }, 400);
       return;
@@ -581,60 +727,21 @@ export default function WhatsAppTester({ businessId }) {
         return;
       }
 
-      const step = engine.steps[state.flowStep];
+      const prevState = conversationStateRef.current || {};
+      const step = engine.steps[prevState.flowStep];
       if (step) {
         const label = step.label || step.key;
-        const newAnswers = { ...state.answers, [label]: item.title };
-        advanceFlow(state.flowStep + 1, newAnswers);
+        const newAnswers = { ...(prevState.answers || {}), [label]: item.title };
+        advanceFlow((prevState.flowStep || 0) + 1, newAnswers);
       }
       return;
     }
-  }, [conversationState, startConversation]);
-
-  // ── Advance to next flow step or confirmation ──
-  const advanceFlow = useCallback((nextIdx, answers) => {
-    const engine = engineRef.current;
-    if (!engine) return;
-
-    if (nextIdx >= engine.steps.length) {
-      // All steps done → submit to server + show confirmation
-      const flowId = builderData?.flow?.id || null;
-      const deliveryMethod = conversationState?.deliveryMethod || 'none';
-      const deliveryStaffId = conversationState?.deliveryStaffId || null;
-
-      // POST real submission
-      fetch(`${API}/business/${businessId}/submissions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: answers, flowId, deliveryMethod, deliveryStaffId }),
-      }).catch(err => console.error('Failed to submit:', err));
-
-      setTimeout(() => {
-        const conf = engine.getConfirmation(answers);
-        setMessages(prev => [...prev, { from: 'bot', msg: conf, time: timeStamp() }]);
-        setConversationState(prev => ({ ...prev, phase: 'confirmed', answers }));
-        setWaitingForText(false);
-      }, 400);
-      return;
-    }
-
-    setTimeout(() => {
-      const stepMsg = engine.getFlowStepMessage(nextIdx);
-      if (stepMsg) {
-        setMessages(prev => [...prev, { from: 'bot', msg: stepMsg, time: timeStamp() }]);
-        setConversationState(prev => ({
-          ...prev, flowStep: nextIdx, answers,
-        }));
-        setWaitingForText(stepMsg.type === 'text');
-      }
-    }, 400);
-  }, []);
+  }, [startConversation, advanceFlow]);
 
   // ── Handle text input (for text steps & manual input) ──
   const handleSendText = useCallback(() => {
     if (!textInput.trim() || !waitingForText) return;
     const engine = engineRef.current;
-    const state = conversationState;
     const now = timeStamp();
     const value = textInput.trim();
 
@@ -642,18 +749,20 @@ export default function WhatsAppTester({ businessId }) {
     setTextInput('');
     setWaitingForText(false);
 
-    const step = engine.steps[state.flowStep];
+    const prevState = conversationStateRef.current || {};
+    const step = engine.steps[prevState.flowStep];
     if (step) {
       const label = step.label || step.key;
-      const newAnswers = { ...state.answers, [label]: value };
-      advanceFlow(state.flowStep + 1, newAnswers);
+      const newAnswers = { ...(prevState.answers || {}), [label]: value };
+      advanceFlow((prevState.flowStep || 0) + 1, newAnswers);
     }
-  }, [textInput, waitingForText, conversationState, advanceFlow]);
+  }, [textInput, waitingForText, advanceFlow]);
 
   // ── Render a single message ──
   function renderMessage(msg, idx) {
+    const t = CHANNEL_THEMES[activeChannel] || WA;
     if (msg.from === 'user') {
-      return <UserBubble key={idx} text={msg.text} time={msg.time} />;
+      return <UserBubble key={idx} text={msg.text} time={msg.time} theme={t} />;
     }
 
     const m = msg.msg;
@@ -661,7 +770,7 @@ export default function WhatsAppTester({ businessId }) {
 
     if (m.type === 'image') {
       return (
-        <BotBubble key={idx} time={msg.time}>
+        <BotBubble key={idx} time={msg.time} theme={t}>
           <MediaHeader media={m.media} businessId={businessId} cacheRef={mediaCacheRef} />
         </BotBubble>
       );
@@ -669,8 +778,8 @@ export default function WhatsAppTester({ businessId }) {
 
     if (m.type === 'text') {
       return (
-        <BotBubble key={idx} time={msg.time}>
-          <div style={{ fontSize: 14, color: WA.textPrimary, lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+        <BotBubble key={idx} time={msg.time} theme={t}>
+          <div style={{ fontSize: 14, color: t.textPrimary, lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
             {renderFormattedText(m.body)}
           </div>
         </BotBubble>
@@ -680,21 +789,73 @@ export default function WhatsAppTester({ businessId }) {
     if (m.type === 'buttons') {
       return (
         <div key={idx}>
-          <BotBubble time={msg.time}>
-            <div style={{ fontSize: 14, color: WA.textPrimary, lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          <BotBubble time={msg.time} theme={t}>
+            <div style={{ fontSize: 14, color: t.textPrimary, lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
               {renderFormattedText(m.body)}
             </div>
           </BotBubble>
-          <QuickReplyButtons buttons={m.buttons} onSelect={handleSelect} />
+          <QuickReplyButtons buttons={m.buttons} onSelect={handleSelect} theme={t} />
         </div>
       );
     }
 
     if (m.type === 'list') {
+      const isTG = t === TG;
+      const isIG = t === IG;
+      // Telegram: render as inline keyboard buttons
+      // Instagram: render as quick reply pills
+      if (isTG || isIG) {
+        const allRows = m.sections.flatMap(s => s.rows);
+        return (
+          <div key={idx}>
+            <BotBubble time={msg.time} theme={t}>
+              <div style={{ fontSize: 14, color: t.textPrimary, lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {renderFormattedText(m.body)}
+              </div>
+              {isTG && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
+                  {allRows.map((row, ri) => (
+                    <button key={row.id || ri} onClick={() => handleSelect(row)}
+                      style={{
+                        background: t.buttonPill, border: 'none', borderRadius: 8,
+                        padding: '9px 12px', fontSize: 14, fontWeight: 500, color: t.buttonText,
+                        cursor: 'pointer', textAlign: 'center', transition: 'opacity 0.15s',
+                        width: '100%',
+                      }}
+                      onMouseEnter={e => e.target.style.opacity = '0.8'}
+                      onMouseLeave={e => e.target.style.opacity = '1'}
+                    >
+                      {row.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </BotBubble>
+            {isIG && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '4px 12px 6px', maxWidth: '85%' }}>
+                {allRows.map((row, ri) => (
+                  <button key={row.id || ri} onClick={() => handleSelect(row)}
+                    style={{
+                      background: '#fff', border: `1px solid ${t.buttonBorder}`, borderRadius: 18,
+                      padding: '8px 16px', fontSize: 14, fontWeight: 500, color: t.buttonText,
+                      cursor: 'pointer', textAlign: 'center', transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => e.target.style.background = t.buttonPill}
+                    onMouseLeave={e => e.target.style.background = '#fff'}
+                  >
+                    {row.title}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      }
+      // WhatsApp: dropdown list
       return (
         <div key={idx}>
-          <BotBubble time={msg.time}>
-            <div style={{ fontSize: 14, color: WA.textPrimary, lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          <BotBubble time={msg.time} theme={t}>
+            <div style={{ fontSize: 14, color: t.textPrimary, lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
               {renderFormattedText(m.body)}
             </div>
           </BotBubble>
@@ -726,11 +887,37 @@ export default function WhatsAppTester({ businessId }) {
   // ═════════════════════════════════════════════════════════════════════
   // RENDER
   // ═════════════════════════════════════════════════════════════════════
+  const theme = CHANNEL_THEMES[activeChannel] || WA;
+  const isWA = activeChannel === 'whatsapp';
+  const isTG = activeChannel === 'telegram';
+  const isIG = activeChannel === 'instagram';
+
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%',
-      padding: 24, background: '#f0f2f5',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%',
+      padding: '12px 24px 24px', background: '#f0f2f5',
     }}>
+      {/* Channel Tabs */}
+      <div style={{
+        display: 'flex', gap: 4, marginBottom: 16, background: '#fff', borderRadius: 12,
+        padding: 4, boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+      }}>
+        {CHANNEL_TABS.map(ch => (
+          <button key={ch.key} onClick={() => { setActiveChannel(ch.key); setPreviewChannel(ch.key); }}
+            style={{
+              padding: '8px 20px', fontSize: 13, fontWeight: activeChannel === ch.key ? 700 : 500,
+              background: activeChannel === ch.key ? ch.color : 'transparent',
+              color: activeChannel === ch.key ? '#fff' : '#666',
+              border: 'none', borderRadius: 8, cursor: 'pointer',
+              transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            <span>{ch.icon}</span> {ch.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
       {/* Phone Frame */}
       <div style={{
         width: 375, height: 720, borderRadius: 40, overflow: 'hidden',
@@ -739,62 +926,69 @@ export default function WhatsAppTester({ businessId }) {
       }}>
         {/* Status Bar */}
         <div style={{
-          height: 44, background: '#075e54', display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', padding: '0 20px', fontSize: 12, color: '#ffffffcc',
-          fontWeight: 500,
+          height: 44, background: isIG ? '#fff' : (isTG ? TG.statusBarBg : '#075e54'),
+          display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', padding: '0 20px', fontSize: 12,
+          color: isIG ? '#000' : '#ffffffcc', fontWeight: 500,
         }}>
           <span>9:41</span>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <svg width="16" height="12" viewBox="0 0 16 12"><rect x="0" y="6" width="3" height="6" rx="0.5" fill="#ffffffcc"/><rect x="4.5" y="4" width="3" height="8" rx="0.5" fill="#ffffffcc"/><rect x="9" y="2" width="3" height="10" rx="0.5" fill="#ffffffcc"/><rect x="13.5" y="0" width="2.5" height="12" rx="0.5" fill="#ffffff66"/></svg>
-            <svg width="22" height="12" viewBox="0 0 22 12"><rect x="0" y="1" width="18" height="10" rx="2" stroke="#ffffffcc" strokeWidth="1" fill="none"/><rect x="1.5" y="2.5" width="13" height="7" rx="1" fill="#ffffffcc"/><rect x="19" y="4" width="2" height="4" rx="0.5" fill="#ffffffcc"/></svg>
+            <svg width="16" height="12" viewBox="0 0 16 12"><rect x="0" y="6" width="3" height="6" rx="0.5" fill={isIG ? '#000' : '#ffffffcc'}/><rect x="4.5" y="4" width="3" height="8" rx="0.5" fill={isIG ? '#000' : '#ffffffcc'}/><rect x="9" y="2" width="3" height="10" rx="0.5" fill={isIG ? '#000' : '#ffffffcc'}/><rect x="13.5" y="0" width="2.5" height="12" rx="0.5" fill={isIG ? '#00000066' : '#ffffff66'}/></svg>
+            <svg width="22" height="12" viewBox="0 0 22 12"><rect x="0" y="1" width="18" height="10" rx="2" stroke={isIG ? '#000' : '#ffffffcc'} strokeWidth="1" fill="none"/><rect x="1.5" y="2.5" width="13" height="7" rx="1" fill={isIG ? '#000' : '#ffffffcc'}/><rect x="19" y="4" width="2" height="4" rx="0.5" fill={isIG ? '#000' : '#ffffffcc'}/></svg>
           </div>
         </div>
 
-        {/* WhatsApp Header */}
+        {/* App Header */}
         <div style={{
-          background: WA.headerBg, padding: '8px 12px 10px', display: 'flex', alignItems: 'center', gap: 10,
+          background: theme.headerBg, padding: '8px 12px 10px', display: 'flex', alignItems: 'center', gap: 10,
+          borderBottom: isIG ? '1px solid #dbdbdb' : 'none',
         }}>
           <button onClick={startConversation} style={{
-            background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0, display: 'flex',
+            background: 'none', border: 'none', color: theme.headerText, cursor: 'pointer', padding: 0, display: 'flex',
           }} title="Restart conversation">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={theme.headerText} strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
           <div style={{
-            width: 36, height: 36, borderRadius: '50%', background: '#00a884',
+            width: 36, height: 36, borderRadius: '50%',
+            background: isIG ? 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' : isTG ? '#3390ec' : '#00a884',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 16, fontWeight: 700, color: '#fff',
           }}>
             {(builderData.business?.name || 'B')[0].toUpperCase()}
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: WA.headerText }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: theme.headerText }}>
               {builderData.business?.name || 'Your Business'}
             </div>
-            <div style={{ fontSize: 12, color: '#ffffffaa' }}>online</div>
+            <div style={{ fontSize: 12, color: isIG ? '#8e8e8e' : '#ffffffaa' }}>
+              {isIG ? 'Active now' : isTG ? 'bot' : 'online'}
+            </div>
           </div>
           <button onClick={startConversation} style={{
-            background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 4,
+            background: 'none', border: 'none', color: theme.headerText, cursor: 'pointer', padding: 4,
             borderRadius: 20, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 500,
           }} title="Restart conversation">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.headerText} strokeWidth="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
           </button>
         </div>
 
         {/* Chat Area */}
         <div style={{
-          flex: 1, overflow: 'auto', background: WA.bg, backgroundImage: WA.chatPattern,
+          flex: 1, overflow: 'auto', background: theme.bg,
+          backgroundImage: isWA ? WA.chatPattern : 'none',
           display: 'flex', flexDirection: 'column', gap: 4, padding: '8px 0',
           position: 'relative',
         }}>
           {/* Date chip */}
           <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 8px' }}>
             <span style={{
-              background: '#e1f2fb', borderRadius: 8, padding: '4px 12px',
+              background: isIG ? '#efefef' : isTG ? '#cce5ff' : '#e1f2fb', borderRadius: 8, padding: '4px 12px',
               fontSize: 12, color: '#54656f', fontWeight: 500,
             }}>TODAY</span>
           </div>
 
-          {/* Encryption notice */}
+          {/* Encryption notice (WhatsApp only) */}
+          {isWA && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '0 24px 8px' }}>
             <span style={{
               background: '#fdf8c8', borderRadius: 6, padding: '6px 10px', textAlign: 'center',
@@ -803,6 +997,7 @@ export default function WhatsAppTester({ businessId }) {
               🔒 Messages to this chat and calls are secured with end-to-end encryption.
             </span>
           </div>
+          )}
 
           {messages.map((msg, i) => renderMessage(msg, i))}
           <div ref={chatEndRef} />
@@ -820,29 +1015,30 @@ export default function WhatsAppTester({ businessId }) {
 
         {/* Input Bar */}
         <div style={{
-          background: '#f0f2f5', padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 6,
-          borderTop: '1px solid #e9edef',
+          background: isIG ? '#fff' : '#f0f2f5', padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 6,
+          borderTop: isIG ? '1px solid #dbdbdb' : '1px solid #e9edef',
         }}>
           <div style={{ fontSize: 22, cursor: 'pointer', color: '#54656f', padding: '0 2px' }}>😊</div>
-          <div style={{ fontSize: 20, cursor: 'pointer', color: '#54656f', padding: '0 2px' }}>📎</div>
+          {!isIG && <div style={{ fontSize: 20, cursor: 'pointer', color: '#54656f', padding: '0 2px' }}>📎</div>}
           <input
             type="text"
             value={textInput}
             onChange={e => setTextInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSendText()}
-            placeholder={waitingForText ? 'Type your answer…' : 'Type a message'}
+            placeholder={waitingForText ? 'Type your answer…' : (isIG ? 'Message...' : 'Type a message')}
             disabled={!waitingForText}
             style={{
-              flex: 1, border: 'none', outline: 'none', borderRadius: 20,
-              padding: '9px 14px', fontSize: 14, background: '#fff',
-              color: WA.textPrimary, opacity: waitingForText ? 1 : 0.5,
+              flex: 1, border: isIG ? '1px solid #dbdbdb' : 'none', outline: 'none', borderRadius: 20,
+              padding: '9px 14px', fontSize: 14, background: isIG ? '#fff' : '#fff',
+              color: theme.textPrimary, opacity: waitingForText ? 1 : 0.5,
             }}
           />
           <button
             onClick={waitingForText ? handleSendText : undefined}
             style={{
               width: 40, height: 40, borderRadius: '50%', border: 'none',
-              background: WA.buttonText, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: isIG ? '#3797f0' : isTG ? '#3390ec' : WA.buttonText,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: waitingForText ? 'pointer' : 'default', opacity: waitingForText && textInput.trim() ? 1 : 0.6,
             }}
           >
@@ -856,96 +1052,91 @@ export default function WhatsAppTester({ businessId }) {
 
         {/* Home Indicator */}
         <div style={{
-          height: 20, background: '#f0f2f5', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          height: 20, background: isIG ? '#fff' : '#f0f2f5', display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <div style={{ width: 120, height: 4, borderRadius: 2, background: '#bbb' }} />
         </div>
       </div>
 
-      {/* Side Panel — Payload Inspector */}
-      <div style={{
-        width: 380, height: 720, marginLeft: 32, borderRadius: 12, overflow: 'hidden',
-        background: '#1e1e2e', border: '1px solid #2d2d44', display: 'flex', flexDirection: 'column',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-      }}>
-        <div style={{
-          padding: '14px 16px', borderBottom: '1px solid #2d2d44', fontSize: 13, fontWeight: 600,
-          color: '#a0a0b8', textTransform: 'uppercase', letterSpacing: 1,
-          display: 'flex', alignItems: 'center', gap: 8,
-        }}>
-          <span style={{ fontSize: 15 }}>📡</span> API Payload Inspector
-        </div>
-        <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
-          {messages.filter(m => m.from === 'bot' && m.msg).map((m, i) => {
-            const payload = buildApiPayload(m.msg);
-            return (
-              <details key={i} style={{ marginBottom: 8 }}>
-                <summary style={{
-                  fontSize: 12, color: '#8888aa', cursor: 'pointer', padding: '6px 8px',
-                  borderRadius: 6, background: '#252538', fontFamily: 'monospace',
-                  userSelect: 'none',
-                }}>
-                  <span style={{ color: '#e2b714', fontWeight: 600 }}>{m.msg.type}</span>
-                  {' — '}
-                  <span style={{ color: '#aaa' }}>{(m.msg.body || '').slice(0, 40)}…</span>
-                </summary>
-                <pre style={{
-                  fontSize: 11, color: '#c8c8e0', background: '#1a1a2a', borderRadius: 6,
-                  padding: 10, margin: '4px 0 0', overflow: 'auto', maxHeight: 300,
-                  lineHeight: 1.5, fontFamily: '"Fira Code", "Consolas", monospace',
-                  whiteSpace: 'pre-wrap', wordBreak: 'break-all',
-                }}>
-                  {JSON.stringify(payload, null, 2)}
-                </pre>
-              </details>
-            );
-          })}
-        </div>
-      </div>
+      </div>{/* close flex row */}
     </div>
   );
 }
 
-// ── Build the real Meta Graph API payload from our internal message ──
-function buildApiPayload(msg) {
+// ── Channel-aware payload builder ──
+function buildChannelPayload(msg, channel) {
+  if (channel === 'telegram') return buildTelegramPayload(msg);
+  if (channel === 'instagram') return buildInstagramPayload(msg);
+  return buildWhatsAppPayload(msg);
+}
+
+function buildWhatsAppPayload(msg) {
   const to = '{{recipient_phone}}';
   const base = { messaging_product: 'whatsapp', recipient_type: 'individual', to };
 
   if (msg.type === 'image') {
     return { ...base, type: 'image', image: { link: `{{media_url}}/${msg.media?.id}` } };
   }
-
   if (msg.type === 'text') {
     return { ...base, type: 'text', text: { body: msg.body } };
   }
-
   if (msg.type === 'buttons') {
-    const interactive = {
-      type: 'button',
-      body: { text: msg.body },
-      action: {
-        buttons: msg.buttons.map(b => ({
-          type: 'reply',
-          reply: { id: b.id, title: b.title },
-        })),
-      },
-    };
-    return { ...base, type: 'interactive', interactive };
+    return { ...base, type: 'interactive', interactive: {
+      type: 'button', body: { text: msg.body },
+      action: { buttons: msg.buttons.map(b => ({ type: 'reply', reply: { id: b.id, title: b.title } })) },
+    }};
   }
-
   if (msg.type === 'list') {
-    return {
-      ...base, type: 'interactive',
-      interactive: {
-        type: 'list',
-        body: { text: msg.body },
-        action: {
-          button: msg.buttonLabel,
-          sections: msg.sections,
-        },
-      },
+    return { ...base, type: 'interactive', interactive: {
+      type: 'list', body: { text: msg.body },
+      action: { button: msg.buttonLabel, sections: msg.sections },
+    }};
+  }
+  return base;
+}
+
+function buildTelegramPayload(msg) {
+  const chatId = '{{chat_id}}';
+
+  if (msg.type === 'image') {
+    return { method: 'sendPhoto', chat_id: chatId, photo: `{{media_url}}/${msg.media?.id}`, caption: msg.body || undefined, parse_mode: 'HTML' };
+  }
+  if (msg.type === 'text') {
+    return { method: 'sendMessage', chat_id: chatId, text: msg.body, parse_mode: 'HTML' };
+  }
+  if (msg.type === 'buttons') {
+    return { method: 'sendMessage', chat_id: chatId, text: msg.body, parse_mode: 'HTML',
+      reply_markup: { inline_keyboard: msg.buttons.map(b => [{ text: b.title, callback_data: b.id }]) },
     };
   }
+  if (msg.type === 'list') {
+    const allRows = (msg.sections || []).flatMap(s => s.rows || []);
+    return { method: 'sendMessage', chat_id: chatId, text: msg.body, parse_mode: 'HTML',
+      reply_markup: { inline_keyboard: allRows.map(r => [{ text: r.title, callback_data: r.id }]) },
+    };
+  }
+  return { method: 'sendMessage', chat_id: chatId, text: msg.body || '(empty)', parse_mode: 'HTML' };
+}
 
-  return base;
+function buildInstagramPayload(msg) {
+  const recipient = { id: '{{recipient_id}}' };
+
+  if (msg.type === 'image') {
+    return { recipient, message: { attachment: { type: 'image', payload: { url: `{{media_url}}/${msg.media?.id}`, is_reusable: true } } } };
+  }
+  if (msg.type === 'text') {
+    return { recipient, message: { text: msg.body } };
+  }
+  if (msg.type === 'buttons') {
+    return { recipient, message: { text: msg.body,
+      quick_replies: msg.buttons.map(b => ({ content_type: 'text', title: b.title, payload: b.id })),
+    }};
+  }
+  if (msg.type === 'list') {
+    const allRows = (msg.sections || []).flatMap(s => s.rows || []);
+    return { recipient, message: { text: msg.body,
+      quick_replies: allRows.slice(0, 13).map(r => ({ content_type: 'text', title: r.title, payload: r.id })),
+    }};
+  }
+  return { recipient, message: { text: msg.body || '(empty)' } };
 }

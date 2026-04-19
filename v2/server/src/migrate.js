@@ -168,6 +168,37 @@ export function migrate() {
     CREATE INDEX IF NOT EXISTS idx_submissions_business ON submissions(business_id);
     CREATE INDEX IF NOT EXISTS idx_staff_business ON staff(business_id);
     CREATE INDEX IF NOT EXISTS idx_flow_destinations_flow ON flow_destinations(flow_id);
+    CREATE TABLE IF NOT EXISTS customers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      channel TEXT NOT NULL CHECK(channel IN ('whatsapp', 'telegram', 'instagram')),
+      channel_user_id TEXT NOT NULL,
+      name TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_unique
+      ON customers(business_id, channel, channel_user_id);
+
+    CREATE TABLE IF NOT EXISTS conversations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id INTEGER NOT NULL,
+      business_id INTEGER NOT NULL,
+      channel TEXT NOT NULL,
+      state TEXT DEFAULT '{}',
+      status TEXT DEFAULT 'active' CHECK(status IN ('active', 'completed')),
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_conversations_customer ON conversations(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_conversations_business ON conversations(business_id);
+    CREATE INDEX IF NOT EXISTS idx_conversations_active
+      ON conversations(customer_id, status) WHERE status = 'active';
+
     CREATE INDEX IF NOT EXISTS idx_button_media_button ON button_media(button_id);
     CREATE INDEX IF NOT EXISTS idx_button_media_business ON button_media(business_id);
   `);

@@ -5,13 +5,15 @@ import { fetchAnalytics } from '../lib/api';
 export default function Dashboard({ businessId, onNavigate }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!businessId) return;
     setLoading(true);
+    setError(null);
     fetchAnalytics(businessId)
       .then((d) => setData(d))
-      .catch(() => {})
+      .catch(() => setError('Failed to load dashboard data.'))
       .finally(() => setLoading(false));
   }, [businessId]);
 
@@ -25,7 +27,7 @@ export default function Dashboard({ businessId, onNavigate }) {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to BotDesk</h2>
           <p className="text-gray-500 mb-8 max-w-md mx-auto">
-            Build your AI WhatsApp receptionist in minutes. Pick a template, customize it, and start receiving customer requests.
+            Build your AI chat bot in minutes. Pick a template, customize it, and start receiving customer requests on WhatsApp, Telegram & Instagram.
           </p>
           <button
             onClick={() => onNavigate?.('builder')}
@@ -59,11 +61,16 @@ export default function Dashboard({ businessId, onNavigate }) {
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
-        <p className="text-sm text-gray-500 mt-1">Overview of your WhatsApp bot activity</p>
+        <p className="text-sm text-gray-500 mt-1">Overview of your bot activity</p>
       </div>
 
       {loading ? (
         <div className="text-center py-12 text-gray-400">Loading analytics…</div>
+      ) : error ? (
+        <div className="text-center py-12">
+          <p className="text-red-500 text-sm mb-3">{error}</p>
+          <button onClick={() => { setError(null); setLoading(true); fetchAnalytics(businessId).then(d => setData(d)).catch(() => setError('Failed to load.')).finally(() => setLoading(false)); }} className="bg-emerald-500 text-white border-none rounded-lg px-4 py-2 text-sm cursor-pointer">Retry</button>
+        </div>
       ) : (
         <>
           {/* Stat cards */}

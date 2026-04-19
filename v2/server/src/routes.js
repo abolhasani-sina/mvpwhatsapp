@@ -5,7 +5,13 @@ import { Router } from 'express';
 import db from './db.js';
 import { sendTelegramNotification, sendTelegramToChat } from './telegram.js';
 import { seedBusiness } from './seed.js';
-import { renderWelcome, renderFlowStep, renderInfoPage, renderConfirmation, renderFullFlow } from './whatsapp-renderer.js';
+import * as whatsappRenderer from './renderers/whatsapp.js';
+import * as telegramRenderer from './renderers/telegram.js';
+import * as instagramRenderer from './renderers/instagram.js';
+import { startPolling, stopPolling, getPollingStatus, handleWebhook } from './telegram-bot.js';
+
+const RENDERERS = { whatsapp: whatsappRenderer, telegram: telegramRenderer, instagram: instagramRenderer };
+const { renderWelcome, renderFlowStep, renderInfoPage, renderConfirmation, renderFullFlow } = whatsappRenderer;
 
 const router = Router();
 
@@ -92,6 +98,7 @@ router.post('/business/:id/apply-template', (req, res) => {
     let flowId;
     if (existingFlow) {
       flowId = existingFlow.id;
+      // flow_destinations reference flows(id), not flow_steps — they survive this delete
       db.prepare('DELETE FROM flow_steps WHERE flow_id = ?').run(flowId);
     } else {
       const flowRow = db.prepare('INSERT INTO flows (business_id, name) VALUES (?, ?)').run(businessId, 'Booking Flow');
@@ -159,8 +166,13 @@ router.post('/business/:id/apply-template', (req, res) => {
     }
   });
 
-  txn();
-  res.json({ success: true });
+  try {
+    txn();
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to apply template:', err);
+    res.status(500).json({ error: 'Failed to apply template' });
+  }
 });
 
 // ──────────────────────────────────────────────
@@ -176,9 +188,12 @@ router.get('/business/:id/config', (req, res) => {
 
 router.put('/business/:id/config', (req, res) => {
   const { welcomeMessage } = req.body;
-  db.prepare(
-    'UPDATE bot_configs SET welcome_message = ? WHERE business_id = ?'
-  ).run(welcomeMessage, req.params.id);
+  const existing = db.prepare('SELECT id FROM bot_configs WHERE business_id = ?').get(req.params.id);
+  if (existing) {
+    db.prepare('UPDATE bot_configs SET welcome_message = ? WHERE business_id = ?').run(welcomeMessage, req.params.id);
+  } else {
+    db.prepare('INSERT INTO bot_configs (business_id, welcome_message) VALUES (?, ?)').run(req.params.id, welcomeMessage || '');
+  }
   res.json({ success: true });
 });
 
@@ -557,8 +572,13 @@ router.put('/business/:id/builder', (req, res) => {
     return flowId;
   });
 
-  txn();
-  res.json({ success: true });
+  try {
+    txn();
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to save builder:', err);
+    res.status(500).json({ error: 'Failed to save builder data' });
+  }
 });
 
 // ──────────────────────────────────────────────
@@ -1063,14 +1083,20 @@ router.get('/business/:id/whatsapp-preview', (req, res) => {
   const buttonTree = buildTree(null);
   const welcomeMessage = config ? config.welcome_message : '';
 
-  const preview = renderFullFlow({
+  // Channel-aware: ?channel=whatsapp|telegram|instagram (default: whatsapp)
+  const channelKey = (req.query.channel || 'whatsapp').toLowerCase();
+  const renderer = RENDERERS[channelKey];
+  if (!renderer) return res.status(400).json({ error: `Unknown channel: ${channelKey}. Supported: whatsapp, telegram, instagram` });
+
+  const businessPayload = {
     business: biz,
     welcomeMessage,
     buttons: buttonTree,
     flow: flow ? { id: flow.id, name: flow.name, steps: formattedSteps } : null,
-  });
+  };
+  const preview = renderer.renderFullFlow(businessPayload);
 
-  res.json({ data: preview });
+  res.json({ data: preview, channel: channelKey });
 });
 
 // ──────────────────────────────────────────────
@@ -1149,6 +1175,34 @@ router.get('/business/:id/media/:mediaId', (req, res) => {
 
   if (!media) return res.status(404).json({ error: 'Media not found' });
   res.json({ data: media });
+});
+
+// ──────────────────────────────────────────────
+// TELEGRAM BOT (auto-reply engine)
+// ──────────────────────────────────────────────
+
+// Start polling for a business
+router.post('/business/:id/telegram-bot/start', (req, res) => {
+  const result = startPolling(Number(req.params.id));
+  res.json(result);
+});
+
+// Stop polling for a business
+router.post('/business/:id/telegram-bot/stop', (req, res) => {
+  const result = stopPolling(Number(req.params.id));
+  res.json(result);
+});
+
+// Get polling status
+router.get('/business/:id/telegram-bot/status', (req, res) => {
+  const result = getPollingStatus(Number(req.params.id));
+  res.json(result);
+});
+
+// Webhook endpoint (alternative to polling)
+router.post('/telegram/webhook/:id', async (req, res) => {
+  const result = await handleWebhook(Number(req.params.id), req.body);
+  res.json(result);
 });
 
 export default router;

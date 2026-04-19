@@ -4,9 +4,11 @@ import { migrate } from './migrate.js';
 import routes from './routes.js';
 
 const app = express();
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : '*',
+}));
 app.use(express.json({ limit: '10mb' }));
 
 // Run migrations on startup

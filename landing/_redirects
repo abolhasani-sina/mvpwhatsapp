@@ -1,0 +1,3 @@
+/* Cloudflare Pages _redirects — SPA fallback */
+/* Handle 404s by serving index.html */
+/*  /index.html  200

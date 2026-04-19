@@ -1,4 +1,46 @@
 import { useState, useRef, useEffect } from 'react';
+import { API_BASE } from '../lib/api';
+
+function MediaImage({ mediaId, businessId, alt }) {
+  const [src, setSrc] = useState(null);
+  useEffect(() => {
+    if (!mediaId || !businessId) return;
+    fetch(`${API_BASE}/business/${businessId}/media/${mediaId}`)
+      .then(r => r.json())
+      .then(json => { if (json.data?.data) setSrc(json.data.data); })
+      .catch(() => {});
+  }, [mediaId, businessId]);
+  if (!src) return null;
+  return <img src={src} alt={alt || 'Media'} style={{ width: '100%', borderRadius: '8px', objectFit: 'cover' }} />;
+}
+
+// ─── Channel themes for builder preview ──────────────────────────────
+const CHANNEL_THEMES = {
+  whatsapp: {
+    headerBg: '#075e54', avatarBg: '#25D366', statusColor: '#b0d9d1',
+    chatBg: '#e5ddd5', accent: '#00a884', accentBg: '#f0faf7',
+    userBubble: '#dcf8c6', navBg: '#075e54',
+    buttonBorder: '#d1d7db', buttonSelectedBorder: '#00a884', buttonSelectedBg: '#f0faf7',
+  },
+  telegram: {
+    headerBg: '#517da2', avatarBg: '#5ba0d0', statusColor: '#a8c9e0',
+    chatBg: '#e6ebee', accent: '#3390ec', accentBg: '#e3f0ff',
+    userBubble: '#effdde', navBg: '#517da2',
+    buttonBorder: '#bdd8f5', buttonSelectedBorder: '#3390ec', buttonSelectedBg: '#e3f0ff',
+  },
+  instagram: {
+    headerBg: '#ffffff', avatarBg: '#E1306C', statusColor: '#8e8e8e',
+    chatBg: '#ffffff', accent: '#3797f0', accentBg: '#eff3f4',
+    userBubble: '#3797f0', navBg: '#833AB4',
+    buttonBorder: '#dbdbdb', buttonSelectedBorder: '#3797f0', buttonSelectedBg: '#eff3f4',
+  },
+};
+
+const CHANNEL_TABS = [
+  { key: 'whatsapp', label: 'WhatsApp', icon: '💬' },
+  { key: 'telegram', label: 'Telegram', icon: '✈️' },
+  { key: 'instagram', label: 'Instagram', icon: '📸' },
+];
 
 const STYLE_PRESETS = {
   clean: {
@@ -29,7 +71,34 @@ function formatPrice(amount, currency) {
   return `${amount} ${currency || 'USD'}`;
 }
 
-export default function PhoneMockup({ businessName = 'Your Business', welcomeMessage, buttons, selectedButtonId, onButtonClick, onButtonDoubleClick, onAddButton, parentButton, onGoBack, path, viewingInfoButton, onCloseInfoPreview, onReorderButtons, allButtons, onNavigateTo, onDeleteButton, onSubmit }) {
+export default function PhoneMockupWithTabs(props) {
+  const [channel, setChannel] = useState('whatsapp');
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0' }}>
+      {/* Channel tabs */}
+      <div style={{ display: 'flex', gap: '0', borderRadius: '12px 12px 0 0', overflow: 'hidden', border: '1px solid #e0e0e0', borderBottom: 'none' }}>
+        {CHANNEL_TABS.map(tab => (
+          <button key={tab.key} onClick={() => setChannel(tab.key)} style={{
+            padding: '8px 18px', fontSize: '13px', fontWeight: channel === tab.key ? 700 : 500,
+            background: channel === tab.key ? CHANNEL_THEMES[tab.key].headerBg : '#f9f9f9',
+            color: channel === tab.key ? '#fff' : '#666',
+            border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+            display: 'flex', alignItems: 'center', gap: '5px',
+          }}>
+            <span>{tab.icon}</span> {tab.label}
+          </button>
+        ))}
+      </div>
+      <PhoneMockup {...props} channel={channel} />
+    </div>
+  );
+}
+
+function PhoneMockup({ businessName = 'Your Business', businessId, channel = 'whatsapp', welcomeMessage, buttons, selectedButtonId, onButtonClick, onButtonDoubleClick, onAddButton, parentButton, onGoBack, path, viewingInfoButton, onCloseInfoPreview, onReorderButtons, allButtons, onNavigateTo, onDeleteButton, onSubmit }) {
+  const theme = CHANNEL_THEMES[channel] || CHANNEL_THEMES.whatsapp;
+  const isWA = channel === 'whatsapp';
+  const isTG = channel === 'telegram';
+  const isIG = channel === 'instagram';
   const [dragIndex, setDragIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [hoveredButtonId, setHoveredButtonId] = useState(null);
@@ -47,6 +116,16 @@ export default function PhoneMockup({ businessName = 'Your Business', welcomeMes
   const [menuNavMessages, setMenuNavMessages] = useState([]); // intermediate messages during menu navigation
   const [flowPreviewButton, setFlowPreviewButton] = useState(null); // button being previewed before confirm in flow
   const chatEndRef = useRef(null);
+  const lastActionRef = useRef({ id: null, ts: 0 });
+
+  function isRapidTap(id) {
+    const now = Date.now();
+    if (lastActionRef.current.id === id && now - lastActionRef.current.ts < 450) {
+      return true;
+    }
+    lastActionRef.current = { id, ts: now };
+    return false;
+  }
 
   // Reset activeFlowButton when leaving info preview
   const infoId = viewingInfoButton ? viewingInfoButton.id : null;
@@ -87,6 +166,8 @@ export default function PhoneMockup({ businessName = 'Your Business', welcomeMes
   }
 
   function handleMenuSelect(btn, steps, stepIdx) {
+    if (isRapidTap(`menu_${btn.id}`)) return;
+    
     const hasChildren = btn.children && btn.children.length > 0;
     const currentStep = steps[stepIdx];
     const key = currentStep.key || `step_${stepIdx}`;
@@ -120,7 +201,7 @@ export default function PhoneMockup({ businessName = 'Your Business', welcomeMes
   }
 
   function handlePreviewConfirm(steps, stepIdx) {
-    if (!flowPreviewButton) return;
+    if (!flowPreviewButton || isRapidTap(`preview_confirm_${flowPreviewButton.id}`)) return;
     const currentStep = steps[stepIdx];
     const key = currentStep.key || `step_${stepIdx}`;
     const fullPathLabels = [...menuNavPath.map((p) => p.label), flowPreviewButton.label];
@@ -171,7 +252,7 @@ export default function PhoneMockup({ businessName = 'Your Business', welcomeMes
     const steps = activeFlowButton.flowSteps;
 
     function handleTextSubmit() {
-      if (!flowTextInput.trim()) return;
+      if (!flowTextInput.trim() || isRapidTap(`text_submit_${flowStep}`)) return;
       const currentStep = steps[flowStep];
       const newAnswers = { ...flowAnswers, [currentStep.key || `step_${flowStep}`]: flowTextInput.trim() };
       setFlowAnswers(newAnswers);
@@ -185,6 +266,7 @@ export default function PhoneMockup({ businessName = 'Your Business', welcomeMes
     }
 
     function handleChoiceSelect(label) {
+      if (isRapidTap(`choice_${flowStep}_${label}`)) return;
       const currentStep = steps[flowStep];
       const newAnswers = { ...flowAnswers, [currentStep.key || `step_${flowStep}`]: label };
       setFlowAnswers(newAnswers);
@@ -297,19 +379,19 @@ export default function PhoneMockup({ businessName = 'Your Business', welcomeMes
     const menuButtons = isMenuStep ? getMenuButtons(menuNavPath, currentStep.menuRoot) : [];
 
     return (
-      <div style={styles.phone}>
-        <div style={styles.topBar}>
+      <div style={{ ...styles.phone, background: theme.chatBg }}>
+        <div style={{ ...styles.topBar, background: theme.headerBg }}>
           <div style={styles.topBarLeft}>
-            <div style={styles.avatar}>{(businessName || 'YB').slice(0, 2).toUpperCase()}</div>
+            <div style={{ ...styles.avatar, background: theme.avatarBg }}>{(businessName || 'YB').slice(0, 2).toUpperCase()}</div>
             <div>
               <div style={styles.businessName}>{businessName}</div>
-              <div style={styles.status}>online</div>
+              <div style={{ ...styles.status, color: theme.statusColor }}>online</div>
             </div>
           </div>
         </div>
 
         <div style={{ ...styles.chatArea, justifyContent: 'flex-start' }}>
-          <button style={styles.navBack} onClick={() => { handleEdit(); setActiveFlowButton(null); }}>
+          <button style={{ ...styles.navBack, background: theme.headerBg }} onClick={() => { handleEdit(); setActiveFlowButton(null); }}>
             ← Back to info
           </button>
 
@@ -417,7 +499,7 @@ export default function PhoneMockup({ businessName = 'Your Business', welcomeMes
                   )}
                 </div>
                 <div style={flowStyles.choiceBtns}>
-                  <button style={{ ...flowStyles.choiceBtn, background: '#00a884', color: '#fff', border: '2px solid #00a884', fontWeight: 600 }} onClick={() => handlePreviewConfirm(steps, flowStep)}>
+                  <button style={{ ...flowStyles.choiceBtn, background: theme.accent, color: '#fff', border: `2px solid ${theme.accent}`, fontWeight: 600 }} onClick={() => handlePreviewConfirm(steps, flowStep)}>
                     Select this service ✔
                   </button>
                   <button style={{ ...flowStyles.choiceBtn, color: '#888', fontStyle: 'italic' }} onClick={handlePreviewBack}>
@@ -437,7 +519,7 @@ export default function PhoneMockup({ businessName = 'Your Business', welcomeMes
                   {/* Show prefilled service prominently */}
                   {activeFlowButton.prefillService && (
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '4px', fontSize: '13.5px' }}>
-                      <span style={{ color: '#00a884' }}>•</span>
+                      <span style={{ color: theme.accent }}>•</span>
                       <span><span style={{ color: '#555' }}>Service:</span> <span style={{ fontWeight: 600, color: '#111' }}>{activeFlowButton.prefillService}</span></span>
                     </div>
                   )}
@@ -453,7 +535,7 @@ export default function PhoneMockup({ businessName = 'Your Business', welcomeMes
                       const summaryLabel = s.label || `Step ${i + 1}`;
                       return (
                         <div key={s.id} style={{ fontSize: '13.5px', display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                          <span style={{ color: '#00a884' }}>•</span>
+                          <span style={{ color: theme.accent }}>•</span>
                           <span><span style={{ color: '#555' }}>{summaryLabel}:</span> <span style={{ fontWeight: 600, color: '#111' }}>{value}</span></span>
                         </div>
                       );
@@ -516,21 +598,30 @@ export default function PhoneMockup({ businessName = 'Your Business', welcomeMes
     const priceStr = formatPrice(info.amount, info.currency);
 
     return (
-      <div style={styles.phone}>
-        <div style={styles.topBar}>
+      <div style={{ ...styles.phone, background: theme.chatBg }}>
+        <div style={{ ...styles.topBar, background: theme.headerBg }}>
           <div style={styles.topBarLeft}>
-            <div style={styles.avatar}>{(businessName || 'YB').slice(0, 2).toUpperCase()}</div>
+            <div style={{ ...styles.avatar, background: theme.avatarBg }}>{(businessName || 'YB').slice(0, 2).toUpperCase()}</div>
             <div>
-              <div style={styles.businessName}>{businessName}</div>
-              <div style={styles.status}>online</div>
+              <div style={{ ...styles.businessName, color: isIG ? '#262626' : '#fff' }}>{businessName}</div>
+              <div style={{ ...styles.status, color: theme.statusColor }}>online</div>
             </div>
           </div>
         </div>
 
         <div style={styles.chatArea}>
-          <button style={styles.navBack} onClick={onCloseInfoPreview}>
+          <button style={{ ...styles.navBack, background: theme.headerBg }} onClick={onCloseInfoPreview}>
             ← Back
           </button>
+
+          {/* Media images */}
+          {info.media && info.media.filter(m => m.mediaType === 'image').length > 0 && (
+            <div style={{ maxWidth: '85%', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {info.media.filter(m => m.mediaType === 'image').map(m => (
+                <MediaImage key={m.id} mediaId={m.id} businessId={businessId} alt={m.fileName} />
+              ))}
+            </div>
+          )}
 
           <div style={{
             background: preset.cardBg,
@@ -648,20 +739,20 @@ export default function PhoneMockup({ businessName = 'Your Business', welcomeMes
 
 
   return (
-    <div style={styles.phone}>
-      <div style={styles.topBar}>
+    <div style={{ ...styles.phone, background: theme.chatBg }}>
+      <div style={{ ...styles.topBar, background: theme.headerBg }}>
         <div style={styles.topBarLeft}>
-          <div style={styles.avatar}>{(businessName || 'YB').slice(0, 2).toUpperCase()}</div>
+          <div style={{ ...styles.avatar, background: theme.avatarBg }}>{(businessName || 'YB').slice(0, 2).toUpperCase()}</div>
           <div>
-            <div style={styles.businessName}>{businessName}</div>
-            <div style={styles.status}>online</div>
+            <div style={{ ...styles.businessName, color: isIG ? '#262626' : '#fff' }}>{businessName}</div>
+            <div style={{ ...styles.status, color: theme.statusColor }}>online</div>
           </div>
         </div>
       </div>
 
       <div style={styles.chatArea}>
         {path.length > 0 && (
-          <button style={styles.navBack} onClick={onGoBack}>
+          <button style={{ ...styles.navBack, background: theme.headerBg }} onClick={onGoBack}>
             ← Back to {parentButton ? parentButton.label : 'main menu'}
           </button>
         )}
@@ -681,7 +772,12 @@ export default function PhoneMockup({ businessName = 'Your Business', welcomeMes
         )}
 
         {/* Buttons — draggable */}
-        <div style={styles.buttonsContainer}>
+        <div style={{
+          ...styles.buttonsContainer,
+          flexDirection: isIG ? 'row' : 'column',
+          flexWrap: isIG ? 'wrap' : 'nowrap',
+          gap: isIG ? '8px' : '6px',
+        }}>
           {buttons.map((btn, idx) => {
             const isSelected = btn.id === selectedButtonId;
             const hasChildren = btn.children && btn.children.length > 0;
@@ -701,18 +797,23 @@ export default function PhoneMockup({ businessName = 'Your Business', welcomeMes
                   onDragEnd={handleDragEnd}
                   style={{
                     ...styles.whatsappButton,
-                    ...(isSelected ? styles.whatsappButtonSelected : {}),
-                    ...(isDragOver ? { borderColor: '#00a884', borderStyle: 'dashed' } : {}),
-                    width: '100%',
+                    ...(isTG ? styles.telegramButton : {}),
+                    ...(isIG ? styles.instagramButton : {}),
+                    color: theme.accent,
+                    borderColor: theme.buttonBorder,
+                    ...(isSelected ? { borderColor: theme.buttonSelectedBorder, background: theme.buttonSelectedBg } : {}),
+                    ...(isDragOver ? { borderColor: theme.accent, borderStyle: 'dashed' } : {}),
+                    width: isIG ? 'auto' : '100%',
+                    minWidth: isIG ? '120px' : undefined,
                   }}
                   onClick={() => onButtonClick(btn.id)}
                   onDoubleClick={() => onButtonDoubleClick(btn.id)}
                 >
                   <div style={styles.btnRow}>
-                    <span style={styles.dragHandle}>⠿</span>
+                    <span style={{ ...styles.dragHandle, opacity: isWA ? 1 : 0.55 }}>⠿</span>
                     <span>{btn.label}{hasChildren ? ' ▸' : ''}</span>
                   </div>
-                  {btn.behavior && (
+                  {isWA && btn.behavior && (
                     <span style={styles.behaviorBadge}>{BEHAVIOR_LABELS[btn.behavior]}</span>
                   )}
                 </button>
@@ -940,6 +1041,21 @@ const styles = {
     alignItems: 'center',
     gap: '2px',
     transition: 'border-color 0.15s',
+  },
+  telegramButton: {
+    background: '#e3f0ff',
+    border: '1px solid #bdd8f5',
+    borderRadius: '8px',
+    padding: '9px 12px',
+    fontSize: '14px',
+    minHeight: '36px',
+    boxShadow: 'none',
+  },
+  instagramButton: {
+    borderRadius: '18px',
+    padding: '8px 14px',
+    fontSize: '13px',
+    boxShadow: 'none',
   },
   whatsappButtonSelected: {
     borderColor: '#00a884',

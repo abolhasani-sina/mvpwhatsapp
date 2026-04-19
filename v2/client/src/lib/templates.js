@@ -107,6 +107,19 @@ function beautySalon() {
     },
   ];
 
+  const browExtras = [
+    {
+      id: n(), question: 'How do you usually maintain your brows?',
+      type: 'choice', key: 'step_brow_maintenance', label: 'Current maintenance',
+      options: [
+        { id: n(), label: 'Waxing' },
+        { id: n(), label: 'Threading' },
+        { id: n(), label: 'Tweezing at home' },
+        { id: n(), label: 'Nothing yet' },
+      ],
+    },
+  ];
+
   const skinExtras = [
     {
       id: n(), question: 'What\'s your main skin concern right now?',
@@ -195,8 +208,8 @@ function beautySalon() {
             info('Classic Lash Extensions', '👁 Classic Lash Extensions', 'One extension per natural lash for a subtle, elegant look. Natural-looking length and curl.', 80, 'USD', '90 min', 'clean', lashExtras),
             info('Volume Lash Extensions', '👁 Volume Lash Extensions', 'Multiple lightweight fans per lash for dramatic, full volume. Perfect for special occasions or everyday glam.', 120, 'USD', '120 min', 'premium', lashExtras),
             info('Lash Lift & Tint', '✨ Lash Lift & Tint', 'Lifts and curls your natural lashes, then tints them darker. Lasts 6-8 weeks. No extensions needed.', 55, 'USD', '60 min', 'friendly', lashExtras),
-            info('Brow Shaping', '✏️ Brow Shaping', 'Wax or thread to perfectly shape your brows. Includes trim and clean-up.', 15, 'USD', '15 min', 'clean'),
-            info('Brow Lamination', '✏️ Brow Lamination', 'Sleek, brushed-up brows that stay in place for weeks. Includes shaping and tint.', 45, 'USD', '45 min', 'friendly'),
+            info('Brow Shaping', '✏️ Brow Shaping', 'Wax or thread to perfectly shape your brows. Includes trim and clean-up.', 15, 'USD', '15 min', 'clean', browExtras),
+            info('Brow Lamination', '✏️ Brow Lamination', 'Sleek, brushed-up brows that stay in place for weeks. Includes shaping and tint.', 45, 'USD', '45 min', 'friendly', browExtras),
           ],
         },
         // Skincare
@@ -4232,6 +4245,7 @@ export const TEMPLATES = [
     description: 'Glow Studio — hair, nails, lashes, skincare, waxing',
     emoji: '💇',
     load: beautySalon,
+    preview: { categories: ['Hair (6)', 'Nails (5)', 'Lashes & Brows (5)', 'Skincare (4)', 'Waxing (5)'], total: 25, flow: 'Booking with name, date & time' },
   },
   {
     key: 'medical_clinic',
@@ -4239,6 +4253,7 @@ export const TEMPLATES = [
     description: 'CarePoint Medical — general, pediatrics, dentistry, dermatology, orthopedics, eye care',
     emoji: '🏥',
     load: medicalClinic,
+    preview: { categories: ['General Medicine (4)', 'Pediatrics (4)', 'Dentistry (4)', 'Dermatology (4)', 'Orthopedics (4)', 'Eye Care (4)'], total: 24, flow: 'Appointment with patient info, insurance & date' },
   },
   {
     key: 'restaurant',
@@ -4246,6 +4261,7 @@ export const TEMPLATES = [
     description: 'Bella Tavola — breakfast, starters, mains, pasta, desserts, drinks',
     emoji: '🍝',
     load: restaurant,
+    preview: { categories: ['Breakfast (4)', 'Starters (4)', 'Main Courses (4)', 'Pasta (4)', 'Desserts (4)', 'Drinks (5)'], total: 25, flow: 'Order with party size, allergies & time' },
   },
   {
     key: 'real_estate',
@@ -4253,6 +4269,7 @@ export const TEMPLATES = [
     description: 'Skyline Realty — apartments, houses, condos, commercial, land',
     emoji: '🏠',
     load: realEstate,
+    preview: { categories: ['Apartments (4)', 'Houses (4)', 'Condos (3)', 'Commercial (3)', 'Land (3)'], total: 17, flow: 'Tour booking with budget & move-in date' },
   },
   {
     key: 'car_rental',
@@ -4260,6 +4277,7 @@ export const TEMPLATES = [
     description: 'DriveEasy Rentals — economy, SUV, luxury, vans, convertibles',
     emoji: '🚗',
     load: carRental,
+    preview: { categories: ['Economy (4)', 'SUV (4)', 'Luxury (3)', 'Vans (3)', 'Convertibles (3)'], total: 17, flow: 'Rental with pickup/dropoff, license & insurance' },
   },
   {
     key: 'fitness_gym',
@@ -4267,6 +4285,7 @@ export const TEMPLATES = [
     description: 'IronCore Fitness — strength, cardio, yoga, martial arts, personal training',
     emoji: '💪',
     load: fitnessGym,
+    preview: { categories: ['Strength (4)', 'Cardio (4)', 'Yoga (4)', 'Martial Arts (3)', 'Personal Training (3)'], total: 18, flow: 'Class booking with fitness level & goals' },
   },
   {
     key: 'hotel',
@@ -4274,6 +4293,7 @@ export const TEMPLATES = [
     description: 'The Grand Meridian — standard, suites, family, spa & wellness',
     emoji: '🏨',
     load: hotel,
+    preview: { categories: ['Standard Rooms (3)', 'Suites (3)', 'Family (3)', 'Spa & Wellness (4)'], total: 13, flow: 'Room booking with check-in/out & guests' },
   },
   {
     key: 'pet_care',
@@ -4281,6 +4301,7 @@ export const TEMPLATES = [
     description: 'Paws & Whiskers — check-ups, vaccines, grooming, dental, surgery',
     emoji: '🐾',
     load: petCare,
+    preview: { categories: ['Check-ups (4)', 'Vaccines (4)', 'Grooming (4)', 'Dental (3)', 'Surgery (3)'], total: 18, flow: 'Appointment with pet info, symptoms & date' },
   },
   {
     key: 'education',
@@ -4288,6 +4309,7 @@ export const TEMPLATES = [
     description: 'BrightPath Academy — math, languages, science, test prep, music',
     emoji: '📚',
     load: education,
+    preview: { categories: ['Math (4)', 'Languages (4)', 'Science (4)', 'Test Prep (3)', 'Music (3)'], total: 18, flow: 'Enrollment with student level & schedule' },
   },
   {
     key: 'auto_repair',
@@ -4295,6 +4317,7 @@ export const TEMPLATES = [
     description: 'TrustWrench Auto — oil, brakes, tires, engine, A/C',
     emoji: '🔧',
     load: autoRepair,
+    preview: { categories: ['Oil & Fluids (4)', 'Brakes (3)', 'Tires (3)', 'Engine (3)', 'A/C (3)'], total: 16, flow: 'Service booking with vehicle info & mileage' },
   },
   {
     key: 'photography',
@@ -4302,6 +4325,7 @@ export const TEMPLATES = [
     description: 'FrameLight Studios — portraits, weddings, product, events',
     emoji: '📸',
     load: photography,
+    preview: { categories: ['Portraits (4)', 'Weddings (3)', 'Product (3)', 'Events (3)'], total: 13, flow: 'Session booking with style, date & location' },
   },
   {
     key: 'law_firm',
@@ -4309,6 +4333,7 @@ export const TEMPLATES = [
     description: 'Sterling & Associates — family, business, real estate, injury, immigration',
     emoji: '⚖️',
     load: lawFirm,
+    preview: { categories: ['Family Law (4)', 'Business Law (3)', 'Real Estate (3)', 'Personal Injury (3)', 'Immigration (3)'], total: 16, flow: 'Consultation with case type & urgency' },
   },
   {
     key: 'cleaning',
@@ -4316,6 +4341,7 @@ export const TEMPLATES = [
     description: 'SparkleHome — regular, deep, move-in/out, office, specialty',
     emoji: '🧹',
     load: cleaningServices,
+    preview: { categories: ['Regular (3)', 'Deep Clean (3)', 'Move-in/out (3)', 'Office (3)', 'Specialty (3)'], total: 15, flow: 'Booking with property size & frequency' },
   },
   {
     key: 'event_planning',
@@ -4323,6 +4349,7 @@ export const TEMPLATES = [
     description: 'Dreamscape Events — weddings, corporate, parties, concerts',
     emoji: '🎉',
     load: eventPlanning,
+    preview: { categories: ['Weddings (4)', 'Corporate (3)', 'Parties (3)', 'Concerts (3)'], total: 13, flow: 'Consultation with event type, date & budget' },
   },
   {
     key: 'travel_agency',
@@ -4330,5 +4357,6 @@ export const TEMPLATES = [
     description: 'Wanderlust Travel — beach, adventure, city breaks, cruises, honeymoons',
     emoji: '✈️',
     load: travelAgency,
+    preview: { categories: ['Beach (4)', 'Adventure (3)', 'City Breaks (3)', 'Cruises (3)', 'Honeymoons (3)'], total: 16, flow: 'Booking with traveller count, dates & budget' },
   },
 ];

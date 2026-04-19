@@ -292,28 +292,36 @@ export default function BuilderPage({ businessId, setBusinessId }) {
   async function handleLoadTemplate(templateKey) {
     const tpl = TEMPLATES.find((t) => t.key === templateKey);
     if (!tpl) return;
-    const templateData = JSON.parse(JSON.stringify(tpl.load())); // safe clone
-    let activeId = businessId;
-    if (activeId) {
-      // Apply template to existing business (preserves staff, settings, submissions)
-      await applyTemplate(activeId, templateKey, templateData);
-    } else {
-      // No business yet — create one
-      const biz = await createBusiness(templateKey, tpl.name, templateData);
-      activeId = biz.id;
-      setBusinessId(activeId);
+    try {
+      setErrorMessage(''); setSaveStatus(null);
+      const templateData = JSON.parse(JSON.stringify(tpl.load())); // safe clone
+      let activeId = businessId;
+      if (activeId) {
+        // Apply template to existing business (preserves staff, settings, submissions)
+        await applyTemplate(activeId, templateKey, templateData);
+      } else {
+        // No business yet — create one
+        const biz = await createBusiness(templateKey, tpl.name, templateData);
+        activeId = biz.id;
+        setBusinessId(activeId);
+      }
+      const data = await loadBuilder(activeId);
+      setWelcomeMessage(data.welcomeMessage);
+      setButtons(data.buttons);
+      syncNextId(data.buttons);
+      if (data.flow) setFlowId(data.flow.id);
+      cacheBuilderState(activeId, data.welcomeMessage, data.buttons, data.flow?.id);
+      setSelectedButtonId(null); setPath([]); setViewingInfoId(null); setSaveStatus(null); setErrorMessage('');
+    } catch (err) {
+      console.error('Failed to load template:', err);
+      setErrorMessage(err.message || 'Failed to load template');
+      setSaveStatus('error');
     }
-    const data = await loadBuilder(activeId);
-    setWelcomeMessage(data.welcomeMessage);
-    setButtons(data.buttons);
-    syncNextId(data.buttons);
-    if (data.flow) setFlowId(data.flow.id);
-    cacheBuilderState(activeId, data.welcomeMessage, data.buttons, data.flow?.id);
-    setSelectedButtonId(null); setPath([]); setViewingInfoId(null); setSaveStatus(null); setErrorMessage('');
   }
 
   async function handleSave() {
     if (!businessId) { setErrorMessage('No business loaded. Pick a template first.'); setSaveStatus('error'); return; }
+    if (!welcomeMessage || !welcomeMessage.trim()) { setErrorMessage('Welcome message is required.'); setSaveStatus('error'); return; }
     setSaving(true); setSaveStatus(null); setErrorMessage('');
     try {
       await saveBuilder(businessId, welcomeMessage, buttons);
@@ -359,6 +367,7 @@ export default function BuilderPage({ businessId, setBusinessId }) {
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '2rem', padding: '2rem' }}>
         <PhoneMockup
           businessName={businessName}
+          businessId={businessId}
           welcomeMessage={welcomeMessage}
           buttons={visibleButtons}
           selectedButtonId={selectedButtonId}

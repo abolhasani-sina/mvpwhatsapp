@@ -4,6 +4,8 @@ import { fetchStaff, createStaff, updateStaff, deleteStaff } from '../lib/api';
 
 export default function StaffManager({ businessId }) {
   const [staff, setStaff] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [newName, setNewName] = useState('');
   const [newRole, setNewRole] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -20,27 +22,46 @@ export default function StaffManager({ businessId }) {
   }, [businessId]);
 
   async function loadData() {
-    const staffList = await fetchStaff(businessId);
-    setStaff(staffList || []);
+    try {
+      setError(null);
+      const staffList = await fetchStaff(businessId);
+      setStaff(staffList || []);
+    } catch (err) {
+      setError('Failed to load staff. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleAdd() {
     if (!newName.trim()) return;
-    await createStaff(businessId, newName.trim(), newRole.trim(), newEmail.trim(), newTelegram.trim());
-    setNewName(''); setNewRole(''); setNewEmail(''); setNewTelegram('');
-    await loadData();
+    try {
+      await createStaff(businessId, newName.trim(), newRole.trim(), newEmail.trim(), newTelegram.trim());
+      setNewName(''); setNewRole(''); setNewEmail(''); setNewTelegram('');
+      await loadData();
+    } catch (err) {
+      setError('Failed to add staff member.');
+    }
   }
 
   async function handleUpdate(id) {
-    await updateStaff(id, editName, editRole, editEmail, editTelegram);
-    setEditingId(null);
-    await loadData();
+    try {
+      await updateStaff(id, editName, editRole, editEmail, editTelegram);
+      setEditingId(null);
+      await loadData();
+    } catch (err) {
+      setError('Failed to update staff member.');
+    }
   }
 
   async function handleDelete(id) {
     if (!window.confirm('Remove this staff member?')) return;
-    await deleteStaff(id);
-    await loadData();
+    try {
+      await deleteStaff(id);
+      await loadData();
+    } catch (err) {
+      setError('Failed to remove staff member.');
+    }
   }
 
   function startEdit(s) {
@@ -72,6 +93,17 @@ export default function StaffManager({ businessId }) {
           Add team members who can be assigned to incoming submissions.
         </p>
 
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-2.5 mb-4 flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => { setError(null); loadData(); }} className="text-red-500 hover:text-red-700 text-xs font-medium cursor-pointer bg-transparent border-none">Retry</button>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-8 text-gray-400 text-sm">Loading staff…</div>
+        ) : (
+          <>
         {/* Add form */}
         <div className="flex flex-col gap-2 mb-4">
           <div className="flex gap-2">
@@ -203,6 +235,8 @@ export default function StaffManager({ businessId }) {
               </div>
             ))}
           </div>
+        )}
+          </>
         )}
       </div>
     </div>

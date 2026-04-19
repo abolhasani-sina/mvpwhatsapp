@@ -4,10 +4,10 @@ import { useAuth } from '../lib/auth';
 
 const NAV_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { key: 'builder', label: 'WhatsApp Builder', icon: Bot },
+  { key: 'builder', label: 'Bot Builder', icon: Bot },
   { key: 'submissions', label: 'Submissions', icon: Inbox },
   { key: 'staff', label: 'Staff', icon: Users },
-  { key: 'whatsapp-tester', label: 'WhatsApp Tester', icon: Smartphone },
+  { key: 'tester', label: 'Bot Tester', icon: Smartphone },
   { key: 'settings', label: 'Settings', icon: Settings },
 ];
 

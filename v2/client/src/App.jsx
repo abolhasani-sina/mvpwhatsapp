@@ -65,7 +65,7 @@ function AppRoutes() {
       {page === 'submissions' && <SubmissionsList businessId={businessId} />}
       {page === 'staff' && <StaffManager businessId={businessId} />}
       {page === 'settings' && <SettingsPage businessId={businessId} />}
-      {page === 'whatsapp-tester' && <WhatsAppTester businessId={businessId} />}
+      {page === 'tester' && <WhatsAppTester businessId={businessId} />}
     </AdminLayout>
   );
 }

@@ -695,7 +695,7 @@ function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons,
 
       {/* Media */}
       <Accordion title="📷 Media (Optional)" summary={infoPage.media && infoPage.media.length > 0 ? `${infoPage.media.length} file${infoPage.media.length !== 1 ? 's' : ''}` : null}>
-        <p style={styles.accordionDesc}>Upload images or files to show in this info page. The first image will appear as a header in WhatsApp.</p>
+        <p style={styles.accordionDesc}>Upload images or files to show in this info page. The first image will appear as a header in the chat.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {(infoPage.media || []).map((m, idx) => (
             <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', background: '#f9f9f9', borderRadius: '8px', border: '1px solid #e8e8e8' }}>
@@ -921,6 +921,84 @@ function ButtonDelivery({ deliveryMethod, deliveryStaffId, staff, onChange }) {
   );
 }
 
+// ── Template preview card ──
+function TemplateCard({ tpl, onLoadTemplate }) {
+  const [expanded, setExpanded] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const p = tpl.preview;
+
+  const handleApply = async () => {
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    setLoading(true);
+    try {
+      await onLoadTemplate(tpl.key);
+    } catch (err) {
+      console.error('Template apply failed:', err);
+    } finally {
+      setLoading(false);
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <div style={{ background: '#fafafa', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
+      <div
+        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', cursor: 'pointer', width: '100%' }}
+        onClick={() => { setExpanded(!expanded); setConfirming(false); }}
+      >
+        <span style={{ fontSize: '22px' }}>{tpl.emoji}</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: '#111' }}>{tpl.name}</div>
+          <div style={{ fontSize: '11px', color: '#888' }}>{tpl.description}</div>
+        </div>
+        <span style={{ fontSize: '12px', color: '#aaa', transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+      </div>
+      {expanded && p && (
+        <div style={{ padding: '0 14px 12px', borderTop: '1px solid #eee' }}>
+          <div style={{ fontSize: '11px', color: '#666', marginTop: 8 }}>
+            <strong>{p.total} services/items</strong> across {p.categories.length} categories:
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: 6 }}>
+            {p.categories.map((cat) => (
+              <span key={cat} style={{ fontSize: '10px', background: '#e8f5e9', color: '#2e7d32', padding: '2px 8px', borderRadius: 12 }}>{cat}</span>
+            ))}
+          </div>
+          <div style={{ fontSize: '11px', color: '#888', marginTop: 6 }}>📋 Flow: {p.flow}</div>
+          {confirming && (
+            <div style={{ marginTop: 8, padding: '8px 10px', background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, fontSize: 11, color: '#856404' }}>
+              ⚠️ This will replace your current buttons and welcome message. Click again to confirm.
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleApply(); }}
+              disabled={loading}
+              style={{
+                flex: 1, padding: '8px 16px', background: confirming ? '#dc3545' : '#00a884', color: '#fff', border: 'none',
+                borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1,
+              }}
+            >
+              {loading ? 'Applying…' : confirming ? 'Confirm Apply' : 'Apply Template'}
+            </button>
+            {confirming && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setConfirming(false); }}
+                style={{ padding: '8px 12px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedButton, onBehaviorChange, onBack, errorMessage, onAddChild, path, parentButton, visibleButtons, onAddButton, onSelectButton, onUpdateButton, genId, allButtons, templates, onLoadTemplate, businessId, flowId }) {
   const [openSections, setOpenSections] = useState({ behavior: true, flow: false });
   const [staff, setStaff] = useState([]);
@@ -955,10 +1033,22 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
         {/* Button label */}
         <label style={styles.label}>Button label</label>
         <input
-          style={styles.input}
+          style={{
+            ...styles.input,
+            ...(selectedButton.label.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim().length > 20
+              ? { borderColor: '#f59e0b', boxShadow: '0 0 0 1px #f59e0b' } : {}),
+          }}
           value={selectedButton.label}
           onChange={(e) => onUpdateButton(selectedButton.id, { label: e.target.value })}
+          maxLength={50}
         />
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2, fontSize: 11 }}>
+          <span style={{ color: selectedButton.label.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim().length > 20 ? '#f59e0b' : '#9ca3af' }}>
+            {selectedButton.label.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim().length > 20
+              ? '⚠ Button limit is 20 chars (emojis stripped)'
+              : `${selectedButton.label.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim().length}/20 chars`}
+          </span>
+        </div>
 
         {errorMessage && (
           <div style={{ ...styles.errorBox, marginTop: '8px' }}>{errorMessage}</div>
@@ -1082,17 +1172,45 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
   }
 
   // Default: welcome message editor (root level)
+  const rootBtnCount = visibleButtons?.length || 0;
+  const waOverLimit = rootBtnCount > 10;
+  const igOverLimit = rootBtnCount > 13;
+  const channelWarnings = [];
+  if (waOverLimit) channelWarnings.push('💬 WhatsApp supports max 10 menu items. Extra buttons will be hidden.');
+  if (igOverLimit) channelWarnings.push('📸 Instagram supports max 13 quick replies. Extra buttons will be hidden.');
+
   return (
     <div style={styles.panel}>
       <h2 style={styles.title}>Welcome Message</h2>
       <label style={styles.label}>Message text</label>
       <textarea
-        style={styles.textarea}
+        style={{
+          ...styles.textarea,
+          ...(!welcomeMessage?.trim() ? { borderColor: '#f59e0b', boxShadow: '0 0 0 1px #f59e0b' } : {}),
+        }}
         value={welcomeMessage}
         onChange={(e) => onWelcomeChange(e.target.value)}
         rows={3}
       />
+      {!welcomeMessage?.trim() && (
+        <p style={{ fontSize: 11, color: '#f59e0b', margin: '2px 0 0' }}>⚠ Welcome message is required</p>
+      )}
       <p style={styles.hint}>This is the first message your customer sees.</p>
+
+      {/* Channel limit warnings — only shown when a limit is exceeded */}
+      {channelWarnings.length > 0 && (
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca',
+          borderRadius: 8, padding: '8px 12px', marginTop: 8, fontSize: 12,
+        }}>
+          {channelWarnings.map((w, i) => (
+            <div key={i} style={{ color: '#b91c1c', marginBottom: i < channelWarnings.length - 1 ? 4 : 0 }}>
+              ⚠ {w}
+            </div>
+          ))}
+        </div>
+      )}
+
       <div style={styles.tipBox}>
         💡 Click any button on the phone to set what it does.
       </div>
@@ -1104,27 +1222,7 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
           <p style={{ fontSize: '12px', color: '#888', margin: '0 0 12px' }}>Start with a pre-built business template. This will replace your current setup.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {templates.map((tpl) => (
-              <button
-                key={tpl.key}
-                onClick={() => {
-                  if (window.confirm(`Load "${tpl.name}" template? This will replace your current buttons and welcome message.`)) {
-                    onLoadTemplate(tpl.key);
-                  }
-                }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '10px 14px', background: '#fafafa', border: '1px solid #e0e0e0',
-                  borderRadius: '8px', cursor: 'pointer', textAlign: 'left', width: '100%',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = '#f0f0f0'; e.currentTarget.style.borderColor = '#00a884'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = '#fafafa'; e.currentTarget.style.borderColor = '#e0e0e0'; }}
-              >
-                <span style={{ fontSize: '22px' }}>{tpl.emoji}</span>
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#111' }}>{tpl.name}</div>
-                  <div style={{ fontSize: '11px', color: '#888' }}>{tpl.description}</div>
-                </div>
-              </button>
+              <TemplateCard key={tpl.key} tpl={tpl} onLoadTemplate={onLoadTemplate} />
             ))}
           </div>
         </div>

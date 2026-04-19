@@ -56,6 +56,8 @@ export default function SubmissionsList({ businessId }) {
   const [selectedId, setSelectedId] = useState(null);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!businessId) return;
@@ -63,22 +65,37 @@ export default function SubmissionsList({ businessId }) {
   }, [businessId]);
 
   async function loadData() {
-    const [subs, staffList] = await Promise.all([
-      fetchSubmissions(businessId),
-      fetchStaff(businessId),
-    ]);
-    setSubmissions(subs || []);
-    setStaff(staffList || []);
+    try {
+      setError(null);
+      const [subs, staffList] = await Promise.all([
+        fetchSubmissions(businessId),
+        fetchStaff(businessId),
+      ]);
+      setSubmissions(subs || []);
+      setStaff(staffList || []);
+    } catch (err) {
+      setError('Failed to load submissions. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleStatusChange(subId, status) {
-    await updateSubmissionStatus(subId, status);
-    await loadData();
+    try {
+      await updateSubmissionStatus(subId, status);
+      await loadData();
+    } catch (err) {
+      setError('Failed to update status.');
+    }
   }
 
   async function handleAssign(subId, staffId) {
-    await assignSubmission(subId, staffId || null);
-    await loadData();
+    try {
+      await assignSubmission(subId, staffId || null);
+      await loadData();
+    } catch (err) {
+      setError('Failed to assign staff.');
+    }
   }
 
   const counts = { all: submissions.length };
@@ -102,6 +119,25 @@ export default function SubmissionsList({ businessId }) {
           <Inbox style={{ width: 48, height: 48, color: '#d1d5db', margin: '0 auto 16px' }} />
           <p style={{ color: '#6b7280', fontWeight: 500, fontSize: 15 }}>No bot configured yet</p>
           <p style={{ color: '#9ca3af', fontSize: 13 }}>Set up your bot in the Builder first.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: '#fafafa' }}>
+        <div style={{ color: '#6b7280', fontSize: 14 }}>Loading submissions…</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: '#fafafa' }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ color: '#e74c3c', fontWeight: 500, fontSize: 14, marginBottom: 8 }}>{error}</p>
+          <button onClick={() => { setError(null); setLoading(true); loadData(); }} style={{ background: '#10b981', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer', fontSize: 13 }}>Retry</button>
         </div>
       </div>
     );

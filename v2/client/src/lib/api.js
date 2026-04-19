@@ -1,5 +1,6 @@
 // ── API Client for V2 Backend ──
-const API = 'http://localhost:4000/api';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+export const API_BASE = API;
 
 export async function fetchBusiness() {
   const res = await fetch(`${API}/business`);
