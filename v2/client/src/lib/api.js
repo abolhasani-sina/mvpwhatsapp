@@ -245,3 +245,11 @@ export async function fetchMediaData(businessId, mediaId) {
   const json = await res.json();
   return json.data;
 }
+
+// ── System Logs ──
+
+export async function fetchErrorLogs(limit = 30) {
+  const res = await authFetch(`${API}/logs/errors/readable?limit=${limit}`);
+  const json = await res.json();
+  return json.data || [];
+}

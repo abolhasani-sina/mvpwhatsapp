@@ -584,6 +584,11 @@ description: 'V2 BotDesk Production Readiness Roadmap — Phases 6-18. Security 
   - [ ] On error: Log to backend, show user-friendly message
   - [ ] Link error to support chat/form
 
+- [x] **Errors page in Business Panel (TEMPORARY)**
+  - [x] Plain-language error log viewer at `/api/logs/errors/readable`
+  - [x] UI page added to business admin sidebar for non-developer visibility
+  - ⚠️ **NOTE: Move this Errors page from Business Panel → Owner Panel in Phase 10**
+
 **Testing After Completion**:
 - [ ] Trigger error in API route → logged with full stack trace
 - [ ] Unhandled promise rejection → caught and logged
@@ -714,6 +719,13 @@ description: 'V2 BotDesk Production Readiness Roadmap — Phases 6-18. Security 
   - [ ] Basic MRR/active tenant counters
   - [ ] Trial/expired plan visibility
   - [ ] Support queue visibility for channel-change requests
+
+- [ ] **⚠️ MIGRATION: Move Errors page from Business Panel → Owner Panel**
+  - [ ] Remove "System Logs" nav item from business AdminLayout sidebar
+  - [ ] Add "System Logs" section to Owner Panel with full error log viewer
+  - [ ] Owner Panel gets `/api/logs/errors/readable` + `/api/logs/errors/raw` endpoints
+  - [ ] Business users should NOT see system error logs (owner-only concern)
+  - _Source: Phase 8 temporary placement — see Phase 8.4 note_
 
 **Testing After Completion**:
 - [ ] Platform owner can manage plans and tenant status

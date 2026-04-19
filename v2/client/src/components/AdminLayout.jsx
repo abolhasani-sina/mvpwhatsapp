@@ -1,4 +1,4 @@
-import { MessageSquare, LayoutDashboard, Bot, Inbox, Users, Settings, LogOut, ChevronLeft, ChevronRight, Smartphone } from 'lucide-react';
+import { MessageSquare, LayoutDashboard, Bot, Inbox, Users, Settings, LogOut, ChevronLeft, ChevronRight, Smartphone, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../lib/auth';
 
@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { key: 'submissions', label: 'Submissions', icon: Inbox },
   { key: 'staff', label: 'Staff', icon: Users },
   { key: 'tester', label: 'Bot Tester', icon: Smartphone },
+  { key: 'logs', label: 'System Logs', icon: AlertTriangle },
   { key: 'settings', label: 'Settings', icon: Settings },
 ];
 

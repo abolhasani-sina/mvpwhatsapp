@@ -10,6 +10,7 @@ import SubmissionsList from './components/SubmissionsList';
 import StaffManager from './components/StaffManager';
 import SettingsPage from './pages/SettingsPage';
 import WhatsAppTester from './pages/WhatsAppTester';
+import SystemLogs from './pages/SystemLogs';
 import AdminLayout from './components/AdminLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -67,6 +68,7 @@ function AppRoutes() {
       {page === 'staff' && <StaffManager businessId={businessId} />}
       {page === 'settings' && <SettingsPage businessId={businessId} />}
       {page === 'tester' && <WhatsAppTester businessId={businessId} />}
+      {page === 'logs' && <SystemLogs />}
     </AdminLayout>
   );
 }
