@@ -31,12 +31,6 @@ const CURRENCIES = [
   { code: 'EUR', symbol: '€' },
 ];
 
-const STYLE_OPTIONS = [
-  { key: 'clean', label: '✨ Clean', desc: 'Simple and minimal' },
-  { key: 'friendly', label: '😊 Friendly', desc: 'Warm and inviting' },
-  { key: 'premium', label: '💎 Premium', desc: 'Bold and elegant' },
-];
-
 const EMOJI_GRID = [
   '😊', '👋', '🎉', '💈', '💇', '💅', '🏋️', '🧖',
   '✅', '⭐', '🔥', '💰', '🎯', '📞', '📍', '🕐',
@@ -593,25 +587,6 @@ function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons,
 
   return (
     <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-      {/* Style */}
-      <Accordion title="🎨 Style">
-        <div style={styles.styleGrid}>
-          {STYLE_OPTIONS.map((s) => (
-            <button
-              key={s.key}
-              style={{
-                ...styles.styleCard,
-                ...(infoPage.style === s.key ? styles.styleCardSelected : {}),
-              }}
-              onClick={() => update('style', s.key)}
-            >
-              <div style={{ fontSize: '13px', fontWeight: 600 }}>{s.label}</div>
-              <div style={{ fontSize: '11px', color: '#888' }}>{s.desc}</div>
-            </button>
-          ))}
-        </div>
-      </Accordion>
-
       {/* Content */}
       <Accordion title="📝 What should your customer see?" defaultOpen>
         <label style={styles.label}>Title</label>
@@ -999,9 +974,10 @@ function TemplateCard({ tpl, onLoadTemplate }) {
   );
 }
 
-export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedButton, onBehaviorChange, onBack, errorMessage, onAddChild, path, parentButton, visibleButtons, onAddButton, onSelectButton, onUpdateButton, genId, allButtons, templates, onLoadTemplate, businessId, flowId }) {
+export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedButton, onBehaviorChange, onBack, errorMessage, onAddChild, path, parentButton, visibleButtons, onAddButton, onSelectButton, onUpdateButton, genId, allButtons, templates, onLoadTemplate, businessId, flowId, onGoBack }) {
   const [openSections, setOpenSections] = useState({ behavior: true, flow: false });
   const [staff, setStaff] = useState([]);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   // Load staff for delivery dropdowns
   useEffect(() => {
@@ -1027,7 +1003,28 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
 
     return (
       <div style={styles.panel}>
-        <button style={styles.backButton} onClick={onBack}>← Back to menu</button>
+        {/* Contextual guide banner */}
+        <div style={styles.guideBanner}>
+          <div style={styles.guideBannerIcon}>⚙️</div>
+          <div>
+            <div style={styles.guideBannerTitle}>
+              {isInfo ? 'Info Page Settings' : isSubButtons ? 'Menu Button Settings' : 'Button Settings'}
+            </div>
+            <div style={styles.guideBannerText}>
+              {isInfo
+                ? 'Set up the information page your customer sees — title, description, price, and action buttons.'
+                : isSubButtons
+                  ? 'This button opens a sub-menu. Configure the label, then add or manage sub-options below.'
+                  : 'Choose what happens when a customer taps this button — show info or open more options.'}
+            </div>
+          </div>
+        </div>
+
+        {/* Breadcrumb back */}
+        <button style={styles.backButton} onClick={onBack}>
+          ← {path.length > 0 && parentButton ? `Back to ${parentButton.label}` : 'Back to welcome'}
+        </button>
+
         <h2 style={styles.title}>Button settings</h2>
         <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 14px', lineHeight: '1.5' }}>Configure what this button does when a customer taps it in WhatsApp.</p>
 
@@ -1143,6 +1140,22 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
   if (path && path.length > 0 && parentButton) {
     return (
       <div style={styles.panel}>
+        {/* Contextual guide banner */}
+        <div style={styles.guideBanner}>
+          <div style={styles.guideBannerIcon}>📂</div>
+          <div>
+            <div style={styles.guideBannerTitle}>Sub-menu Editor</div>
+            <div style={styles.guideBannerText}>
+              You're editing the sub-options inside <strong>"{parentButton.label}"</strong>. Click any option to configure what it does, or add new ones.
+            </div>
+          </div>
+        </div>
+
+        {/* Back navigation */}
+        <button style={styles.backButton} onClick={onGoBack}>
+          ← {path.length > 1 ? 'Back one level' : 'Back to welcome'}
+        </button>
+
         <h2 style={styles.title}>Sub-options of "{parentButton.label}"</h2>
         <p style={styles.subtitle}>Your customer sees these options after tapping <strong>"{parentButton.label}"</strong>. Click any option below to configure it.</p>
 
@@ -1166,7 +1179,7 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
         </button>
 
         <div style={styles.tipBox}>
-          💡 Click any sub-option to set what it does.
+          💡 Click any sub-option to set what it does. Double-click on the phone preview to drill into nested menus.
         </div>
       </div>
     );
@@ -1174,18 +1187,29 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
 
   // Default: welcome message editor (root level)
   const rootBtnCount = visibleButtons?.length || 0;
+  const hasButtons = rootBtnCount > 0;
   const waOverLimit = rootBtnCount > 10;
   const igOverLimit = rootBtnCount > 13;
   const channelWarnings = [];
-  if (waOverLimit) channelWarnings.push('💬 WhatsApp supports max 10 menu items. Extra buttons will be hidden.');
-  if (igOverLimit) channelWarnings.push('📸 Instagram supports max 13 quick replies. Extra buttons will be hidden.');
+  if (waOverLimit) channelWarnings.push('WhatsApp supports max 10 menu items. Extra buttons will be hidden.');
+  if (igOverLimit) channelWarnings.push('Instagram supports max 13 quick replies. Extra buttons will be hidden.');
 
   return (
     <div style={styles.panel}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-        <span style={{ fontSize: '20px' }}>👋</span>
-        <h2 style={{ ...styles.title, margin: 0 }}>Welcome Message</h2>
+      {/* Contextual guide banner */}
+      <div style={styles.guideBanner}>
+        <div style={styles.guideBannerIcon}>👋</div>
+        <div>
+          <div style={styles.guideBannerTitle}>Welcome Screen</div>
+          <div style={styles.guideBannerText}>
+            {hasButtons
+              ? 'Edit your welcome message below. Click any button on the phone preview to configure it.'
+              : 'Start by picking a template below, or write your welcome message and add buttons on the phone preview.'}
+          </div>
+        </div>
       </div>
+
+      <h2 style={{ ...styles.title, margin: '0 0 4px' }}>Welcome Message</h2>
       <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 14px', lineHeight: '1.5' }}>
         This is the first thing your customers see when they message your bot.
       </p>
@@ -1205,7 +1229,7 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
       )}
       <p style={styles.hint}>Your customer receives this as a chat message with the buttons below it.</p>
 
-      {/* Channel limit warnings — only shown when a limit is exceeded */}
+      {/* Channel limit warnings */}
       {channelWarnings.length > 0 && (
         <div style={{
           background: '#fef2f2', border: '1px solid #fecaca',
@@ -1219,25 +1243,49 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
         </div>
       )}
 
-      <div style={styles.tipBox}>
-        💡 <strong>How it works:</strong> Click any button on the phone preview →
-        set its behavior (show info or sub-menu) → save. Your bot is ready!
-      </div>
-
-      {/* Template selector */}
-      {templates && templates.length > 0 && (
-        <div style={{ marginTop: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '16px' }}>🚀</span>
-            <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Quick start with a template</h3>
-          </div>
-          <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 12px', lineHeight: '1.5' }}>Pick a pre-built business template to get started instantly. You can customize everything after.</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {templates.map((tpl) => (
-              <TemplateCard key={tpl.key} tpl={tpl} onLoadTemplate={onLoadTemplate} />
-            ))}
-          </div>
+      {hasButtons && (
+        <div style={styles.tipBox}>
+          💡 <strong>How it works:</strong> Click any button on the phone preview →
+          set its behavior (show info or sub-menu) → save. Your bot is ready!
         </div>
+      )}
+
+      {/* Template selector — collapsible when buttons already exist */}
+      {templates && templates.length > 0 && (
+        <>
+          {hasButtons ? (
+            <div style={{ marginTop: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+              <button
+                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#64748b', padding: 0 }}
+                onClick={() => setShowTemplates(!showTemplates)}
+              >
+                <span>🚀</span> Templates {showTemplates ? '▾' : '▸'}
+                <span style={{ fontSize: '11px', fontWeight: 400, color: '#94a3b8' }}>— replace current setup</span>
+              </button>
+              {showTemplates && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                  <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 4px', lineHeight: '1.5' }}>⚠️ Applying a template will replace your current buttons and welcome message.</p>
+                  {templates.map((tpl) => (
+                    <TemplateCard key={tpl.key} tpl={tpl} onLoadTemplate={onLoadTemplate} />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ marginTop: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span style={{ fontSize: '16px' }}>🚀</span>
+                <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Quick start with a template</h3>
+              </div>
+              <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 12px', lineHeight: '1.5' }}>Pick a pre-built business template to get started instantly. You can customize everything after.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {templates.map((tpl) => (
+                  <TemplateCard key={tpl.key} tpl={tpl} onLoadTemplate={onLoadTemplate} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -1255,6 +1303,32 @@ const styles = {
     overflowY: 'auto',
     position: 'sticky',
     top: 0,
+  },
+  guideBanner: {
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'flex-start',
+    padding: '14px 16px',
+    background: '#f8fafc',
+    borderRadius: '12px',
+    border: '1px solid #e2e8f0',
+    marginBottom: '16px',
+  },
+  guideBannerIcon: {
+    fontSize: '20px',
+    flexShrink: 0,
+    marginTop: '1px',
+  },
+  guideBannerTitle: {
+    fontSize: '13px',
+    fontWeight: 700,
+    color: '#0f172a',
+    marginBottom: '2px',
+  },
+  guideBannerText: {
+    fontSize: '12px',
+    color: '#64748b',
+    lineHeight: '1.5',
   },
   accordion: {
     border: '1px solid #e2e8f0',
@@ -1489,25 +1563,6 @@ const styles = {
     fontWeight: 600,
     color: '#1e293b',
     marginBottom: '4px',
-  },
-  styleGrid: {
-    display: 'flex',
-    gap: '6px',
-    marginBottom: '8px',
-  },
-  styleCard: {
-    flex: 1,
-    background: '#f8fafc',
-    border: '2px solid #e2e8f0',
-    borderRadius: '10px',
-    padding: '8px 6px',
-    cursor: 'pointer',
-    textAlign: 'center',
-    transition: 'border-color 0.15s',
-  },
-  styleCardSelected: {
-    borderColor: '#6366f1',
-    background: '#eef2ff',
   },
   inputWithEmoji: {
     position: 'relative',

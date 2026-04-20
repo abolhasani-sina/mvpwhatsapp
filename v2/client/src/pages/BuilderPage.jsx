@@ -401,6 +401,7 @@ export default function BuilderPage({ businessId, setBusinessId }) {
           onLoadTemplate={handleLoadTemplate}
           businessId={businessId}
           flowId={flowId}
+          onGoBack={handleGoBack}
         />
       </div>
     </div>

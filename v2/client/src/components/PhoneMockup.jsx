@@ -694,7 +694,6 @@ function PhoneMockup({ businessName = 'Your Business', businessId, channel = 'wh
                       textAlign: 'center',
                     }}
                     onClick={() => {
-                      console.log('CLICKED BUTTON:', ab);
                       if (ab.behavior === 'start_flow' && ab.flowSteps && ab.flowSteps.length > 0) {
                         // Build merged flow: baseFlow + infoPage.extraSteps appended
                         let mergedSteps = ab.flowSteps;
@@ -1029,7 +1028,9 @@ const styles = {
   },
   whatsappButton: {
     background: '#fff',
-    border: '2px solid #d1d7db',
+    borderWidth: '2px',
+    borderStyle: 'solid',
+    borderColor: '#d1d7db',
     borderRadius: '8px',
     padding: '10px 16px',
     fontSize: '14px',
@@ -1045,7 +1046,9 @@ const styles = {
   },
   telegramButton: {
     background: '#e3f0ff',
-    border: '1px solid #bdd8f5',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: '#bdd8f5',
     borderRadius: '8px',
     padding: '9px 12px',
     fontSize: '14px',
