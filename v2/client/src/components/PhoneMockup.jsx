@@ -77,12 +77,12 @@ export default function PhoneMockupWithTabs(props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0' }}>
       {/* Channel tabs */}
-      <div style={{ display: 'flex', gap: '0', borderRadius: '12px 12px 0 0', overflow: 'hidden', border: '1px solid #e0e0e0', borderBottom: 'none' }}>
+      <div style={{ display: 'flex', gap: '0', borderRadius: '12px 12px 0 0', overflow: 'hidden', border: '1px solid #e2e8f0', borderBottom: 'none' }}>
         {CHANNEL_TABS.map(tab => (
           <button key={tab.key} onClick={() => setChannel(tab.key)} style={{
             padding: '8px 18px', fontSize: '13px', fontWeight: channel === tab.key ? 700 : 500,
-            background: channel === tab.key ? CHANNEL_THEMES[tab.key].headerBg : '#f9f9f9',
-            color: channel === tab.key ? '#fff' : '#666',
+            background: channel === tab.key ? CHANNEL_THEMES[tab.key].headerBg : '#f8fafc',
+            color: channel === tab.key ? '#fff' : '#64748b',
             border: 'none', cursor: 'pointer', transition: 'all 0.15s',
             display: 'flex', alignItems: 'center', gap: '5px',
           }}>

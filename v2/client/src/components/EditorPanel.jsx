@@ -63,8 +63,8 @@ const emojiStyles = {
   overlay: { position: 'fixed', inset: 0, zIndex: 1000 },
   picker: {
     position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-    background: '#fff', borderRadius: '12px', padding: '12px',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.2)', width: '220px',
+    background: '#fff', borderRadius: '14px', padding: '14px',
+    boxShadow: '0 8px 32px rgba(99,102,241,0.15)', border: '1px solid #e2e8f0', width: '220px',
   },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '2px' },
   btn: {
@@ -401,7 +401,7 @@ function FlowBuilder({ flowSteps, buttonId, onUpdateButton, genId, allButtons, o
 const flowBuilderStyles = {
   stepCard: {
     background: '#fff',
-    border: '1px solid #e0e0e0',
+    border: '1px solid #e2e8f0',
     borderRadius: '10px',
     padding: '0',
     display: 'flex',
@@ -414,8 +414,8 @@ const flowBuilderStyles = {
     alignItems: 'center',
     gap: '6px',
     padding: '10px 10px',
-    background: '#fafafa',
-    borderBottom: '1px solid #f0f0f0',
+    background: '#f8fafc',
+    borderBottom: '1px solid #f1f5f9',
   },
   stepBody: {
     padding: '10px',
@@ -497,7 +497,7 @@ const flowBuilderStyles = {
   addOptionBtn: {
     background: 'none',
     border: 'none',
-    color: '#00a884',
+    color: '#6366f1',
     fontSize: '12px',
     fontWeight: 500,
     cursor: 'pointer',
@@ -516,12 +516,12 @@ const flowBuilderStyles = {
     flexShrink: 0,
   },
   suggestionChip: {
-    background: '#f0faf7',
-    border: '1px solid #d0ebe3',
+    background: '#eef2ff',
+    border: '1px solid #c7d2fe',
     borderRadius: '12px',
     padding: '3px 10px',
     fontSize: '11px',
-    color: '#00a884',
+    color: '#6366f1',
     cursor: 'pointer',
     fontFamily: 'inherit',
     whiteSpace: 'nowrap',
@@ -800,11 +800,11 @@ function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons,
                         padding: '6px 4px',
                         fontSize: '11px',
                         fontWeight: ab.behavior === at.key ? 600 : 400,
-                        background: ab.behavior === at.key ? '#e8f5e9' : '#fff',
-                        border: ab.behavior === at.key ? '2px solid #00a884' : '1px solid #ddd',
-                        borderRadius: '6px',
+                        background: ab.behavior === at.key ? '#eef2ff' : '#fff',
+                        border: ab.behavior === at.key ? '2px solid #6366f1' : '1px solid #e2e8f0',
+                        borderRadius: '8px',
                         cursor: 'pointer',
-                        color: ab.behavior === at.key ? '#00a884' : '#666',
+                        color: ab.behavior === at.key ? '#6366f1' : '#64748b',
                       }}
                       onClick={() => {
                         const changes = { behavior: at.key };
@@ -945,29 +945,29 @@ function TemplateCard({ tpl, onLoadTemplate }) {
   };
 
   return (
-    <div style={{ background: '#fafafa', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
+    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
       <div
         style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', cursor: 'pointer', width: '100%' }}
         onClick={() => { setExpanded(!expanded); setConfirming(false); }}
       >
         <span style={{ fontSize: '22px' }}>{tpl.emoji}</span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: '#111' }}>{tpl.name}</div>
-          <div style={{ fontSize: '11px', color: '#888' }}>{tpl.description}</div>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{tpl.name}</div>
+          <div style={{ fontSize: '11px', color: '#64748b' }}>{tpl.description}</div>
         </div>
-        <span style={{ fontSize: '12px', color: '#aaa', transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+        <span style={{ fontSize: '12px', color: '#94a3b8', transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
       </div>
       {expanded && p && (
-        <div style={{ padding: '0 14px 12px', borderTop: '1px solid #eee' }}>
-          <div style={{ fontSize: '11px', color: '#666', marginTop: 8 }}>
+        <div style={{ padding: '0 14px 12px', borderTop: '1px solid #e2e8f0' }}>
+          <div style={{ fontSize: '11px', color: '#475569', marginTop: 8 }}>
             <strong>{p.total} services/items</strong> across {p.categories.length} categories:
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: 6 }}>
             {p.categories.map((cat) => (
-              <span key={cat} style={{ fontSize: '10px', background: '#e8f5e9', color: '#2e7d32', padding: '2px 8px', borderRadius: 12 }}>{cat}</span>
+              <span key={cat} style={{ fontSize: '10px', background: '#eef2ff', color: '#4338ca', padding: '2px 8px', borderRadius: 12, fontWeight: 500 }}>{cat}</span>
             ))}
           </div>
-          <div style={{ fontSize: '11px', color: '#888', marginTop: 6 }}>📋 Flow: {p.flow}</div>
+          <div style={{ fontSize: '11px', color: '#64748b', marginTop: 6 }}>📋 Flow: {p.flow}</div>
           {confirming && (
             <div style={{ marginTop: 8, padding: '8px 10px', background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, fontSize: 11, color: '#856404' }}>
               ⚠️ This will replace your current buttons and welcome message. Click again to confirm.
@@ -978,8 +978,8 @@ function TemplateCard({ tpl, onLoadTemplate }) {
               onClick={(e) => { e.stopPropagation(); handleApply(); }}
               disabled={loading}
               style={{
-                flex: 1, padding: '8px 16px', background: confirming ? '#dc3545' : '#00a884', color: '#fff', border: 'none',
-                borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1,
+                flex: 1, padding: '8px 16px', background: confirming ? '#dc3545' : '#6366f1', color: '#fff', border: 'none',
+                borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1,
               }}
             >
               {loading ? 'Applying…' : confirming ? 'Confirm Apply' : 'Apply Template'}
@@ -1027,11 +1027,12 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
 
     return (
       <div style={styles.panel}>
-        <button style={styles.backButton} onClick={onBack}>← Back</button>
+        <button style={styles.backButton} onClick={onBack}>← Back to menu</button>
         <h2 style={styles.title}>Button settings</h2>
+        <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 14px', lineHeight: '1.5' }}>Configure what this button does when a customer taps it in WhatsApp.</p>
 
         {/* Button label */}
-        <label style={styles.label}>Button label</label>
+        <label style={styles.label}>Button label <span style={{ color: '#94a3b8', fontWeight: 400 }}>— visible to customers</span></label>
         <input
           style={{
             ...styles.input,
@@ -1056,12 +1057,12 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
 
         {/* Behavior */}
         <Accordion
-          title="⚙️ Behavior"
+          title="⚙️ What happens on tap?"
           open={openSections.behavior}
           onToggle={() => setOpenSections((prev) => ({ ...prev, behavior: !prev.behavior }))}
           summary={behaviorSummary}
         >
-          <p style={styles.accordionDesc}>What should happen when a customer taps this button?</p>
+          <p style={styles.accordionDesc}>Choose what your customer sees after tapping this button:</p>
           <div style={styles.optionsList}>
             {BEHAVIORS.map((b) => {
               const isSelected = selectedButton.behavior === b.key;
@@ -1143,7 +1144,7 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
     return (
       <div style={styles.panel}>
         <h2 style={styles.title}>Sub-options of "{parentButton.label}"</h2>
-        <p style={styles.subtitle}>These are the options your customer sees after tapping "{parentButton.label}".</p>
+        <p style={styles.subtitle}>Your customer sees these options after tapping <strong>"{parentButton.label}"</strong>. Click any option below to configure it.</p>
 
         <div style={styles.childrenList}>
           {visibleButtons && visibleButtons.map((child) => (
@@ -1181,7 +1182,14 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
 
   return (
     <div style={styles.panel}>
-      <h2 style={styles.title}>Welcome Message</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+        <span style={{ fontSize: '20px' }}>👋</span>
+        <h2 style={{ ...styles.title, margin: 0 }}>Welcome Message</h2>
+      </div>
+      <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 14px', lineHeight: '1.5' }}>
+        This is the first thing your customers see when they message your bot.
+      </p>
+
       <label style={styles.label}>Message text</label>
       <textarea
         style={{
@@ -1195,7 +1203,7 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
       {!welcomeMessage?.trim() && (
         <p style={{ fontSize: 11, color: '#f59e0b', margin: '2px 0 0' }}>⚠ Welcome message is required</p>
       )}
-      <p style={styles.hint}>This is the first message your customer sees.</p>
+      <p style={styles.hint}>Your customer receives this as a chat message with the buttons below it.</p>
 
       {/* Channel limit warnings — only shown when a limit is exceeded */}
       {channelWarnings.length > 0 && (
@@ -1212,14 +1220,18 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
       )}
 
       <div style={styles.tipBox}>
-        💡 Click any button on the phone to set what it does.
+        💡 <strong>How it works:</strong> Click any button on the phone preview →
+        set its behavior (show info or sub-menu) → save. Your bot is ready!
       </div>
 
       {/* Template selector */}
       {templates && templates.length > 0 && (
         <div style={{ marginTop: '24px' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#111', margin: '0 0 8px' }}>Load a template</h3>
-          <p style={{ fontSize: '12px', color: '#888', margin: '0 0 12px' }}>Start with a pre-built business template. This will replace your current setup.</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <span style={{ fontSize: '16px' }}>🚀</span>
+            <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Quick start with a template</h3>
+          </div>
+          <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 12px', lineHeight: '1.5' }}>Pick a pre-built business template to get started instantly. You can customize everything after.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {templates.map((tpl) => (
               <TemplateCard key={tpl.key} tpl={tpl} onLoadTemplate={onLoadTemplate} />
@@ -1237,7 +1249,7 @@ const styles = {
     minWidth: 0,
     background: '#fff',
     padding: '24px 28px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    borderLeft: '1px solid #e2e8f0',
     flexShrink: 1,
     height: '100vh',
     overflowY: 'auto',
@@ -1245,23 +1257,23 @@ const styles = {
     top: 0,
   },
   accordion: {
-    border: '1px solid #eee',
-    borderRadius: '8px',
-    marginTop: '8px',
+    border: '1px solid #e2e8f0',
+    borderRadius: '10px',
+    marginTop: '10px',
     overflow: 'hidden',
   },
   accordionHeader: {
     width: '100%',
-    background: '#fafafa',
+    background: '#f8fafc',
     border: 'none',
-    padding: '10px 12px',
+    padding: '11px 14px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: 600,
-    color: '#333',
+    color: '#1e293b',
     textAlign: 'left',
   },
   accordionTitle: {
@@ -1270,43 +1282,45 @@ const styles = {
   accordionSummary: {
     fontSize: '12px',
     fontWeight: 400,
-    color: '#00a884',
+    color: '#6366f1',
     fontStyle: 'italic',
   },
   accordionChevron: {
     fontSize: '12px',
-    color: '#999',
+    color: '#94a3b8',
     marginLeft: '8px',
   },
   accordionBody: {
-    padding: '10px 12px',
+    padding: '12px 14px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
-    borderTop: '1px solid #eee',
+    gap: '8px',
+    borderTop: '1px solid #e2e8f0',
   },
   accordionDesc: {
     fontSize: '12px',
-    color: '#888',
+    color: '#64748b',
     margin: '0 0 4px 0',
+    lineHeight: '1.5',
   },
   title: {
     fontSize: '16px',
-    fontWeight: 600,
+    fontWeight: 700,
     margin: '0 0 4px 0',
-    color: '#111',
+    color: '#0f172a',
   },
   subtitle: {
     fontSize: '13px',
-    color: '#666',
+    color: '#64748b',
     margin: '0 0 16px 0',
+    lineHeight: '1.5',
   },
   backButton: {
     background: 'none',
     border: 'none',
-    color: '#00a884',
+    color: '#6366f1',
     fontSize: '13px',
-    fontWeight: 500,
+    fontWeight: 600,
     cursor: 'pointer',
     padding: '0',
     marginBottom: '12px',
@@ -1317,18 +1331,19 @@ const styles = {
     gap: '8px',
   },
   optionCard: {
-    background: '#f9f9f9',
+    background: '#f8fafc',
     border: '2px solid transparent',
-    borderColor: 'transparent',
+    borderColor: '#e2e8f0',
     borderRadius: '10px',
     padding: '12px',
     cursor: 'pointer',
     textAlign: 'left',
     position: 'relative',
+    transition: 'border-color 0.15s, background 0.15s',
   },
   optionCardSelected: {
-    borderColor: '#00a884',
-    background: '#f0faf7',
+    borderColor: '#6366f1',
+    background: '#eef2ff',
   },
   optionHeader: {
     display: 'flex',
@@ -1342,53 +1357,58 @@ const styles = {
   optionLabel: {
     fontSize: '14px',
     fontWeight: 600,
-    color: '#222',
+    color: '#1e293b',
   },
   optionLabelSelected: {
-    color: '#00a884',
+    color: '#6366f1',
   },
   optionDesc: {
     fontSize: '12px',
-    color: '#888',
+    color: '#64748b',
     marginLeft: '24px',
   },
   checkmark: {
     position: 'absolute',
     top: '12px',
     right: '12px',
-    color: '#00a884',
+    color: '#6366f1',
     fontWeight: 700,
     fontSize: '16px',
   },
   label: {
     fontSize: '13px',
     fontWeight: 500,
-    color: '#555',
+    color: '#475569',
     marginBottom: '6px',
     display: 'block',
   },
   textarea: {
     width: '100%',
-    padding: '10px',
-    borderRadius: '8px',
-    border: '1px solid #ddd',
+    padding: '10px 12px',
+    borderRadius: '10px',
+    border: '1px solid #e2e8f0',
     fontSize: '14px',
     resize: 'vertical',
     fontFamily: 'inherit',
     boxSizing: 'border-box',
+    outline: 'none',
+    transition: 'border-color 0.15s',
   },
   hint: {
     fontSize: '12px',
-    color: '#999',
+    color: '#94a3b8',
     marginTop: '8px',
+    lineHeight: '1.5',
   },
   tipBox: {
     marginTop: '16px',
-    padding: '10px',
-    background: '#f0faf7',
-    borderRadius: '8px',
+    padding: '12px 14px',
+    background: '#eef2ff',
+    borderRadius: '10px',
+    border: '1px solid #e0e7ff',
     fontSize: '12px',
-    color: '#555',
+    color: '#4338ca',
+    lineHeight: '1.5',
   },
   errorBox: {
     background: '#fef2f2',
@@ -1407,7 +1427,7 @@ const styles = {
   childrenHeader: {
     fontSize: '13px',
     fontWeight: 600,
-    color: '#333',
+    color: '#1e293b',
     marginBottom: '8px',
   },
   childrenList: {
@@ -1417,49 +1437,57 @@ const styles = {
     marginBottom: '8px',
   },
   childItem: {
-    background: '#f9f9f9',
-    borderRadius: '6px',
+    background: '#f8fafc',
+    borderRadius: '8px',
     padding: '8px 10px',
     fontSize: '13px',
-    color: '#333',
+    color: '#1e293b',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    border: '1px solid #f1f5f9',
   },
   childBadge: {
     fontSize: '10px',
-    color: '#888',
+    color: '#6366f1',
+    background: '#eef2ff',
+    padding: '2px 8px',
+    borderRadius: '8px',
+    fontWeight: 500,
   },
   addChildButton: {
-    background: '#f0faf7',
-    border: '1px dashed #00a884',
-    borderRadius: '8px',
+    background: '#eef2ff',
+    border: '1px dashed #a5b4fc',
+    borderRadius: '10px',
     padding: '8px 12px',
     fontSize: '13px',
-    color: '#00a884',
+    color: '#6366f1',
     cursor: 'pointer',
     width: '100%',
-    fontWeight: 500,
+    fontWeight: 600,
+    transition: 'background 0.15s',
   },
   childHint: {
     fontSize: '11px',
-    color: '#999',
+    color: '#94a3b8',
     marginTop: '6px',
     fontStyle: 'italic',
   },
   input: {
     width: '100%',
-    padding: '8px 10px',
-    borderRadius: '8px',
-    border: '1px solid #ddd',
+    padding: '9px 12px',
+    borderRadius: '10px',
+    border: '1px solid #e2e8f0',
     fontSize: '14px',
     fontFamily: 'inherit',
     boxSizing: 'border-box',
+    outline: 'none',
+    transition: 'border-color 0.15s',
   },
   sectionHeader: {
     fontSize: '13px',
     fontWeight: 600,
-    color: '#333',
+    color: '#1e293b',
     marginBottom: '4px',
   },
   styleGrid: {
@@ -1469,16 +1497,17 @@ const styles = {
   },
   styleCard: {
     flex: 1,
-    background: '#f9f9f9',
-    border: '2px solid transparent',
-    borderRadius: '8px',
+    background: '#f8fafc',
+    border: '2px solid #e2e8f0',
+    borderRadius: '10px',
     padding: '8px 6px',
     cursor: 'pointer',
     textAlign: 'center',
+    transition: 'border-color 0.15s',
   },
   styleCardSelected: {
-    borderColor: '#00a884',
-    background: '#f0faf7',
+    borderColor: '#6366f1',
+    background: '#eef2ff',
   },
   inputWithEmoji: {
     position: 'relative',
@@ -1497,13 +1526,14 @@ const styles = {
   },
   select: {
     width: '100%',
-    padding: '8px 10px',
-    borderRadius: '8px',
-    border: '1px solid #ddd',
+    padding: '9px 12px',
+    borderRadius: '10px',
+    border: '1px solid #e2e8f0',
     fontSize: '14px',
     fontFamily: 'inherit',
     boxSizing: 'border-box',
     background: '#fff',
+    outline: 'none',
   },
   toggle: {
     display: 'flex',
@@ -1544,12 +1574,12 @@ const styles = {
     lineHeight: 1,
   },
   submenuItem: {
-    background: '#f9f9f9',
-    border: '1px solid #e0e0e0',
-    borderRadius: '8px',
+    background: '#f8fafc',
+    border: '1px solid #e2e8f0',
+    borderRadius: '10px',
     padding: '10px 12px',
     fontSize: '13px',
-    color: '#333',
+    color: '#1e293b',
     cursor: 'pointer',
     display: 'flex',
     justifyContent: 'space-between',
