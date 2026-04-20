@@ -96,6 +96,7 @@ export default function BuilderPage({ businessId, setBusinessId }) {
   const [submissionToast, setSubmissionToast] = useState(null);
   const [staffList, setStaffList] = useState([]);
   const [businessName, setBusinessName] = useState('Your Business');
+  const [channel, setChannel] = useState('whatsapp');
 
   const visibleButtons = getButtonsAtPath(buttons, path);
   const selectedButton = selectedButtonId ? findButton(buttons, selectedButtonId) : null;
@@ -337,6 +338,18 @@ export default function BuilderPage({ businessId, setBusinessId }) {
     return <div className="flex items-center justify-center h-64 text-slate-400">Loading builder…</div>;
   }
 
+  // Contextual tip based on current state + channel
+  const channelName = channel === 'whatsapp' ? 'WhatsApp' : channel === 'telegram' ? 'Telegram' : 'Instagram';
+  const contextTip = (() => {
+    if (selectedButton) {
+      if (selectedButton.behavior === 'info') return `Set up this info page — customers on ${channelName} will see the title, description, price, and action buttons.`;
+      if (selectedButton.behavior === 'menu') return `This button opens a sub-menu on ${channelName}. Configure the label and manage sub-options below.`;
+      return `Choose what this button does on ${channelName} — show information or open more options.`;
+    }
+    if (path.length > 0 && parentButton) return `Editing sub-options inside "${parentButton.label}". Click any option to configure it.`;
+    return `Click any button on the ${channelName} preview to configure it. ${channel === 'whatsapp' ? 'Max 10 buttons.' : channel === 'instagram' ? 'Max 13 quick replies.' : 'Unlimited inline buttons.'}`;
+  })();
+
   return (
     <div style={{ minHeight: '100%', position: 'relative' }} className="bg-slate-100">
       {/* Submission toast */}
@@ -346,9 +359,12 @@ export default function BuilderPage({ businessId, setBusinessId }) {
         </div>
       )}
 
-      {/* Save bar */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-end gap-3">
-        {saveStatus === 'saved' && <span className="text-sm text-indigo-600 font-medium">✓ Saved</span>}
+      {/* Save bar with contextual tip */}
+      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center gap-3">
+        <div className="flex-1 text-xs text-slate-500 leading-relaxed">
+          💡 {contextTip}
+        </div>
+        {saveStatus === 'saved' && <span className="text-sm text-indigo-600 font-medium whitespace-nowrap">✓ Saved</span>}
         {saveStatus === 'error' && <span className="text-sm text-red-500 max-w-xs truncate">{errorMessage}</span>}
         <button
           className="px-5 py-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white text-sm font-semibold rounded-xl transition-all shadow-md shadow-indigo-500/25 disabled:opacity-50"
@@ -363,6 +379,8 @@ export default function BuilderPage({ businessId, setBusinessId }) {
         <PhoneMockup
           businessName={businessName}
           businessId={businessId}
+          channel={channel}
+          onChannelChange={setChannel}
           welcomeMessage={welcomeMessage}
           buttons={visibleButtons}
           selectedButtonId={selectedButtonId}
@@ -402,6 +420,7 @@ export default function BuilderPage({ businessId, setBusinessId }) {
           businessId={businessId}
           flowId={flowId}
           onGoBack={handleGoBack}
+          channel={channel}
         />
       </div>
     </div>

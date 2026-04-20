@@ -177,13 +177,13 @@ export function renderInfoPage(button) {
     messages.push(textMessage(to, body));
   } else if (actions.length <= LIMITS.QUICK_REPLY_MAX) {
     messages.push(interactiveButtons(to, body, actions.map(a => ({
-      type: 'reply', reply: { id: a.behavior === 'start_flow' ? makeId('book', a.id) : 'go_back', title: truncate(a.label, LIMITS.BUTTON_TITLE_MAX) },
+      type: 'reply', reply: { id: a.behavior === 'start_flow' ? makeId('book', a.id) : (a.backTarget === 'home' ? 'go_back_home' : 'go_back_parent'), title: truncate(a.label, LIMITS.BUTTON_TITLE_MAX) },
     }))));
   } else {
     messages.push(interactiveList(to, body, 'Actions', [{
       title: 'Choose',
       rows: actions.slice(0, LIMITS.LIST_ROWS_MAX).map(a => ({
-        id: a.behavior === 'start_flow' ? makeId('book', a.id) : 'go_back', title: truncate(a.label, LIMITS.LIST_ROW_TITLE_MAX),
+        id: a.behavior === 'start_flow' ? makeId('book', a.id) : (a.backTarget === 'home' ? 'go_back_home' : 'go_back_parent'), title: truncate(a.label, LIMITS.LIST_ROW_TITLE_MAX),
       })),
     }]));
   }

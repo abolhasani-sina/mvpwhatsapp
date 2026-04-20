@@ -142,7 +142,7 @@ export function renderInfoPage(button) {
   } else {
     const keyboard = actions.map(a => [{
       text: a.label,
-      callback_data: a.behavior === 'start_flow' ? truncate(makeId('book', a.id), LIMITS.CALLBACK_DATA_MAX) : 'go_back',
+      callback_data: a.behavior === 'start_flow' ? truncate(makeId('book', a.id), LIMITS.CALLBACK_DATA_MAX) : (a.backTarget === 'home' ? 'go_back_home' : 'go_back_parent'),
     }]);
     messages.push(textMessage(chatId, body, keyboard));
   }

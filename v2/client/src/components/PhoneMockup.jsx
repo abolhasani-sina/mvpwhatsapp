@@ -72,14 +72,16 @@ function formatPrice(amount, currency) {
   return `${amount} ${currency || 'USD'}`;
 }
 
-export default function PhoneMockupWithTabs(props) {
-  const [channel, setChannel] = useState('whatsapp');
+export default function PhoneMockupWithTabs({ channel: controlledChannel, onChannelChange, ...props }) {
+  const [internalChannel, setInternalChannel] = useState('whatsapp');
+  const channel = controlledChannel || internalChannel;
+  const handleChange = (ch) => { if (onChannelChange) onChannelChange(ch); else setInternalChannel(ch); };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0' }}>
       {/* Channel tabs */}
       <div style={{ display: 'flex', gap: '0', borderRadius: '12px 12px 0 0', overflow: 'hidden', border: '1px solid #e2e8f0', borderBottom: 'none' }}>
         {CHANNEL_TABS.map(tab => (
-          <button key={tab.key} onClick={() => setChannel(tab.key)} style={{
+          <button key={tab.key} onClick={() => handleChange(tab.key)} style={{
             padding: '8px 18px', fontSize: '13px', fontWeight: channel === tab.key ? 700 : 500,
             background: channel === tab.key ? CHANNEL_THEMES[tab.key].headerBg : '#f8fafc',
             color: channel === tab.key ? '#fff' : '#64748b',
@@ -715,7 +717,13 @@ function PhoneMockup({ businessName = 'Your Business', businessId, channel = 'wh
                         setFlowConfirmed(false);
                         setActiveFlowButton({ ...ab, flowSteps: mergedSteps });
                       } else if (ab.behavior === 'go_back') {
-                        onCloseInfoPreview();
+                        if (ab.backTarget === 'home') {
+                          // Go to main menu
+                          onNavigateTo('home');
+                        } else {
+                          // Go back one step (parent menu)
+                          onCloseInfoPreview();
+                        }
                       }
                     }}
                     >
@@ -830,6 +838,22 @@ function PhoneMockup({ businessName = 'Your Business', businessId, channel = 'wh
               </div>
             );
           })}
+
+          {/* Auto back indicator for sub-menus */}
+          {path.length > 0 && (
+            <div style={{
+              ...styles.whatsappButton,
+              color: '#999',
+              borderColor: '#e0e0e0',
+              borderStyle: 'dashed',
+              background: '#fafafa',
+              cursor: 'default',
+              fontSize: '13px',
+              textAlign: 'center',
+            }}>
+              ← Back <span style={{ fontSize: '11px', opacity: 0.7 }}>(auto-added for customers)</span>
+            </div>
+          )}
         </div>
 
         <button style={styles.addButton} onClick={onAddButton}>

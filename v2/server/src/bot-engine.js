@@ -226,8 +226,8 @@ function buildWelcomeMsg(welcomeMessage, buttons) {
   };
 }
 
-function buildChildrenList(children, question, buttonLabel) {
-  const rows = children.slice(0, 10).map(btn => {
+function buildChildrenList(children, question, buttonLabel, includeBack = false) {
+  const rows = children.slice(0, includeBack ? 9 : 10).map(btn => {
     const row = { id: `service_${btn.id}`, title: stripEmoji(btn.label).slice(0, 24) };
     if (btn.infoPage) {
       const parts = [];
@@ -241,6 +241,9 @@ function buildChildrenList(children, question, buttonLabel) {
     }
     return row;
   });
+  if (includeBack) {
+    rows.push({ id: 'go_back_parent', title: '← Back', description: 'Return to previous menu' });
+  }
   return { type: 'list', body: question || 'What are you looking for?', buttonLabel: buttonLabel || 'Browse', sections: [{ title: 'Available', rows }] };
 }
 
@@ -296,7 +299,12 @@ function buildInfoMessages(btn) {
   }
 
   if (actions.length > 0 && actions.length <= 3) {
-    msgs.push({ type: 'buttons', body, buttons: actions.map(a => ({ id: a.behavior === 'start_flow' ? `book_${a.id}` : 'go_back', title: a.label.slice(0, 20) })) });
+    msgs.push({ type: 'buttons', body, buttons: actions.map(a => {
+      if (a.behavior === 'start_flow') return { id: `book_${a.id}`, title: a.label.slice(0, 20) };
+      // go_back: use target-specific callback ID
+      const backId = a.backTarget === 'home' ? 'go_back_home' : 'go_back_parent';
+      return { id: backId, title: a.label.slice(0, 20) };
+    }) });
   } else {
     msgs.push({ type: 'text', body });
   }
@@ -451,7 +459,36 @@ function _processIncoming(businessId, channelUserId, channel, userName, input) {
     return [buildWelcomeMsg(welcomeMessage, buttons)];
   }
 
-  if (callbackId === 'go_back') {
+  if (callbackId === 'go_back' || callbackId === 'go_back_parent') {
+    // Go back one level in the menu path
+    state.currentInfoId = null;
+    if (state.menuPath && state.menuPath.length > 0) {
+      state.menuPath.pop();
+      if (state.menuPath.length > 0) {
+        // Still inside a sub-menu — show parent's children
+        const parentId = state.menuPath[state.menuPath.length - 1];
+        const parentBtn = findInTree(buttons, parentId);
+        state.phase = 'browsing_menu';
+        updateConversationState(conversation.id, state);
+        if (parentBtn && parentBtn.children?.length) {
+          const cleanLabel = stripEmoji(parentBtn.label);
+          return [buildChildrenList(parentBtn.children, `Here's what we offer in *${cleanLabel}* 👇`, 'Browse', true)];
+        }
+      }
+      // Popped back to root
+      state.phase = 'welcome';
+      state.menuPath = [];
+      updateConversationState(conversation.id, state);
+      return [buildWelcomeMsg(welcomeMessage, buttons)];
+    }
+    // Already at root — show welcome
+    state.phase = 'welcome';
+    state.menuPath = [];
+    updateConversationState(conversation.id, state);
+    return [buildWelcomeMsg(welcomeMessage, buttons)];
+  }
+
+  if (callbackId === 'go_back_home') {
     state.phase = 'welcome';
     state.menuPath = [];
     state.currentInfoId = null;
@@ -472,7 +509,7 @@ function _processIncoming(businessId, channelUserId, channel, userName, input) {
         state.phase = 'browsing_menu';
         state.menuPath = [btnId];
         updateConversationState(conversation.id, state);
-        return [buildChildrenList(btn.children || [], 'Here are our service categories — pick one to explore! ✨', 'Browse Services')];
+        return [buildChildrenList(btn.children || [], 'Here are our service categories — pick one to explore! ✨', 'Browse Services', true)];
       }
 
       if (btn.behavior === 'info') {
@@ -496,7 +533,7 @@ function _processIncoming(businessId, channelUserId, channel, userName, input) {
         state.menuPath.push(btnId);
         updateConversationState(conversation.id, state);
         const cleanLabel = stripEmoji(btn.label);
-        return [buildChildrenList(btn.children, `Great choice! Here's what we offer in *${cleanLabel}* 👇`, 'Browse')];
+        return [buildChildrenList(btn.children, `Great choice! Here's what we offer in *${cleanLabel}* 👇`, 'Browse', true)];
       }
 
       if (btn.behavior === 'info') {
@@ -510,7 +547,7 @@ function _processIncoming(businessId, channelUserId, channel, userName, input) {
     const lastMenuId = state.menuPath[state.menuPath.length - 1];
     const menuBtn = lastMenuId ? findInTree(buttons, lastMenuId) : null;
     if (menuBtn && menuBtn.children?.length) {
-      return [buildChildrenList(menuBtn.children, 'Please select from the options:', 'Browse')];
+      return [buildChildrenList(menuBtn.children, 'Please select from the options:', 'Browse', true)];
     }
     return [buildWelcomeMsg(welcomeMessage, buttons)];
   }

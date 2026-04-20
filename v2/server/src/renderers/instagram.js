@@ -150,13 +150,13 @@ export function renderInfoPage(button) {
     messages.push(genericTemplate(recipient, info.title, info.description || '', actions.map(a => ({
       type: 'postback',
       title: truncate(a.label, LIMITS.BUTTON_TITLE_MAX),
-      payload: a.behavior === 'start_flow' ? makeId('book', a.id) : 'go_back',
+      payload: a.behavior === 'start_flow' ? makeId('book', a.id) : (a.backTarget === 'home' ? 'go_back_home' : 'go_back_parent'),
     }))));
   } else {
     messages.push(quickReplyMessage(recipient, body, actions.map(a => ({
       content_type: 'text',
       title: truncate(a.label, LIMITS.QUICK_REPLY_TITLE_MAX),
-      payload: a.behavior === 'start_flow' ? makeId('book', a.id) : 'go_back',
+      payload: a.behavior === 'start_flow' ? makeId('book', a.id) : (a.backTarget === 'home' ? 'go_back_home' : 'go_back_parent'),
     }))));
   }
   return messages;

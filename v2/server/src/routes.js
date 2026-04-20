@@ -140,7 +140,7 @@ router.post('/business/:id/apply-template', tenantScope, applyTemplateRules, val
     // Insert template buttons (same logic as seed)
     const insertBtn = db.prepare('INSERT INTO buttons (business_id, parent_id, label, behavior, sort_order) VALUES (?, ?, ?, ?, ?)');
     const insertInfo = db.prepare('INSERT INTO info_pages (button_id, title, description, amount, currency, duration, style, show_price, show_duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    const insertActionBtn = db.prepare('INSERT INTO action_buttons (info_page_id, label, behavior, prefill_service, sort_order) VALUES (?, ?, ?, ?, ?)');
+    const insertActionBtn = db.prepare('INSERT INTO action_buttons (info_page_id, label, behavior, prefill_service, sort_order, back_target) VALUES (?, ?, ?, ?, ?, ?)');
     const insertExtraStep = db.prepare('INSERT INTO extra_steps (button_id, type, question, key, summary_label, options, step_order, manual_placeholder) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
     const insertFlowStep = db.prepare('INSERT INTO flow_steps (flow_id, type, question, key, summary_label, options, step_order, menu_root_button_id, manual_placeholder) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
 
@@ -169,7 +169,7 @@ router.post('/business/:id/apply-template', tenantScope, applyTemplateRules, val
           if (ip.actionButtons && ip.actionButtons.length > 0) {
             for (let a = 0; a < ip.actionButtons.length; a++) {
               const ab = ip.actionButtons[a];
-              insertActionBtn.run(infoPageId, ab.label || '', ab.behavior || 'go_back', ab.prefillService || '', a);
+              insertActionBtn.run(infoPageId, ab.label || '', ab.behavior || 'go_back', ab.prefillService || '', a, ab.backTarget || 'parent');
               if (ab.behavior === 'start_flow' && ab.flowSteps && !baseFlowSteps) {
                 baseFlowSteps = ab.flowSteps;
               }
@@ -358,6 +358,7 @@ router.get('/business/:id/builder', tenantScope, (req, res) => {
             behavior: ab.behavior,
             deliveryMethod: ab.delivery_method || 'none',
             deliveryStaffId: ab.delivery_staff_id || null,
+            backTarget: ab.back_target || 'parent',
           };
           if (ab.behavior === 'start_flow') {
             actionNode.flowSteps = formattedFlowSteps;
@@ -475,7 +476,7 @@ router.put('/business/:id/builder', tenantScope, saveBuilderRules, validate, (re
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
     const insertActionBtn = db.prepare(
-      'INSERT INTO action_buttons (info_page_id, label, behavior, prefill_service, sort_order, delivery_method, delivery_staff_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO action_buttons (info_page_id, label, behavior, prefill_service, sort_order, delivery_method, delivery_staff_id, back_target) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     );
     const insertExtraStep = db.prepare(
       `INSERT INTO extra_steps (button_id, type, question, key, summary_label, options, step_order, manual_placeholder)
@@ -547,7 +548,8 @@ router.put('/business/:id/builder', tenantScope, saveBuilderRules, validate, (re
                 ab.prefillService || '',
                 a,
                 ab.deliveryMethod || 'none',
-                ab.deliveryStaffId || null
+                ab.deliveryStaffId || null,
+                ab.backTarget || 'parent'
               );
               if (ab.behavior === 'start_flow' && ab.flowSteps && !baseFlowSteps) {
                 baseFlowSteps = ab.flowSteps;
@@ -1071,6 +1073,7 @@ router.get('/business/:id/whatsapp-preview', tenantScope, (req, res) => {
             id: ab.id, label: ab.label, behavior: ab.behavior,
             deliveryMethod: ab.delivery_method || 'none',
             deliveryStaffId: ab.delivery_staff_id || null,
+            backTarget: ab.back_target || 'parent',
             ...(ab.behavior === 'start_flow' ? { flowSteps: formattedSteps, ...(ab.prefill_service ? { prefillService: ab.prefill_service } : {}) } : {}),
           }));
           const extras = (extrasByButton.get(btn.id) || []).map(es => ({

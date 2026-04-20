@@ -148,9 +148,9 @@ function createEngine(builderData) {
   }
 
   // Build a list message showing direct children as rows (step-by-step navigation)
-  function getChildrenList(children, question, buttonLabel) {
+  function getChildrenList(children, question, buttonLabel, includeBack = false) {
     const clean = s => s.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim();
-    const rows = children.slice(0, 10).map(btn => {
+    const rows = children.slice(0, includeBack ? 9 : 10).map(btn => {
       const row = {
         id: `service_${btn.id}`,
         title: clean(btn.label).slice(0, 24),
@@ -168,6 +168,9 @@ function createEngine(builderData) {
       }
       return row;
     });
+    if (includeBack) {
+      rows.push({ id: 'go_back_parent', title: '← Back', description: 'Return to previous menu' });
+    }
     return {
       type: 'list',
       body: question || 'What are you looking for?',
@@ -263,7 +266,7 @@ function createEngine(builderData) {
         type: 'buttons',
         body,
         buttons: actions.map(a => ({
-          id: a.behavior === 'start_flow' ? `book_${a.id}` : 'go_back',
+          id: a.behavior === 'start_flow' ? `book_${a.id}` : (a.backTarget === 'home' ? 'go_back_home' : 'go_back_parent'),
           title: a.label.slice(0, 20),
         })),
       });
@@ -643,12 +646,37 @@ export default function WhatsAppTester({ businessId }) {
       return;
     }
 
-    // ── Go Back → show welcome
-    if (id === 'go_back') {
+    // ── Go Back (parent = one level up, home = main menu) ──
+    if (id === 'go_back' || id === 'go_back_parent') {
+      setTimeout(() => {
+        const prevState = conversationStateRef.current || {};
+        const menuPath = [...(prevState.menuPath || [])];
+        menuPath.pop();
+        if (menuPath.length > 0) {
+          // Still nested — show parent's children
+          const parentId = menuPath[menuPath.length - 1];
+          const parentBtn = engine.findInTree(engine.buttons, parentId);
+          if (parentBtn && parentBtn.children?.length) {
+            const cleanLabel = parentBtn.label.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim();
+            const menuMsg = engine.getChildrenList(parentBtn.children, `Back to *${cleanLabel}* 👇`, 'Browse', true);
+            appendBotMessage(menuMsg);
+            setConversationState(prev => ({ ...prev, phase: 'browsing_menu', menuPath }));
+            return;
+          }
+        }
+        // At root — show welcome
+        const welcome = engine.getWelcome();
+        appendBotMessage(welcome);
+        setConversationState(prev => ({ ...prev, phase: 'welcome', menuPath: [] }));
+      }, 400);
+      return;
+    }
+
+    if (id === 'go_back_home') {
       setTimeout(() => {
         const welcome = engine.getWelcome();
         appendBotMessage(welcome);
-        setConversationState(prev => ({ ...prev, phase: 'welcome' }));
+        setConversationState(prev => ({ ...prev, phase: 'welcome', menuPath: [] }));
       }, 400);
       return;
     }
@@ -661,7 +689,7 @@ export default function WhatsAppTester({ businessId }) {
 
       if (btn.behavior === 'menu') {
         setTimeout(() => {
-          const menuMsg = engine.getChildrenList(btn.children || [], 'Here are our service categories — pick one to explore! ✨', 'Browse Services');
+          const menuMsg = engine.getChildrenList(btn.children || [], 'Here are our service categories — pick one to explore! ✨', 'Browse Services', true);
           appendBotMessage(menuMsg);
           setConversationState(prev => ({ ...prev, phase: 'browsing_menu', menuPath: [btnId] }));
         }, 400);
@@ -687,7 +715,7 @@ export default function WhatsAppTester({ businessId }) {
       if (btn.behavior === 'menu' && btn.children?.length) {
         setTimeout(() => {
           const cleanLabel = btn.label.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim();
-          const menuMsg = engine.getChildrenList(btn.children, `Great choice! Here\'s what we offer in *${cleanLabel}* 👇`, 'Browse');
+          const menuMsg = engine.getChildrenList(btn.children, `Great choice! Here\'s what we offer in *${cleanLabel}* 👇`, 'Browse', true);
           appendBotMessage(menuMsg);
           setConversationState(prev => ({ ...prev, menuPath: [...prev.menuPath, btnId] }));
         }, 400);

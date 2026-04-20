@@ -793,6 +793,25 @@ function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons,
                 </div>
 
                 {/* Conditional config based on action type */}
+                {ab.behavior === 'go_back' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '11px', fontWeight: 500, color: '#64748b' }}>Where should this go?</label>
+                    <select
+                      style={{ ...styles.input, padding: '7px 8px', fontSize: '13px' }}
+                      value={ab.backTarget || 'parent'}
+                      onChange={(e) => updateAb({ backTarget: e.target.value })}
+                    >
+                      <option value="parent">← One step back (parent menu)</option>
+                      <option value="home">🏠 Main menu (start over)</option>
+                    </select>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>
+                      {(ab.backTarget || 'parent') === 'parent'
+                        ? 'Customer returns to the menu that contains this info page.'
+                        : 'Customer goes back to the main welcome screen.'}
+                    </div>
+                  </div>
+                )}
+
                 {ab.behavior === 'start_flow' && ab.flowSteps && (
                   <InfoActionFlowBuilder
                     flowSteps={ab.flowSteps}
@@ -974,10 +993,11 @@ function TemplateCard({ tpl, onLoadTemplate }) {
   );
 }
 
-export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedButton, onBehaviorChange, onBack, errorMessage, onAddChild, path, parentButton, visibleButtons, onAddButton, onSelectButton, onUpdateButton, genId, allButtons, templates, onLoadTemplate, businessId, flowId, onGoBack }) {
+export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedButton, onBehaviorChange, onBack, errorMessage, onAddChild, path, parentButton, visibleButtons, onAddButton, onSelectButton, onUpdateButton, genId, allButtons, templates, onLoadTemplate, businessId, flowId, onGoBack, channel }) {
   const [openSections, setOpenSections] = useState({ behavior: true, flow: false });
   const [staff, setStaff] = useState([]);
   const [showTemplates, setShowTemplates] = useState(false);
+  const channelName = channel === 'whatsapp' ? 'WhatsApp' : channel === 'telegram' ? 'Telegram' : channel === 'instagram' ? 'Instagram' : 'the chat';
 
   // Load staff for delivery dropdowns
   useEffect(() => {
@@ -1026,7 +1046,7 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
         </button>
 
         <h2 style={styles.title}>Button settings</h2>
-        <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 14px', lineHeight: '1.5' }}>Configure what this button does when a customer taps it in WhatsApp.</p>
+        <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 14px', lineHeight: '1.5' }}>Configure what this button does when a customer taps it in {channelName}.</p>
 
         {/* Button label */}
         <label style={styles.label}>Button label <span style={{ color: '#94a3b8', fontWeight: 400 }}>— visible to customers</span></label>
@@ -1240,13 +1260,6 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
               ⚠ {w}
             </div>
           ))}
-        </div>
-      )}
-
-      {hasButtons && (
-        <div style={styles.tipBox}>
-          💡 <strong>How it works:</strong> Click any button on the phone preview →
-          set its behavior (show info or sub-menu) → save. Your bot is ready!
         </div>
       )}
 

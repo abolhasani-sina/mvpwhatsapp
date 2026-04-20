@@ -71,6 +71,7 @@ export function migrate() {
       behavior TEXT NOT NULL DEFAULT 'go_back',
       prefill_service TEXT DEFAULT '',
       sort_order INTEGER DEFAULT 0,
+      back_target TEXT DEFAULT 'parent',
       FOREIGN KEY (info_page_id) REFERENCES info_pages(id) ON DELETE CASCADE
     );
 
@@ -269,6 +270,9 @@ export function migrate() {
   }
   if (!abCols.includes('delivery_staff_id')) {
     db.exec("ALTER TABLE action_buttons ADD COLUMN delivery_staff_id INTEGER DEFAULT NULL");
+  }
+  if (!abCols.includes('back_target')) {
+    db.exec("ALTER TABLE action_buttons ADD COLUMN back_target TEXT DEFAULT 'parent'");
   }
 
   // ── Phase 7 tables ──
