@@ -334,29 +334,24 @@ export default function BuilderPage({ businessId, setBusinessId }) {
   }
 
   if (!loaded) {
-    return <div className="flex items-center justify-center h-64 text-gray-400">Loading builder…</div>;
+    return <div className="flex items-center justify-center h-64 text-slate-400">Loading builder…</div>;
   }
 
   return (
-    <div style={{ minHeight: '100%', background: '#f0f2f5', position: 'relative' }}>
+    <div style={{ minHeight: '100%', position: 'relative' }} className="bg-slate-100">
       {/* Submission toast */}
       {submissionToast && (
-        <div style={{
-          position: 'fixed', top: '20px', right: '20px', zIndex: 9999,
-          background: '#065f46', color: '#fff', padding: '12px 20px',
-          borderRadius: '10px', fontSize: '14px', fontWeight: 600,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.2)', animation: 'fadeIn 0.3s',
-        }}>
+        <div className="fixed top-5 right-5 z-[9999] bg-slate-900 text-white px-5 py-3 rounded-xl text-sm font-semibold shadow-lg shadow-black/20 animate-[fadeIn_0.3s]">
           {submissionToast}
         </div>
       )}
 
       {/* Save bar */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-end gap-3">
-        {saveStatus === 'saved' && <span className="text-sm text-emerald-600 font-medium">✓ Saved</span>}
+      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-end gap-3">
+        {saveStatus === 'saved' && <span className="text-sm text-indigo-600 font-medium">✓ Saved</span>}
         {saveStatus === 'error' && <span className="text-sm text-red-500 max-w-xs truncate">{errorMessage}</span>}
         <button
-          className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
+          className="px-5 py-2 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white text-sm font-semibold rounded-xl transition-all shadow-md shadow-indigo-500/25 disabled:opacity-50"
           onClick={handleSave}
           disabled={saving}
         >

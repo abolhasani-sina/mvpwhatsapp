@@ -901,7 +901,7 @@ export default function WhatsAppTester({ businessId }) {
   // ── Loading / Error states ──
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#667781' }}>
+      <div className="flex items-center justify-center h-full text-slate-500 text-sm">
         Loading bot configuration…
       </div>
     );
@@ -909,7 +909,7 @@ export default function WhatsAppTester({ businessId }) {
 
   if (error || !builderData) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#e74c3c' }}>
+      <div className="flex items-center justify-center h-full text-red-500 text-sm">
         {error || 'No business data found'}
       </div>
     );
@@ -924,24 +924,19 @@ export default function WhatsAppTester({ businessId }) {
   const isIG = activeChannel === 'instagram';
 
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%',
-      padding: '12px 24px 24px', background: '#f0f2f5',
-    }}>
+    <div className="flex flex-col items-center h-full px-6 pb-6 pt-3 bg-slate-100">
       {/* Channel Tabs */}
-      <div style={{
-        display: 'flex', gap: 4, marginBottom: 16, background: '#fff', borderRadius: 12,
-        padding: 4, boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-      }}>
+      <div className="flex gap-1 mb-4 bg-white rounded-xl p-1 shadow-sm border border-slate-200">
         {CHANNEL_TABS.map(ch => (
           <button key={ch.key} onClick={() => { setActiveChannel(ch.key); setPreviewChannel(ch.key); }}
             style={{
               padding: '8px 20px', fontSize: 13, fontWeight: activeChannel === ch.key ? 700 : 500,
               background: activeChannel === ch.key ? ch.color : 'transparent',
-              color: activeChannel === ch.key ? '#fff' : '#666',
+              color: activeChannel === ch.key ? '#fff' : undefined,
               border: 'none', borderRadius: 8, cursor: 'pointer',
               transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 6,
             }}
+            className={activeChannel !== ch.key ? 'text-slate-500 hover:text-slate-700' : ''}
           >
             <span>{ch.icon}</span> {ch.label}
           </button>
