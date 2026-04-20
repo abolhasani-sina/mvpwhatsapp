@@ -13,7 +13,7 @@ export default function SystemLogs() {
     setError(null);
     fetchErrorLogs(30)
       .then((data) => setLogs(data))
-      .catch(() => setError('Failed to load error logs.'))
+      .catch((err) => setError(err.message || 'Failed to load error logs.'))
       .finally(() => setLoading(false));
   }
 

@@ -38,9 +38,14 @@ router.use(authenticate);
 // ERROR LOGS (Owner-friendly, authenticated)
 // ──────────────────────────────────────────────
 router.get('/logs/errors/readable', (req, res) => {
-  const limit = Number(req.query.limit || 30);
-  const result = getReadableErrorLogs(limit);
-  res.json({ data: result });
+  try {
+    const limit = Number(req.query.limit || 30);
+    const result = getReadableErrorLogs(limit);
+    res.json({ data: result });
+  } catch (err) {
+    log.error({ err }, 'Failed to read error logs');
+    res.status(500).json({ error: 'Failed to read error logs' });
+  }
 });
 
 router.get('/logs/errors/raw', (req, res) => {
