@@ -43,12 +43,12 @@ console.log('── Test 1: Design Tokens ──');
 test('index.css contains CSS custom properties (:root)', () => {
   const css = readClient('src/index.css');
   assert(css.includes(':root'), 'Should have :root block');
-  assert(css.includes('--bd-primary'), 'Should have --bd-primary token');
-  assert(css.includes('--bd-gray-'), 'Should have gray scale tokens');
+  assert(css.includes('--bd-accent'), 'Should have --bd-accent token');
+  assert(css.includes('--bd-slate-'), 'Should have slate scale tokens');
   assert(css.includes('--bd-success'), 'Should have success color token');
   assert(css.includes('--bd-error'), 'Should have error color token');
   assert(css.includes('--bd-warning'), 'Should have warning color token');
-  assert(css.includes('--bd-space-'), 'Should have spacing tokens');
+  assert(css.includes('--bd-teal'), 'Should have teal accent token');
   assert(css.includes('--bd-radius-'), 'Should have radius tokens');
   assert(css.includes('--bd-shadow-'), 'Should have shadow tokens');
 });
@@ -189,7 +189,7 @@ test('Landing has FAQ accordion', () => {
 
 test('Landing hero is mobile responsive', () => {
   const src = readClient('src/pages/Landing.jsx');
-  assert(src.includes('text-3xl sm:text-5xl'), 'Hero heading should be responsive');
+  assert(src.includes('text-4xl sm:text-6xl'), 'Hero heading should be responsive');
   assert(src.includes('flex-col sm:flex-row'), 'Hero buttons should stack on mobile');
 });
 
@@ -262,7 +262,7 @@ test('Register has security reassurance', () => {
 
 test('Register is mobile responsive', () => {
   const src = readClient('src/pages/Register.jsx');
-  assert(src.includes('p-6 sm:p-8'), 'Card padding should be responsive');
+  assert(src.includes('px-4 sm:px-8'), 'Form area padding should be responsive');
 });
 
 // ────────────────────────────────────────────
@@ -278,7 +278,7 @@ test('AdminLayout has mobile hamburger menu', () => {
 
 test('AdminLayout has mobile overlay', () => {
   const src = readClient('src/components/AdminLayout.jsx');
-  assert(src.includes('bg-black/30'), 'Should have backdrop overlay');
+  assert(src.includes('bg-black/40'), 'Should have backdrop overlay');
   assert(src.includes('lg:hidden'), 'Mobile elements should be hidden on desktop');
 });
 

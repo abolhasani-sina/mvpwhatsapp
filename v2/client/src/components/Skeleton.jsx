@@ -10,7 +10,7 @@ export function Skeleton({ className = '', width, height }) {
 
 export function SkeletonCard() {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm space-y-3">
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
       <Skeleton height={40} width={40} className="rounded-xl" />
       <Skeleton height={28} width="60%" />
       <Skeleton height={14} width="40%" />

@@ -17,7 +17,6 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Close mobile sidebar on navigation
   useEffect(() => { setMobileOpen(false); }, [currentView]);
 
   function handleNav(key) {
@@ -28,23 +27,22 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
   const sidebarContent = (
     <>
       {/* Logo */}
-      <div className="h-16 flex items-center px-4 border-b border-gray-100 shrink-0">
-        <div className="w-9 h-9 rounded-lg bg-emerald-500 flex items-center justify-center shrink-0">
+      <div className="h-16 flex items-center px-4 border-b border-white/10 shrink-0">
+        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/20">
           <MessageSquare className="w-4.5 h-4.5 text-white" />
         </div>
         {(!collapsed || mobileOpen) && (
-          <span className="ml-3 text-base font-bold text-gray-900 truncate">BotDesk</span>
+          <span className="ml-3 text-base font-bold text-white truncate tracking-tight">BotDesk</span>
         )}
-        {/* Mobile close */}
         {mobileOpen && (
-          <button onClick={() => setMobileOpen(false)} className="ml-auto lg:hidden text-gray-400 hover:text-gray-600">
+          <button onClick={() => setMobileOpen(false)} className="ml-auto lg:hidden text-slate-400 hover:text-white">
             <X className="w-5 h-5" />
           </button>
         )}
       </div>
 
       {/* Nav items */}
-      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto bd-scrollbar">
         {NAV_ITEMS.map((item) => {
           const active = currentView === item.key;
           return (
@@ -54,11 +52,11 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
               title={collapsed && !mobileOpen ? item.label : undefined}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 active
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                  ? 'bg-indigo-500/15 text-indigo-400'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
-              <item.icon className={`w-5 h-5 shrink-0 ${active ? 'text-emerald-600' : 'text-gray-400'}`} />
+              <item.icon className={`w-5 h-5 shrink-0 ${active ? 'text-indigo-400' : 'text-slate-500'}`} />
               {(!collapsed || mobileOpen) && <span className="truncate">{item.label}</span>}
             </button>
           );
@@ -66,21 +64,21 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
       </nav>
 
       {/* Collapse toggle - desktop only */}
-      <div className="px-3 py-2 border-t border-gray-100 hidden lg:block">
+      <div className="px-3 py-2 border-t border-white/10 hidden lg:block">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-all"
         >
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <><ChevronLeft className="w-4 h-4" /><span>Collapse</span></>}
         </button>
       </div>
 
       {/* User / Logout */}
-      <div className="px-3 py-3 border-t border-gray-100 shrink-0">
+      <div className="px-3 py-3 border-t border-white/10 shrink-0">
         <button
           onClick={onLogout}
           title="Log out"
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all"
         >
           <LogOut className="w-5 h-5 shrink-0" />
           {(!collapsed || mobileOpen) && <span className="truncate">{user?.name || 'Log out'}</span>}
@@ -90,48 +88,37 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
   );
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-slate-100 overflow-hidden">
       {/* Mobile overlay */}
       {mobileOpen && (
-        <div className="fixed inset-0 bg-black/30 z-40 lg:hidden" onClick={() => setMobileOpen(false)} />
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
-      {/* Sidebar - mobile (slide-over) */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-[260px] flex flex-col bg-white border-r border-gray-200 transform transition-transform duration-200 lg:hidden ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
+      {/* Sidebar - mobile */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-[260px] flex flex-col bg-slate-900 border-r border-white/10 transform transition-transform duration-200 lg:hidden ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {sidebarContent}
       </aside>
 
       {/* Sidebar - desktop */}
-      <aside
-        className={`hidden lg:flex flex-col bg-white border-r border-gray-200 transition-all duration-200 ${
-          collapsed ? 'w-[68px]' : 'w-[240px]'
-        }`}
-      >
+      <aside className={`hidden lg:flex flex-col bg-slate-900 border-r border-white/10 transition-all duration-200 ${collapsed ? 'w-[68px]' : 'w-[240px]'}`}>
         {sidebarContent}
       </aside>
 
       {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 shrink-0">
+        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 shrink-0">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setMobileOpen(true)}
-              className="lg:hidden text-gray-500 hover:text-gray-700"
-            >
+            <button onClick={() => setMobileOpen(true)} className="lg:hidden text-slate-500 hover:text-slate-700">
               <Menu className="w-5 h-5" />
             </button>
-            <h1 className="text-lg font-semibold text-gray-900">
+            <h1 className="text-base font-semibold text-slate-800">
               {NAV_ITEMS.find((i) => i.key === currentView)?.label || 'Dashboard'}
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
-              <span className="text-sm font-semibold text-emerald-700">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
+              <span className="text-xs font-bold text-white">
                 {(user?.name || 'U')[0].toUpperCase()}
               </span>
             </div>

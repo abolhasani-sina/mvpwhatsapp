@@ -49,7 +49,7 @@ function AppRoutes() {
   }
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading…</div>;
+    return <div className="min-h-screen flex items-center justify-center text-slate-400">Loading…</div>;
   }
 
   // Public pages
