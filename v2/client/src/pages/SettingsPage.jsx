@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { fetchSettings, updateSettings, updateBusiness, fetchBusiness } from '../lib/api';
+import { useToast } from '../components/Toast';
 
 export default function SettingsPage({ businessId }) {
+  const { addToast } = useToast();
   const [tgToken, setTgToken] = useState('');
   const [tgChatId, setTgChatId] = useState('');
   const [businessEmail, setBusinessEmail] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [bizName, setBizName] = useState('');
   const [bizPhone, setBizPhone] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,12 +31,18 @@ export default function SettingsPage({ businessId }) {
   }, [businessId]);
 
   async function handleSave() {
-    await Promise.all([
-      updateSettings(businessId, tgToken, tgChatId, businessEmail, whatsappNumber),
-      updateBusiness(businessId, { name: bizName, phone: bizPhone }),
-    ]);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaving(true);
+    try {
+      await Promise.all([
+        updateSettings(businessId, tgToken, tgChatId, businessEmail, whatsappNumber),
+        updateBusiness(businessId, { name: bizName, phone: bizPhone }),
+      ]);
+      addToast('Settings saved successfully', 'success');
+    } catch {
+      addToast('Failed to save settings', 'error');
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!businessId) {
@@ -155,13 +163,11 @@ export default function SettingsPage({ businessId }) {
       <div className="flex items-center gap-3">
         <button
           onClick={handleSave}
-          className="bg-emerald-500 hover:bg-emerald-600 text-white border-none rounded-lg px-6 py-2.5 text-sm font-medium cursor-pointer transition-colors"
+          disabled={saving}
+          className="bg-emerald-500 hover:bg-emerald-600 text-white border-none rounded-lg px-6 py-2.5 text-sm font-medium cursor-pointer transition-colors disabled:opacity-50"
         >
-          Save Settings
+          {saving ? 'Saving…' : 'Save Settings'}
         </button>
-        {saved && (
-          <span className="text-[13px] text-emerald-500 font-medium">✓ Saved</span>
-        )}
       </div>
     </div>
   );

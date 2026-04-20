@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Inbox, Users, Bot, TrendingUp, ArrowRight, Clock, CheckCircle2, Sparkles } from 'lucide-react';
 import { fetchAnalytics } from '../lib/api';
+import { SkeletonCard } from '../components/Skeleton';
 
 export default function Dashboard({ businessId, onNavigate }) {
   const [data, setData] = useState(null);
@@ -65,7 +66,9 @@ export default function Dashboard({ businessId, onNavigate }) {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gray-400">Loading analytics…</div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => <SkeletonCard key={i} />)}
+        </div>
       ) : error ? (
         <div className="text-center py-12">
           <p className="text-red-500 text-sm mb-3">{error}</p>

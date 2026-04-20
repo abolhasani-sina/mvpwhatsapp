@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Users } from 'lucide-react';
 import { fetchStaff, createStaff, updateStaff, deleteStaff } from '../lib/api';
+import { useToast } from './Toast';
+import ConfirmModal from './ConfirmModal';
 
 export default function StaffManager({ businessId }) {
+  const { addToast } = useToast();
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,6 +18,7 @@ export default function StaffManager({ businessId }) {
   const [editRole, setEditRole] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editTelegram, setEditTelegram] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
     if (!businessId) return;
@@ -38,9 +42,10 @@ export default function StaffManager({ businessId }) {
     try {
       await createStaff(businessId, newName.trim(), newRole.trim(), newEmail.trim(), newTelegram.trim());
       setNewName(''); setNewRole(''); setNewEmail(''); setNewTelegram('');
+      addToast('Staff member added', 'success');
       await loadData();
     } catch (err) {
-      setError('Failed to add staff member.');
+      addToast('Failed to add staff member', 'error');
     }
   }
 
@@ -48,19 +53,26 @@ export default function StaffManager({ businessId }) {
     try {
       await updateStaff(id, editName, editRole, editEmail, editTelegram);
       setEditingId(null);
+      addToast('Staff member updated', 'success');
       await loadData();
     } catch (err) {
-      setError('Failed to update staff member.');
+      addToast('Failed to update staff member', 'error');
     }
   }
 
   async function handleDelete(id) {
-    if (!window.confirm('Remove this staff member?')) return;
+    setDeleteTarget(id);
+  }
+
+  async function confirmDelete() {
     try {
-      await deleteStaff(id);
+      await deleteStaff(deleteTarget);
+      addToast('Staff member removed', 'success');
+      setDeleteTarget(null);
       await loadData();
     } catch (err) {
-      setError('Failed to remove staff member.');
+      addToast('Failed to remove staff member', 'error');
+      setDeleteTarget(null);
     }
   }
 
@@ -239,6 +251,16 @@ export default function StaffManager({ businessId }) {
           </>
         )}
       </div>
+
+      <ConfirmModal
+        open={deleteTarget !== null}
+        title="Remove Staff Member"
+        message="Are you sure you want to remove this staff member? They will be unassigned from any future submissions."
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

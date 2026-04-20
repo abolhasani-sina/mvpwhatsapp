@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageSquare, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { MessageSquare, ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 
 export default function Login({ onNavigate }) {
@@ -8,16 +8,20 @@ export default function Login({ onNavigate }) {
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
-
+  const [touched, setTouched] = useState({});
   const [loading, setLoading] = useState(false);
+
+  const fieldErrors = {
+    email: touched.email && !email ? 'Email is required' : touched.email && !/\S+@\S+\.\S+/.test(email) ? 'Enter a valid email' : '',
+    password: touched.password && !password ? 'Password is required' : '',
+  };
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
-    if (!email || !password) {
-      setError('Please fill in all fields');
-      return;
-    }
+    setTouched({ email: true, password: true });
+    if (!email || !password) return;
+    if (!/\S+@\S+\.\S+/.test(email)) return;
     setLoading(true);
     try {
       await login(email, password);
@@ -40,7 +44,7 @@ export default function Login({ onNavigate }) {
           <ArrowLeft className="w-4 h-4" /> Back to home
         </button>
 
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sm:p-8">
           {/* Logo */}
           <div className="flex items-center gap-2.5 mb-8">
             <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center">
@@ -59,9 +63,11 @@ export default function Login({ onNavigate }) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => setTouched(t => ({ ...t, email: true }))}
                 placeholder="you@company.com"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all placeholder:text-gray-400"
+                className={`w-full px-4 py-3 rounded-xl border text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all placeholder:text-gray-400 ${fieldErrors.email ? 'border-red-300' : 'border-gray-200'}`}
               />
+              {fieldErrors.email && <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
@@ -70,8 +76,9 @@ export default function Login({ onNavigate }) {
                   type={showPw ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onBlur={() => setTouched(t => ({ ...t, password: true }))}
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all placeholder:text-gray-400 pr-11"
+                  className={`w-full px-4 py-3 rounded-xl border text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all placeholder:text-gray-400 pr-11 ${fieldErrors.password ? 'border-red-300' : 'border-gray-200'}`}
                 />
                 <button
                   type="button"
@@ -81,17 +88,21 @@ export default function Login({ onNavigate }) {
                   {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {fieldErrors.password && <p className="text-xs text-red-500 mt-1">{fieldErrors.password}</p>}
             </div>
 
             {error && (
-              <p className="text-sm text-red-500">{error}</p>
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors shadow-sm text-sm disabled:opacity-50"
+              className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors shadow-sm text-sm disabled:opacity-50 flex items-center justify-center gap-2"
             >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
@@ -103,6 +114,10 @@ export default function Login({ onNavigate }) {
             </button>
           </p>
         </div>
+
+        <p className="mt-4 text-center text-xs text-gray-400">
+          By signing in you agree to our Terms of Service and Privacy Policy
+        </p>
       </div>
     </div>
   );

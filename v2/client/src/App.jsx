@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import BuilderPage from './pages/BuilderPage';
 import SubmissionsList from './components/SubmissionsList';
 import StaffManager from './components/StaffManager';
+import { ToastProvider } from './components/Toast';
 import SettingsPage from './pages/SettingsPage';
 import WhatsAppTester from './pages/WhatsAppTester';
 import SystemLogs from './pages/SystemLogs';
@@ -76,9 +77,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </ToastProvider>
     </ErrorBoundary>
   );
 }
