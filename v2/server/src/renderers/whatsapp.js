@@ -1,5 +1,5 @@
 // ─── WhatsApp Channel Renderer ─────────────────────────────────────
-// Converts universal BotDesk flow → WhatsApp Cloud API message payloads.
+// Converts universal NabzChat flow → WhatsApp Cloud API message payloads.
 // Docs: https://developers.facebook.com/docs/whatsapp/cloud-api/messages
 //
 // Limits:

@@ -29,7 +29,7 @@ export default function Dashboard({ businessId, onNavigate }) {
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-500/30">
               <Sparkles className="w-8 h-8 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Welcome to BotDesk</h2>
+            <h2 className="text-2xl font-bold text-white mb-2">Welcome to NabzChat</h2>
             <p className="text-slate-400 mb-8 max-w-md mx-auto">
               Build your AI chat bot in minutes. Pick a template, customize it, and start receiving customer requests on WhatsApp, Telegram & Instagram.
             </p>

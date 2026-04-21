@@ -49,7 +49,7 @@ export default function Login({ onNavigate }) {
               <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
                 <MessageSquare className="w-5 h-5 text-white" />
               </div>
-              <span className="text-2xl font-bold text-white tracking-tight">BotDesk</span>
+              <span className="text-2xl font-bold text-white tracking-tight">NabzChat</span>
             </div>
             <h2 className="text-3xl font-bold text-white leading-snug mb-4">Automate your business with WhatsApp</h2>
             <p className="text-slate-400 leading-relaxed mb-10">Smart bots that handle bookings, capture leads, and delight customers — while you focus on what matters.</p>
@@ -68,7 +68,7 @@ export default function Login({ onNavigate }) {
               ))}
             </div>
           </div>
-          <p className="text-xs text-slate-600">&copy; {new Date().getFullYear()} BotDesk. All rights reserved.</p>
+          <p className="text-xs text-slate-600">&copy; {new Date().getFullYear()} NabzChat. All rights reserved.</p>
         </div>
       </div>
 
@@ -84,7 +84,7 @@ export default function Login({ onNavigate }) {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
               <MessageSquare className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-slate-900">BotDesk</span>
+            <span className="text-xl font-bold text-slate-900">NabzChat</span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Welcome back</h1>

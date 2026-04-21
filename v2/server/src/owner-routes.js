@@ -6,6 +6,7 @@ import db from './db.js';
 import { authenticate, requireOwner } from './middleware/auth.js';
 import { encryptField } from './middleware/encryption.js';
 import { createLogger } from './logger.js';
+import { getReadableErrorLogs, getRawErrorLogs } from './log-insights.js';
 
 const log = createLogger('owner');
 const router = Router();
@@ -313,7 +314,7 @@ router.get('/stats', (req, res) => {
 // ─────────────────────────────────────────
 // SYSTEM LOGS (moved from business panel)
 // ─────────────────────────────────────────
-import { getReadableErrorLogs, getRawErrorLogs } from './log-insights.js';
+
 
 router.get('/logs/errors/readable', (req, res) => {
   try {

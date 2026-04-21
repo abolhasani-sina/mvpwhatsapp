@@ -1,5 +1,5 @@
 // ─── Telegram Channel Renderer ─────────────────────────────────────
-// Converts universal BotDesk flow → Telegram Bot API message payloads.
+// Converts universal NabzChat flow → Telegram Bot API message payloads.
 // Docs: https://core.telegram.org/bots/api#sendmessage
 //
 // Limits:

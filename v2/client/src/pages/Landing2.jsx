@@ -175,7 +175,7 @@ export default function Landing2({ onNavigate }) {
             }}>
               <MessageSquare size={18} color="#fff" />
             </div>
-            <span style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>BotDesk</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>NabzChat</span>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             <button onClick={() => onNavigate('login')} style={{ padding: '8px 16px', fontSize: 14, fontWeight: 500, color: '#64748b', background: 'transparent', border: 'none', cursor: 'pointer' }}>Log in</button>
@@ -555,9 +555,9 @@ export default function Landing2({ onNavigate }) {
             <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <MessageSquare size={14} color="#fff" />
             </div>
-            <span style={{ fontWeight: 600, color: '#475569' }}>BotDesk</span>
+            <span style={{ fontWeight: 600, color: '#475569' }}>NabzChat</span>
           </div>
-          <span>&copy; {new Date().getFullYear()} BotDesk. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} NabzChat. All rights reserved.</span>
         </div>
       </footer>
     </div>

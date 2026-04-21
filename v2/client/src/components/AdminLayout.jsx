@@ -31,7 +31,7 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
           <MessageSquare className="w-4.5 h-4.5 text-white" />
         </div>
         {(!collapsed || mobileOpen) && (
-          <span className="ml-3 text-base font-bold text-white truncate tracking-tight">BotDesk</span>
+          <span className="ml-3 text-base font-bold text-white truncate tracking-tight">NabzChat</span>
         )}
         {mobileOpen && (
           <button onClick={() => setMobileOpen(false)} className="ml-auto lg:hidden text-slate-400 hover:text-white">

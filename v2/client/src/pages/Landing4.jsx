@@ -129,7 +129,7 @@ export default function Landing4({ onNavigate }) {
             }}>
               <MessageSquare size={18} color="#fff" />
             </div>
-            <span style={{ fontSize: 18, fontWeight: 700 }}>BotDesk</span>
+            <span style={{ fontSize: 18, fontWeight: 700 }}>NabzChat</span>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             <button onClick={() => onNavigate('login')} style={{ padding: '8px 16px', fontSize: 14, fontWeight: 500, color: '#64748b', background: 'transparent', border: 'none', cursor: 'pointer' }}>Log in</button>
@@ -237,7 +237,7 @@ export default function Landing4({ onNavigate }) {
                           <div style={{ width: 24, height: 24, borderRadius: 6, background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <MessageSquare size={12} color="#fff" />
                           </div>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#0f172a' }}>BotDesk Dashboard</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#0f172a' }}>NabzChat Dashboard</span>
                           <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
                             {['#ef4444', '#fbbf24', '#22c55e'].map(c => (
                               <div key={c} style={{ width: 8, height: 8, borderRadius: '50%', background: c }} />
@@ -471,9 +471,9 @@ export default function Landing4({ onNavigate }) {
             <div style={{ width: 28, height: 28, borderRadius: 8, background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <MessageSquare size={14} color="#fff" />
             </div>
-            <span style={{ fontWeight: 600, color: '#475569' }}>BotDesk</span>
+            <span style={{ fontWeight: 600, color: '#475569' }}>NabzChat</span>
           </div>
-          <span>&copy; {new Date().getFullYear()} BotDesk. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} NabzChat. All rights reserved.</span>
         </div>
       </footer>
     </div>

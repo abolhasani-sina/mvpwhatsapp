@@ -68,10 +68,10 @@ export default function Register({ onNavigate }) {
               <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
                 <MessageSquare className="w-5 h-5 text-white" />
               </div>
-              <span className="text-2xl font-bold text-white tracking-tight">BotDesk</span>
+              <span className="text-2xl font-bold text-white tracking-tight">NabzChat</span>
             </div>
             <h2 className="text-3xl font-bold text-white leading-snug mb-4">Start automating in minutes</h2>
-            <p className="text-slate-400 leading-relaxed mb-10">Join hundreds of businesses using BotDesk to handle customer messages on WhatsApp, Telegram, and more.</p>
+            <p className="text-slate-400 leading-relaxed mb-10">Join hundreds of businesses using NabzChat to handle customer messages on WhatsApp, Telegram, and more.</p>
             <div className="space-y-4">
               {[
                 { icon: CheckCircle2, text: 'Free plan — no credit card required' },
@@ -87,7 +87,7 @@ export default function Register({ onNavigate }) {
               ))}
             </div>
           </div>
-          <p className="text-xs text-slate-600">&copy; {new Date().getFullYear()} BotDesk. All rights reserved.</p>
+          <p className="text-xs text-slate-600">&copy; {new Date().getFullYear()} NabzChat. All rights reserved.</p>
         </div>
       </div>
 
@@ -103,11 +103,11 @@ export default function Register({ onNavigate }) {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
               <MessageSquare className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-slate-900">BotDesk</span>
+            <span className="text-xl font-bold text-slate-900">NabzChat</span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Create your account</h1>
-          <p className="text-sm text-slate-500 mb-8">Get started with BotDesk for free</p>
+          <p className="text-sm text-slate-500 mb-8">Get started with NabzChat for free</p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>

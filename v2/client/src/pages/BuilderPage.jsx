@@ -10,7 +10,7 @@ let nextId = 100;
 function genId() { return nextId++; }
 
 // ── localStorage cache helpers ──
-const LS_KEY = 'botdesk_builder_';
+const LS_KEY = 'nabzchat_builder_';
 function cacheBuilderState(businessId, welcomeMessage, buttons, flowId) {
   try {
     localStorage.setItem(LS_KEY + businessId, JSON.stringify({ welcomeMessage, buttons, flowId, ts: Date.now() }));

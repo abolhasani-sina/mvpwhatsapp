@@ -16,7 +16,7 @@ const FEATURES = [
 const HOW_IT_WORKS = [
   { n: "01", title: "Pick Template",    text: "Salon, clinic, restaurant, real estate — pre-built and ready.",           icon: Layers },
   { n: "02", title: "Customize Flow",   text: "Edit menus, prompts, services and bookings in the visual builder.",        icon: Workflow },
-  { n: "03", title: "Connect Channel",  text: "Point your WhatsApp, Telegram or Instagram handle at BotDesk.",           icon: MessageSquare },
+  { n: "03", title: "Connect Channel",  text: "Point your WhatsApp, Telegram or Instagram handle at NabzChat.",           icon: MessageSquare },
   { n: "04", title: "Manage Requests",  text: "Submissions appear in the dashboard. Assign staff. Monitor live.",         icon: Users },
 ];
 
@@ -58,7 +58,7 @@ export default function Landing({ onNavigate }) {
             <div className="rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-700 p-2.5 shadow-[0_12px_28px_rgba(14,165,233,0.35)]">
               <MessageSquare className="h-4 w-4 text-white" />
             </div>
-            <span className="text-sm font-bold tracking-wide">BotDesk</span>
+            <span className="text-sm font-bold tracking-wide">NabzChat</span>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => onNavigate("login")} className="rounded-xl border border-white/20 px-3 py-2 text-xs font-medium text-slate-200 transition hover:border-white/40 sm:px-4 sm:text-sm">Log in</button>
@@ -227,7 +227,7 @@ export default function Landing({ onNavigate }) {
 
       {/* FOOTER */}
       <footer className="border-t border-white/10 bg-slate-950/80 px-4 py-6 text-center text-xs text-slate-500 sm:px-6">
-        © {new Date().getFullYear()} BotDesk · Multi-channel automation for modern businesses
+        © {new Date().getFullYear()} NabzChat · Multi-channel automation for modern businesses
       </footer>
     </div>
   );

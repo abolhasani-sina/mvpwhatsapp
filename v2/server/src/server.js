@@ -17,6 +17,9 @@ import { metricsMiddleware, getMetrics, getContentType, messageQueueDepth, activ
 import healthRouter from './middleware/healthCheck.js';
 import { errorHandler, setupProcessErrorHandlers } from './middleware/errorHandler.js';
 import db from './db.js';
+import { handleWebhook, cleanupTelegramUpdates } from './telegram-bot.js';
+import { cleanupDedupRecords, cleanupStaleSessions } from './bot-engine.js';
+import { processMessageQueue } from './message-queue.js';
 
 const log = createLogger('server');
 const app = express();
@@ -26,7 +29,7 @@ const PORT = process.env.PORT || 4000;
 setupProcessErrorHandlers();
 
 // ── Security Headers ──
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));
 
 // ── CORS ──
 app.use(cors({
@@ -109,10 +112,7 @@ app.post('/api/client-error', (req, res) => {
 });
 
 // ── Public webhook (no auth — called by Telegram servers) ──
-import { handleWebhook } from './telegram-bot.js';
-import { cleanupTelegramUpdates } from './telegram-bot.js';
-import { cleanupDedupRecords, cleanupStaleSessions } from './bot-engine.js';
-import { processMessageQueue } from './message-queue.js';
+
 app.post('/api/telegram/webhook/:id', async (req, res) => {
   const result = await handleWebhook(Number(req.params.id), req.body);
   res.json(result);

@@ -61,7 +61,7 @@ async function sendPhotoFromDb(token, chatId, mediaId, caption) {
   if (ctMatch) contentType = ctMatch[1];
 
   // Build multipart/form-data with proper boundary handling
-  const boundary = '----BotDeskBoundary' + Date.now();
+  const boundary = '----NabzChatBoundary' + Date.now();
   const crlf = '\r\n';
 
   const fieldParts = [];

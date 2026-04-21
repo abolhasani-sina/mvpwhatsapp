@@ -1,5 +1,5 @@
 // ─── Instagram Channel Renderer ────────────────────────────────────
-// Converts universal BotDesk flow → Instagram Messaging API payloads.
+// Converts universal NabzChat flow → Instagram Messaging API payloads.
 // Docs: https://developers.facebook.com/docs/messenger-platform/instagram
 //
 // Limits:

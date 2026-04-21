@@ -198,7 +198,7 @@ export default function Landing1({ onNavigate }) {
             }}>
               <MessageSquare size={18} color="#fff" />
             </div>
-            <span style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>BotDesk</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>NabzChat</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button onClick={() => onNavigate('login')} style={{
@@ -254,7 +254,7 @@ export default function Landing1({ onNavigate }) {
             padding: '6px 16px', borderRadius: 20,
             background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
             color: '#a5b4fc', fontSize: 13, fontWeight: 500, marginBottom: 32,
-            animation: 'slideUp 0.6s ease-out',
+            
           }}>
             <Sparkles size={14} /> Multi-channel bot automation
           </div>
@@ -263,7 +263,7 @@ export default function Landing1({ onNavigate }) {
           <h1 style={{
             fontSize: 'clamp(36px, 6vw, 72px)', fontWeight: 800, color: '#fff',
             textAlign: 'center', lineHeight: 1.1, maxWidth: 700, margin: '0 auto 24px',
-            letterSpacing: '-0.03em', animation: 'slideUp 0.6s ease-out 0.1s both',
+            letterSpacing: '-0.03em', 
           }}>
             Your business on{' '}
             <span style={{
@@ -275,7 +275,7 @@ export default function Landing1({ onNavigate }) {
           <p style={{
             fontSize: 18, color: '#94a3b8', textAlign: 'center', maxWidth: 520,
             margin: '0 auto 40px', lineHeight: 1.7,
-            animation: 'slideUp 0.6s ease-out 0.2s both',
+            
           }}>
             Build bots that handle bookings, answer FAQs, and capture leads across WhatsApp, Telegram & Instagram.
           </p>
@@ -283,7 +283,7 @@ export default function Landing1({ onNavigate }) {
           {/* CTA */}
           <div style={{
             display: 'flex', gap: 12, marginBottom: 60, flexWrap: 'wrap', justifyContent: 'center',
-            animation: 'slideUp 0.6s ease-out 0.3s both',
+            
           }}>
             <button onClick={() => onNavigate('register')} style={{
               display: 'flex', alignItems: 'center', gap: 8,
@@ -303,7 +303,7 @@ export default function Landing1({ onNavigate }) {
           <div style={{
             position: 'relative', width: '100%', maxWidth: 800,
             height: 420, margin: '0 auto',
-            animation: 'slideUp 0.8s ease-out 0.4s both',
+            
           }}>
             {/* Main WhatsApp phone */}
             <Phone3D channel="whatsapp" mouseOffset={mouseOffset} style={{
@@ -551,7 +551,7 @@ export default function Landing1({ onNavigate }) {
             }} />
             <div style={{ position: 'relative' }}>
               <h2 style={{ fontSize: 32, fontWeight: 700, color: '#fff', marginBottom: 16 }}>Ready to automate?</h2>
-              <p style={{ color: '#94a3b8', marginBottom: 32, fontSize: 16 }}>Join hundreds of businesses using BotDesk.</p>
+              <p style={{ color: '#94a3b8', marginBottom: 32, fontSize: 16 }}>Join hundreds of businesses using NabzChat.</p>
               <button onClick={() => onNavigate('register')} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 padding: '14px 28px', fontSize: 15, fontWeight: 600, color: '#fff',
@@ -570,9 +570,9 @@ export default function Landing1({ onNavigate }) {
             <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <MessageSquare size={14} color="#fff" />
             </div>
-            <span style={{ fontWeight: 600, color: '#475569' }}>BotDesk</span>
+            <span style={{ fontWeight: 600, color: '#475569' }}>NabzChat</span>
           </div>
-          <span>&copy; {new Date().getFullYear()} BotDesk. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} NabzChat. All rights reserved.</span>
         </div>
       </footer>
     </div>
