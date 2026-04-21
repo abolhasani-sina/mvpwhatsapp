@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './lib/auth';
 import { fetchBusiness } from './lib/api';
-import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -16,14 +15,10 @@ import OwnerPanel from './pages/OwnerPanel';
 import AdminLayout from './components/AdminLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import Landing1 from './pages/Landing1';
-import Landing2 from './pages/Landing2';
-import Landing3 from './pages/Landing3';
-import Landing4 from './pages/Landing4';
-import Landing5 from './pages/Landing5';
 
 function AppRoutes() {
   const { user, loading, logout } = useAuth();
-  const publicPages = ['landing', 'landing1', 'landing2', 'landing3', 'landing4', 'landing5', 'login', 'register'];
+  const publicPages = ['landing', 'landing1', 'login', 'register'];
   const getInitialPage = () => {
     if (typeof window !== 'undefined') {
       const qp = new URLSearchParams(window.location.search).get('page');
@@ -48,7 +43,7 @@ function AppRoutes() {
   // Redirect after auth changes
   useEffect(() => {
     if (!loading && !user && !publicPages.includes(page)) {
-      setPage('landing');
+      setPage('landing1');
     }
     if (!loading && user && ['landing', 'login', 'register'].includes(page)) {
       setPage('dashboard');
@@ -71,7 +66,7 @@ function AppRoutes() {
 
   function handleLogout() {
     logout();
-    setPage('landing');
+    setPage('landing1');
   }
 
   if (loading) {
@@ -82,14 +77,9 @@ function AppRoutes() {
   if (page === 'landing' || page === 'landing1') return <Landing1 onNavigate={navigate} />;
   if (page === 'login') return <Login onNavigate={navigate} />;
   if (page === 'register') return <Register onNavigate={navigate} />;
-  if (page === 'landing1') return <Landing1 onNavigate={navigate} />;
-  if (page === 'landing2') return <Landing2 onNavigate={navigate} />;
-  if (page === 'landing3') return <Landing3 onNavigate={navigate} />;
-  if (page === 'landing4') return <Landing4 onNavigate={navigate} />;
-  if (page === 'landing5') return <Landing5 onNavigate={navigate} />;
 
   // Protected — redirect if not logged in
-  if (!user) return <Landing onNavigate={navigate} />;
+  if (!user) return <Landing1 onNavigate={navigate} />;
 
   // Platform owners get the owner panel — bypass business AdminLayout entirely
   if (user.role === 'platform_owner') {
