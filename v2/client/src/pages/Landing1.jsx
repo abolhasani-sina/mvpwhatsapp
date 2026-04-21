@@ -42,104 +42,71 @@ const STATS = [
 ];
 
 /* ── 3D Phone Component ── */
-function Phone3D({ channel, style, mouseOffset, children }) {
-  const colors = {
-    whatsapp: { header: 'linear-gradient(135deg, #25D366, #128C7E)', bg: '#ECE5DD', accent: '#25D366' },
-    telegram: { header: 'linear-gradient(135deg, #2AABEE, #229ED9)', bg: '#E6EBF0', accent: '#2AABEE' },
-    instagram: { header: 'linear-gradient(135deg, #833AB4, #E1306C, #F56040)', bg: '#FAFAFA', accent: '#E1306C' },
-  };
-  const c = colors[channel];
-  const mx = mouseOffset?.x || 0;
-  const my = mouseOffset?.y || 0;
+/*  Channel Flow  1 flow  3 channels with brand logos  */
+function ChannelFlow() {
+  const channels = [
+    {
+      name: 'WhatsApp',
+      desc: 'Bookings 24/7',
+      bg: '#25D366',
+      tintBg: 'rgba(37,211,102,0.08)',
+      tintBorder: 'rgba(37,211,102,0.35)',
+      logo: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.304-1.654a11.88 11.88 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+      ),
+    },
+    {
+      name: 'Telegram',
+      desc: 'FAQ auto-reply',
+      bg: '#2AABEE',
+      tintBg: 'rgba(42,171,238,0.08)',
+      tintBorder: 'rgba(42,171,238,0.35)',
+      logo: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+      ),
+    },
+    {
+      name: 'Instagram',
+      desc: 'DM leads',
+      bg: 'linear-gradient(135deg, #833AB4, #E1306C, #F56040)',
+      tintBg: 'rgba(225,48,108,0.08)',
+      tintBorder: 'rgba(225,48,108,0.35)',
+      logo: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+      ),
+    },
+  ];
 
   return (
-    <div style={{
-      ...style,
-      transform: `${style?.transform || ''} perspective(1200px) rotateX(${5 + my * 0.02}deg) rotateY(${-15 + mx * 0.03}deg)`,
-      transition: 'transform 0.1s ease-out',
-      willChange: 'transform',
-    }}>
-      <div style={{
-        width: 220, borderRadius: 28, background: '#1a1a2e', padding: 8,
-        boxShadow: '0 25px 60px rgba(0,0,0,0.5), 0 0 40px rgba(99,102,241,0.15)',
-      }}>
-        <div style={{ borderRadius: 22, overflow: 'hidden', background: c.bg }}>
-          {/* Header */}
-          <div style={{
-            background: c.header, padding: '14px 16px',
-            display: 'flex', alignItems: 'center', gap: 10,
-          }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <MessageSquare size={14} color="#fff" />
+    <div className="channel-flow">
+      <div className="flow-node">
+        <div style={{ fontSize: 30, marginBottom: 6 }}>&#9889;</div>
+        <p style={{ fontSize: 13, fontWeight: 600, margin: 0, color: 'white' }}>Your Flow</p>
+        <p style={{ fontSize: 10, opacity: 0.85, margin: '4px 0 0', color: 'white' }}>Built once</p>
+      </div>
+      <div className="mobile-beam" />
+      <svg className="flow-lines" width="90" height="120" style={{ overflow: 'visible' }}>
+        <line x1="0" y1="25" x2="90" y2="15" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 4" className="flow-line" />
+        <line x1="0" y1="60" x2="90" y2="60" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 4" className="flow-line" />
+        <line x1="0" y1="95" x2="90" y2="105" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 4" className="flow-line" />
+      </svg>
+      <div className="channel-list">
+        {channels.map((c) => (
+          <div
+            key={c.name}
+            className="channel-card"
+            style={{ background: c.tintBg, border: `1px solid ${c.tintBorder}` }}
+          >
+            <div className="channel-logo" style={{ background: c.bg }}>
+              {c.logo}
             </div>
             <div>
-              <div style={{ color: '#fff', fontSize: 12, fontWeight: 600 }}>Your Business</div>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10 }}>online</div>
+              <p style={{ color: 'white', fontSize: 13, fontWeight: 600, margin: 0 }}>{c.name}</p>
+              <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, margin: 0 }}>{c.desc}</p>
             </div>
           </div>
-          {/* Chat */}
-          <div style={{ padding: 12, minHeight: 220 }}>
-            {children}
-          </div>
-        </div>
+        ))}
       </div>
-    </div>
-  );
-}
-
-function ChatBubble({ text, from = 'bot', accent }) {
-  const isBot = from === 'bot';
-  return (
-    <div style={{
-      maxWidth: '85%', marginLeft: isBot ? 0 : 'auto', marginRight: isBot ? 'auto' : 0,
-      marginBottom: 6,
-    }}>
-      <div style={{
-        background: isBot ? '#fff' : (accent || '#6366f1'),
-        color: isBot ? '#1e293b' : '#fff',
-        borderRadius: 14,
-        borderTopLeftRadius: isBot ? 4 : 14,
-        borderBottomRightRadius: isBot ? 14 : 4,
-        padding: '8px 12px',
-        fontSize: 11,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-        lineHeight: 1.4,
-      }}>{text}</div>
-    </div>
-  );
-}
-
-function MenuButton({ text, accent }) {
-  return (
-    <div style={{
-      background: '#fff', border: `1px solid ${accent || '#6366f1'}22`,
-      borderRadius: 10, padding: '6px 10px', fontSize: 11,
-      fontWeight: 600, color: accent || '#6366f1', textAlign: 'center',
-      marginBottom: 4, boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-    }}>{text}</div>
-  );
-}
-
-/* ── Floating Notification Badge ── */
-function FloatingBadge({ text, delay, mouseOffset }) {
-  const mx = mouseOffset?.x || 0;
-  const my = mouseOffset?.y || 0;
-  return (
-    <div style={{
-      position: 'absolute',
-      animation: `floatBadge 6s ease-in-out ${delay}s infinite`,
-      transform: `translate(${mx * 0.01}px, ${my * 0.01}px)`,
-    }}>
-      <div style={{
-        background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20,
-        padding: '6px 14px', fontSize: 11, fontWeight: 600,
-        color: '#a5b4fc', whiteSpace: 'nowrap',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-      }}>{text}</div>
     </div>
   );
 }
@@ -179,6 +146,137 @@ export default function Landing1({ onNavigate }) {
         @keyframes slideUp {
           from { opacity: 0; transform: translateY(30px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+
+        .channel-flow {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 48px;
+          width: 100%;
+          max-width: 720px;
+          margin: 0 auto;
+          min-height: 320px;
+          padding: 20px 0;
+        }
+        .flow-node {
+          background: linear-gradient(135deg, #6366f1, #8b5cf6);
+          padding: 28px 24px;
+          border-radius: 18px;
+          text-align: center;
+          box-shadow: 0 20px 40px rgba(99,102,241,0.3), 0 0 60px rgba(139,92,246,0.2);
+          position: relative;
+          border: 1px solid rgba(255,255,255,0.15);
+          animation: flowRotate 8s ease-in-out infinite;
+          transform-style: preserve-3d;
+          min-width: 130px;
+          flex-shrink: 0;
+        }
+        @keyframes flowRotate {
+          0%, 100% { transform: perspective(800px) rotateY(-4deg); }
+          50%      { transform: perspective(800px) rotateY(4deg); }
+        }
+        .flow-lines {
+          flex-shrink: 0;
+        }
+        .flow-line {
+          animation: dashFlow 1.5s linear infinite;
+        }
+        @keyframes dashFlow {
+          to { stroke-dashoffset: -16; }
+        }
+        .channel-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .channel-card {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 18px;
+          border-radius: 12px;
+          min-width: 180px;
+          box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+          transform: perspective(600px) rotateY(3deg);
+          transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+          cursor: default;
+        }
+        .channel-card:hover {
+          transform: perspective(600px) rotateY(0deg) translateY(-4px);
+          box-shadow: 0 16px 32px rgba(0,0,0,0.3);
+        }
+        .channel-logo {
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        @media (max-width: 900px) {
+          .channel-flow { gap: 28px; max-width: 600px; }
+          .flow-node { padding: 20px 18px; min-width: 110px; }
+          .flow-lines { width: 60px; }
+          .channel-card { min-width: 150px; padding: 10px 14px; }
+        }
+        .mobile-beam {
+          display: none;
+        }
+        @media (max-width: 640px) {
+          .mobile-beam {
+            display: block;
+            width: 2px;
+            height: 32px;
+            background: linear-gradient(180deg, #8b5cf6, #25D366);
+            border-radius: 2px;
+            position: relative;
+            overflow: hidden;
+            margin: -4px auto 4px;
+          }
+          .mobile-beam::after {
+            content: '';
+            position: absolute;
+            top: -30%;
+            left: 0;
+            right: 0;
+            height: 30%;
+            background: linear-gradient(180deg, transparent, rgba(255,255,255,0.8), transparent);
+            animation: beamPulse 2s ease-in-out infinite;
+          }
+          @keyframes beamPulse {
+            0%   { top: -30%; }
+            100% { top: 100%; }
+          }
+        }
+        @media (max-width: 640px) {
+          .channel-flow {
+            flex-direction: column;
+            gap: 16px;
+            max-width: 340px;
+            min-height: auto;
+          }
+          .flow-node {
+            transform: none;
+            animation: none;
+            padding: 18px 32px;
+          }
+          .flow-lines {
+            display: none;
+          }
+          .channel-list {
+            width: 100%;
+            gap: 10px;
+          }
+          .channel-card {
+            width: 100%;
+            min-width: 0;
+            transform: none;
+          }
+          .channel-card:hover {
+            transform: translateY(-2px);
+          }
         }
       `}</style>
 
@@ -299,74 +397,13 @@ export default function Landing1({ onNavigate }) {
             }}><Play size={16} /> See demo</button>
           </div>
 
-          {/* ── 3D Floating Phones ── */}
+          {/* Channel flow visualization */}
           <div style={{
-            position: 'relative', width: '100%', maxWidth: 800,
-            height: 420, margin: '0 auto',
-            
+            position: 'relative', width: '100%',
+            margin: '0 auto',
+            animation: 'slideUp 0.8s ease-out 0.4s both',
           }}>
-            {/* Main WhatsApp phone */}
-            <Phone3D channel="whatsapp" mouseOffset={mouseOffset} style={{
-              position: 'absolute', left: '50%', top: '50%',
-              transform: 'translate(-50%, -50%)', zIndex: 3,
-              animation: 'floatPhone 4s ease-in-out infinite',
-            }}>
-              <ChatBubble text="👋 Welcome! How can I help you today?" accent="#25D366" />
-              <div style={{ maxWidth: '80%' }}>
-                <MenuButton text="📋 Our Services" accent="#25D366" />
-                <MenuButton text="📅 Book Now" accent="#25D366" />
-                <MenuButton text="❓ FAQ" accent="#25D366" />
-              </div>
-              <ChatBubble text="📅 Book Now" from="user" accent="#25D366" />
-              <ChatBubble text="Great choice! Let me guide you..." accent="#25D366" />
-            </Phone3D>
-
-            {/* Telegram phone - left, back */}
-            <Phone3D channel="telegram" mouseOffset={mouseOffset} style={{
-              position: 'absolute', left: '5%', top: '15%',
-              transform: 'scale(0.75)', zIndex: 1, opacity: 0.7,
-              animation: 'floatPhone 5s ease-in-out 0.5s infinite',
-            }}>
-              <ChatBubble text="Welcome to our service! 🤖" accent="#2AABEE" />
-              <div style={{ maxWidth: '80%' }}>
-                <MenuButton text="View Menu" accent="#2AABEE" />
-                <MenuButton text="Book Appointment" accent="#2AABEE" />
-              </div>
-            </Phone3D>
-
-            {/* Instagram phone - right, back */}
-            <Phone3D channel="instagram" mouseOffset={mouseOffset} style={{
-              position: 'absolute', right: '5%', top: '10%',
-              transform: 'scale(0.75)', zIndex: 2, opacity: 0.7,
-              animation: 'floatPhone 5s ease-in-out 1s infinite',
-            }}>
-              <ChatBubble text="Hey! 👋 Check out our services" accent="#E1306C" />
-              <div style={{ maxWidth: '80%' }}>
-                <MenuButton text="💇 Hair" accent="#E1306C" />
-                <MenuButton text="💅 Nails" accent="#E1306C" />
-              </div>
-            </Phone3D>
-
-            {/* Floating notification badges */}
-            <div style={{ position: 'absolute', top: '5%', left: '20%' }}>
-              <FloatingBadge text="✅ New booking!" delay={0} mouseOffset={mouseOffset} />
-            </div>
-            <div style={{ position: 'absolute', top: '60%', right: '8%' }}>
-              <FloatingBadge text="📩 Lead captured" delay={2} mouseOffset={mouseOffset} />
-            </div>
-            <div style={{ position: 'absolute', bottom: '10%', left: '12%' }}>
-              <FloatingBadge text="🔔 Staff notified" delay={4} mouseOffset={mouseOffset} />
-            </div>
-
-            {/* Glassmorphic dashboard panel behind phones */}
-            <div style={{
-              position: 'absolute', top: '30%', left: '50%',
-              transform: `translate(-50%, -50%) perspective(800px) rotateX(8deg) translate(${mouseOffset.x * 0.005}px, ${mouseOffset.y * 0.005}px)`,
-              width: 600, height: 200, borderRadius: 20,
-              background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255,255,255,0.06)', zIndex: 0,
-              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-            }} />
+            <ChannelFlow />
           </div>
 
           {/* Stats */}
@@ -509,27 +546,27 @@ export default function Landing1({ onNavigate }) {
       </section>
 
       {/* ── FAQ ── */}
-      <section style={{ padding: '100px 24px', background: '#f8fafc' }}>
+      <section style={{ padding: '100px 24px', background: 'linear-gradient(180deg, #0a0a1a, #0f0d2e)', position: 'relative', overflow: 'hidden' }}>
         <div style={{ maxWidth: 700, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 60 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>FAQ</p>
-            <h2 style={{ fontSize: 36, fontWeight: 700, color: '#0f172a' }}>Frequently asked questions</h2>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>FAQ</p>
+            <h2 style={{ fontSize: 36, fontWeight: 700, color: '#fff' }}>Frequently asked questions</h2>
           </div>
           {FAQ.map((item, idx) => (
             <div key={idx} style={{
-              background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0',
-              marginBottom: 8, overflow: 'hidden',
+              background: 'rgba(255,255,255,0.04)', borderRadius: 12, border: '1px solid rgba(167,139,250,0.25)',
+              marginBottom: 8, overflow: 'hidden', boxShadow: '0 0 20px rgba(139,92,246,0.08)',
             }}>
               <button onClick={() => setOpenFaq(openFaq === idx ? null : idx)} style={{
                 width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 padding: '18px 24px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
               }}>
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{item.q}</span>
-                <ChevronDown size={18} color="#94a3b8" style={{ transform: openFaq === idx ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{item.q}</span>
+                <ChevronDown size={18} color="#a78bfa" style={{ transform: openFaq === idx ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />
               </button>
               {openFaq === idx && (
                 <div style={{ padding: '0 24px 18px' }}>
-                  <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7 }}>{item.a}</p>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 1.7 }}>{item.a}</p>
                 </div>
               )}
             </div>
