@@ -9,10 +9,11 @@ export function seedBusiness(userId, businessName, templateKey, templateData) {
 
   // We do everything in a transaction for atomicity
   const txn = db.transaction(() => {
-    // 1. Create business
+    // 1. Create business — assign default plan (Phase 10)
+    const defaultPlan = db.prepare('SELECT id FROM plans WHERE is_default = 1 LIMIT 1').get();
     const biz = db.prepare(
-      'INSERT INTO businesses (user_id, name, template_key) VALUES (?, ?, ?)'
-    ).run(userId, businessName, templateKey);
+      'INSERT INTO businesses (user_id, name, template_key, plan_id) VALUES (?, ?, ?, ?)'
+    ).run(userId, businessName, templateKey, defaultPlan ? defaultPlan.id : null);
     const businessId = biz.lastInsertRowid;
 
     // 2. Create bot_config

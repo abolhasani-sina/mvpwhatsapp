@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const API = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:4000/api' : '/api');
 const AuthContext = createContext(null);
 
 // ── Token helpers ──
@@ -89,6 +89,22 @@ export function AuthProvider({ children }) {
       }
     }
     setLoading(false);
+
+    // Refresh user from /me in the background so role / suspension changes
+    // propagate without requiring a re-login.
+    (async () => {
+      try {
+        const res = await authFetch(`${API}/auth/me`);
+        if (res.ok) {
+          const json = await res.json();
+          const fresh = json.user || json.data;
+          if (fresh) {
+            localStorage.setItem('bd_user', JSON.stringify(fresh));
+            setUser(fresh);
+          }
+        }
+      } catch { /* ignore — already logged out by authFetch on 401 */ }
+    })();
 
     // Listen for forced logout from authFetch
     const handleLogout = () => { setUser(null); };

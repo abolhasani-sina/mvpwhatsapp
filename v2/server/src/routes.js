@@ -22,7 +22,6 @@ import {
   updateConfigRules, uploadMediaRules,
 } from './middleware/validators.js';
 import { createLogger } from './logger.js';
-import { getReadableErrorLogs, getRawErrorLogs } from './log-insights.js';
 
 const log = createLogger('routes');
 
@@ -34,24 +33,7 @@ const router = Router();
 // Apply authentication to all API routes
 router.use(authenticate);
 
-// ──────────────────────────────────────────────
-// ERROR LOGS (Owner-friendly, authenticated)
-// ──────────────────────────────────────────────
-router.get('/logs/errors/readable', (req, res) => {
-  try {
-    const limit = Number(req.query.limit || 30);
-    const result = getReadableErrorLogs(limit);
-    res.json({ data: result });
-  } catch (err) {
-    log.error({ err }, 'Failed to read error logs');
-    res.status(500).json({ error: 'Failed to read error logs' });
-  }
-});
-
-router.get('/logs/errors/raw', (req, res) => {
-  const limit = Number(req.query.limit || 100);
-  res.json({ data: getRawErrorLogs(limit) });
-});
+// NOTE: error log endpoints moved to /api/owner/logs/errors/* (Phase 10, owner-only).
 
 // ──────────────────────────────────────────────
 // BUSINESS
@@ -870,6 +852,25 @@ router.get('/business/:id/staff', tenantScope, (req, res) => {
 });
 
 router.post('/business/:id/staff', tenantScope, createStaffRules, validate, (req, res) => {
+  // Plan-limit enforcement (Phase 10.3)
+  const businessId = req.params.id;
+  const plan = db.prepare(`
+    SELECT p.max_staff FROM businesses b
+      LEFT JOIN plans p ON p.id = b.plan_id
+     WHERE b.id = ?
+  `).get(businessId);
+  if (plan && plan.max_staff != null) {
+    const { count } = db.prepare(
+      'SELECT COUNT(*) AS count FROM staff WHERE business_id = ? AND active = 1'
+    ).get(businessId);
+    if (count >= plan.max_staff) {
+      return res.status(402).json({
+        error: `Staff limit reached for current plan (max ${plan.max_staff}). Upgrade plan to add more.`,
+        code: 'PLAN_LIMIT_REACHED',
+        limit: plan.max_staff,
+      });
+    }
+  }
   const { name, role, email, telegram_chat_id } = req.body;
   const result = db.prepare(
     'INSERT INTO staff (business_id, name, role, email, telegram_chat_id) VALUES (?, ?, ?, ?, ?)'
@@ -909,22 +910,155 @@ router.get('/business/:id/settings', tenantScope, (req, res) => {
 });
 
 router.put('/business/:id/settings', tenantScope, updateSettingsRules, validate, (req, res) => {
-  const { telegramBotToken, telegramChatId, businessEmail, whatsappNumber } = req.body;
-  // Encrypt sensitive fields before storing
-  const encryptedToken = telegramBotToken ? encryptField(telegramBotToken) : '';
-  const existing = db.prepare(
-    'SELECT id FROM settings WHERE business_id = ?'
-  ).get(req.params.id);
+  const businessId = req.params.id;
+  const { telegramBotToken, telegramChatId, businessEmail, whatsappNumber, instagramPageId } = req.body;
+
+  const existing = db.prepare('SELECT * FROM settings WHERE business_id = ?').get(businessId);
+
+  // Decrypt current token for comparison (only telegram token is encrypted)
+  const currentTelegramToken = existing ? decryptField(existing.telegram_bot_token) : '';
+  const currentWhatsapp = existing ? (existing.whatsapp_number || '') : '';
+  const currentInstagram = existing ? (existing.instagram_page_id || '') : '';
+
+  // Channel-lock enforcement (Phase 10.2): once a channel is set + locked,
+  // it can only be changed via an approved channel_change_request.
+  const locks = [
+    { key: 'telegram', incoming: telegramBotToken, current: currentTelegramToken,
+      locked: existing && existing.telegram_locked === 1 },
+    { key: 'whatsapp', incoming: whatsappNumber, current: currentWhatsapp,
+      locked: existing && existing.whatsapp_locked === 1 },
+    { key: 'instagram', incoming: instagramPageId, current: currentInstagram,
+      locked: existing && existing.instagram_locked === 1 },
+  ];
+  for (const l of locks) {
+    if (l.locked && l.incoming !== undefined && l.incoming !== null && String(l.incoming) !== String(l.current)) {
+      return res.status(409).json({
+        error: 'Channel is locked. Submit a channel change request for owner approval.',
+        code: 'CHANNEL_LOCKED',
+        channel: l.key,
+      });
+    }
+  }
+
+  // Determine new values + first-time-set flags
+  const now = new Date().toISOString();
+  const newTelegramToken = telegramBotToken !== undefined ? telegramBotToken : currentTelegramToken;
+  const encryptedToken = newTelegramToken ? encryptField(newTelegramToken) : '';
+  const newWhatsapp = whatsappNumber !== undefined ? (whatsappNumber || '') : currentWhatsapp;
+  const newInstagram = instagramPageId !== undefined ? (instagramPageId || '') : currentInstagram;
+
+  const lockNow = (current, next, alreadyLocked) =>
+    alreadyLocked || (!current && next ? 1 : 0);
+  const stampNow = (current, next, existingStamp) =>
+    existingStamp || (!current && next ? now : null);
+
+  const telegramLocked = lockNow(currentTelegramToken, newTelegramToken, existing && existing.telegram_locked === 1);
+  const telegramSetAt  = stampNow(currentTelegramToken, newTelegramToken, existing && existing.telegram_set_at);
+  const whatsappLocked = lockNow(currentWhatsapp, newWhatsapp, existing && existing.whatsapp_locked === 1);
+  const whatsappSetAt  = stampNow(currentWhatsapp, newWhatsapp, existing && existing.whatsapp_set_at);
+  const instagramLocked = lockNow(currentInstagram, newInstagram, existing && existing.instagram_locked === 1);
+  const instagramSetAt  = stampNow(currentInstagram, newInstagram, existing && existing.instagram_set_at);
+
   if (existing) {
-    db.prepare(
-      'UPDATE settings SET telegram_bot_token = ?, telegram_chat_id = ?, business_email = ?, whatsapp_number = ? WHERE business_id = ?'
-    ).run(encryptedToken, telegramChatId || '', businessEmail || '', whatsappNumber || '', req.params.id);
+    db.prepare(`
+      UPDATE settings SET
+        telegram_bot_token = ?, telegram_chat_id = ?, business_email = ?,
+        whatsapp_number = ?, instagram_page_id = ?,
+        telegram_set_at = ?, telegram_locked = ?,
+        whatsapp_set_at = ?, whatsapp_locked = ?,
+        instagram_set_at = ?, instagram_locked = ?
+      WHERE business_id = ?
+    `).run(
+      encryptedToken, telegramChatId || '', businessEmail || '',
+      newWhatsapp, newInstagram,
+      telegramSetAt, telegramLocked,
+      whatsappSetAt, whatsappLocked,
+      instagramSetAt, instagramLocked,
+      businessId
+    );
   } else {
-    db.prepare(
-      'INSERT INTO settings (business_id, telegram_bot_token, telegram_chat_id, business_email, whatsapp_number) VALUES (?, ?, ?, ?, ?)'
-    ).run(req.params.id, encryptedToken, telegramChatId || '', businessEmail || '', whatsappNumber || '');
+    db.prepare(`
+      INSERT INTO settings
+        (business_id, telegram_bot_token, telegram_chat_id, business_email,
+         whatsapp_number, instagram_page_id,
+         telegram_set_at, telegram_locked,
+         whatsapp_set_at, whatsapp_locked,
+         instagram_set_at, instagram_locked)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      businessId, encryptedToken, telegramChatId || '', businessEmail || '',
+      newWhatsapp, newInstagram,
+      telegramSetAt, telegramLocked,
+      whatsappSetAt, whatsappLocked,
+      instagramSetAt, instagramLocked
+    );
   }
   res.json({ success: true });
+});
+
+// ──────────────────────────────────────────────
+// CHANNEL CHANGE REQUESTS (business-side, Phase 10.2)
+// ──────────────────────────────────────────────
+
+function maskChannelValue(channel, value) {
+  if (!value) return '';
+  const s = String(value);
+  if (channel === 'telegram') {
+    // Telegram bot token like 1234567:ABCDEF... — keep first 4 + last 4
+    if (s.length <= 8) return '****';
+    return `${s.slice(0, 4)}****${s.slice(-4)}`;
+  }
+  if (s.length <= 4) return '****';
+  return `****${s.slice(-4)}`;
+}
+
+router.post('/business/:id/channel-change-requests', tenantScope, (req, res) => {
+  const businessId = Number(req.params.id);
+  const { channel, requestedValue, reason } = req.body || {};
+  if (!['telegram', 'whatsapp', 'instagram'].includes(channel)) {
+    return res.status(400).json({ error: 'Invalid channel', code: 'INVALID_CHANNEL' });
+  }
+  if (!requestedValue || typeof requestedValue !== 'string') {
+    return res.status(400).json({ error: 'requestedValue is required' });
+  }
+  // Reject if there is already a pending request for this channel + business
+  const existingPending = db.prepare(
+    `SELECT id FROM channel_change_requests
+      WHERE business_id = ? AND channel = ? AND status = 'pending'`
+  ).get(businessId, channel);
+  if (existingPending) {
+    return res.status(409).json({
+      error: 'A pending change request already exists for this channel.',
+      code: 'REQUEST_PENDING',
+    });
+  }
+  const masked = maskChannelValue(channel, requestedValue);
+  const result = db.prepare(`
+    INSERT INTO channel_change_requests
+      (business_id, requested_by, channel, requested_value, requested_value_masked, reason, status)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending')
+  `).run(businessId, req.userId || null, channel, requestedValue, masked, reason || '');
+  res.status(201).json({
+    data: {
+      id: Number(result.lastInsertRowid),
+      channel,
+      requested_value_masked: masked,
+      status: 'pending',
+    },
+  });
+});
+
+router.get('/business/:id/channel-change-requests', tenantScope, (req, res) => {
+  const businessId = Number(req.params.id);
+  const rows = db.prepare(`
+    SELECT id, channel, requested_value_masked, reason, status,
+           created_at, decided_at, decision_note
+      FROM channel_change_requests
+     WHERE business_id = ?
+     ORDER BY created_at DESC
+     LIMIT 100
+  `).all(businessId);
+  res.json({ data: rows });
 });
 
 // ──────────────────────────────────────────────

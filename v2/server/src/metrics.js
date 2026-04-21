@@ -97,18 +97,25 @@ export function metricsMiddleware(req, res, next) {
 
   const originalEnd = res.end;
   res.end = function (...args) {
-    // Normalize path to avoid high-cardinality labels
-    const path = normalizePath(req.route?.path || req.path);
-    const labels = { method: req.method, path, status: res.statusCode };
+    try {
+      // Normalize path to avoid high-cardinality labels
+      const rawPath = req.route?.path || req.path || req.originalUrl || 'unknown';
+      const path = normalizePath(rawPath);
+      const labels = { method: req.method || 'UNKNOWN', path, status: res.statusCode };
 
-    end(labels);
-    httpRequestsTotal.inc(labels);
+      end(labels);
+      httpRequestsTotal.inc(labels);
 
-    if (res.statusCode >= 400) {
-      httpErrorsTotal.inc(labels);
+      if (res.statusCode >= 400) {
+        httpErrorsTotal.inc(labels);
+      }
+    } catch (err) {
+      // Never let metrics recording break the response
+      // eslint-disable-next-line no-console
+      console.error('[metrics] failed to record request', err?.message);
     }
 
-    originalEnd.apply(res, args);
+    return originalEnd.apply(res, args);
   };
 
   next();
@@ -116,7 +123,10 @@ export function metricsMiddleware(req, res, next) {
 
 // ── Normalize paths to prevent label explosion ──
 function normalizePath(path) {
-  return path
+  if (typeof path !== 'string' || path.length === 0) return 'unknown';
+  // Strip query string
+  const clean = path.split('?')[0];
+  return clean
     .replace(/\/\d+/g, '/:id')       // /business/5 → /business/:id
     .replace(/\/[a-f0-9-]{36}/g, '/:uuid'); // UUIDs
 }

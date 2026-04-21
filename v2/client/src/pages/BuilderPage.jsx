@@ -298,10 +298,20 @@ export default function BuilderPage({ businessId, setBusinessId }) {
       const templateData = JSON.parse(JSON.stringify(tpl.load())); // safe clone
       let activeId = businessId;
       if (activeId) {
-        // Apply template to existing business (preserves staff, settings, submissions)
-        await applyTemplate(activeId, templateKey, templateData);
-      } else {
-        // No business yet — create one
+        try {
+          // Apply template to existing business (preserves staff, settings, submissions)
+          await applyTemplate(activeId, templateKey, templateData);
+        } catch (err) {
+          if (err.message === 'Access denied' || err.message?.includes('Access denied')) {
+            // businessId belongs to a different user (stale state) — create a fresh one
+            activeId = null;
+          } else {
+            throw err;
+          }
+        }
+      }
+      if (!activeId) {
+        // No business yet (or stale id cleared above) — create one
         const biz = await createBusiness(templateKey, tpl.name, templateData);
         activeId = biz.id;
         setBusinessId(activeId);

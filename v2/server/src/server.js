@@ -3,9 +3,13 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { existsSync } from 'fs';
 import { migrate } from './migrate.js';
 import routes from './routes.js';
 import authRoutes from './auth-routes.js';
+import ownerRoutes from './owner-routes.js';
 import { cleanupExpiredTokens } from './middleware/auth.js';
 import { createLogger } from './logger.js';
 import { requestLogger } from './middleware/requestLogger.js';
@@ -116,6 +120,7 @@ app.post('/api/telegram/webhook/:id', async (req, res) => {
 
 // ── New API routes ──
 app.use('/api/auth', authRoutes);
+app.use('/api/owner', ownerRoutes);
 app.use('/api', routes);
 
 // Cleanup expired refresh tokens every hour
@@ -145,6 +150,21 @@ setInterval(() => {
 
 // ── Global error handler ──
 app.use(errorHandler);
+
+// ── Serve Vite production build (frontend) ──
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = dirname(__filename);
+const distDir    = join(__dirname, '../..', 'client', 'dist');
+if (existsSync(distDir)) {
+  app.use(express.static(distDir));
+  // SPA fallback — all non-API routes serve index.html
+  app.get(/^\/(?!api|metrics|health).*/, (_req, res) => {
+    res.sendFile(join(distDir, 'index.html'));
+  });
+  log.info({ distDir }, 'serving frontend static build');
+} else {
+  log.warn({ distDir }, 'frontend dist not found — run: cd v2/client && npm run build');
+}
 
 app.listen(PORT, () => {
   log.info({ port: PORT }, `V2 server running on http://localhost:${PORT}`);

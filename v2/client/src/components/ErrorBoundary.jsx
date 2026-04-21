@@ -12,7 +12,7 @@ export default class ErrorBoundary extends Component {
 
   componentDidCatch(error, errorInfo) {
     // Log error to backend (fire-and-forget)
-    const API = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+    const API = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:4000' : '');
     fetch(`${API}/api/client-error`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

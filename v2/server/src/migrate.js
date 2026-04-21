@@ -335,4 +335,142 @@ export function migrate() {
     // Backfill existing conversations
     db.exec("UPDATE conversations SET last_activity = updated_at WHERE last_activity IS NULL");
   }
+
+  // ── Phase 10 — SaaS Owner Panel + Channel Provisioning Control ──
+
+  // 10.1 — User role + suspension flag
+  const usersCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+  if (!usersCols.includes('role')) {
+    db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'");
+  }
+  if (!usersCols.includes('suspended')) {
+    db.exec("ALTER TABLE users ADD COLUMN suspended INTEGER NOT NULL DEFAULT 0");
+  }
+
+  // 10.1 — Plans catalog
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS plans (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      monthly_price INTEGER NOT NULL DEFAULT 0,
+      max_flows INTEGER NOT NULL DEFAULT 1,
+      max_staff INTEGER NOT NULL DEFAULT 1,
+      max_submissions_per_month INTEGER NOT NULL DEFAULT 50,
+      allow_whatsapp INTEGER NOT NULL DEFAULT 0,
+      allow_telegram INTEGER NOT NULL DEFAULT 1,
+      allow_instagram INTEGER NOT NULL DEFAULT 0,
+      is_default INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+  `);
+
+  // Seed default plans if catalog empty
+  const planCount = db.prepare('SELECT COUNT(*) AS c FROM plans').get().c;
+  if (planCount === 0) {
+    const insertPlan = db.prepare(`
+      INSERT INTO plans (name, monthly_price, max_flows, max_staff, max_submissions_per_month,
+        allow_whatsapp, allow_telegram, allow_instagram, is_default)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    insertPlan.run('Starter', 0, 1, 1, 50, 0, 1, 0, 1);
+    insertPlan.run('Pro', 29, 10, 5, 2000, 1, 1, 1, 0);
+    insertPlan.run('Business', 79, 100, 100, 10000, 1, 1, 1, 0);
+  }
+
+  // 10.1 — Plan assignment per business + audit log
+  const bizCols = db.prepare("PRAGMA table_info(businesses)").all().map(c => c.name);
+  if (!bizCols.includes('plan_id')) {
+    db.exec("ALTER TABLE businesses ADD COLUMN plan_id INTEGER REFERENCES plans(id)");
+  }
+  if (!bizCols.includes('status')) {
+    // active | suspended (set by platform owner)
+    db.exec("ALTER TABLE businesses ADD COLUMN status TEXT NOT NULL DEFAULT 'active'");
+  }
+
+  // Backfill plan_id with default plan for any business missing one
+  const defaultPlan = db.prepare('SELECT id FROM plans WHERE is_default = 1 LIMIT 1').get();
+  if (defaultPlan) {
+    db.prepare('UPDATE businesses SET plan_id = ? WHERE plan_id IS NULL').run(defaultPlan.id);
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS plan_assignments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      plan_id INTEGER NOT NULL,
+      assigned_by INTEGER,
+      assigned_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+      FOREIGN KEY (plan_id) REFERENCES plans(id),
+      FOREIGN KEY (assigned_by) REFERENCES users(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_plan_assignments_biz ON plan_assignments(business_id);
+  `);
+
+  // 10.2 — One-time channel setup lock columns on settings
+  const settChannelCols = db.prepare("PRAGMA table_info(settings)").all().map(c => c.name);
+  if (!settChannelCols.includes('telegram_set_at')) {
+    db.exec("ALTER TABLE settings ADD COLUMN telegram_set_at TEXT");
+  }
+  if (!settChannelCols.includes('telegram_locked')) {
+    db.exec("ALTER TABLE settings ADD COLUMN telegram_locked INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!settChannelCols.includes('whatsapp_set_at')) {
+    db.exec("ALTER TABLE settings ADD COLUMN whatsapp_set_at TEXT");
+  }
+  if (!settChannelCols.includes('whatsapp_locked')) {
+    db.exec("ALTER TABLE settings ADD COLUMN whatsapp_locked INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!settChannelCols.includes('instagram_page_id')) {
+    db.exec("ALTER TABLE settings ADD COLUMN instagram_page_id TEXT DEFAULT ''");
+  }
+  if (!settChannelCols.includes('instagram_set_at')) {
+    db.exec("ALTER TABLE settings ADD COLUMN instagram_set_at TEXT");
+  }
+  if (!settChannelCols.includes('instagram_locked')) {
+    db.exec("ALTER TABLE settings ADD COLUMN instagram_locked INTEGER NOT NULL DEFAULT 0");
+  }
+
+  // Backfill: existing populated channel values get marked as set+locked
+  db.exec(`
+    UPDATE settings SET telegram_set_at = COALESCE(telegram_set_at, datetime('now')), telegram_locked = 1
+      WHERE telegram_bot_token IS NOT NULL AND telegram_bot_token != '' AND telegram_locked = 0;
+    UPDATE settings SET whatsapp_set_at = COALESCE(whatsapp_set_at, datetime('now')), whatsapp_locked = 1
+      WHERE whatsapp_number IS NOT NULL AND whatsapp_number != '' AND whatsapp_locked = 0;
+    UPDATE settings SET instagram_set_at = COALESCE(instagram_set_at, datetime('now')), instagram_locked = 1
+      WHERE instagram_page_id IS NOT NULL AND instagram_page_id != '' AND instagram_locked = 0;
+  `);
+
+  // 10.2 — Channel change requests
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS channel_change_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      requested_by INTEGER NOT NULL,
+      channel TEXT NOT NULL CHECK(channel IN ('telegram', 'whatsapp', 'instagram')),
+      requested_value TEXT NOT NULL,
+      requested_value_masked TEXT NOT NULL,
+      reason TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+      decided_by INTEGER,
+      decided_at TEXT,
+      decision_note TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+      FOREIGN KEY (requested_by) REFERENCES users(id),
+      FOREIGN KEY (decided_by) REFERENCES users(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_channel_requests_status ON channel_change_requests(status);
+    CREATE INDEX IF NOT EXISTS idx_channel_requests_business ON channel_change_requests(business_id);
+  `);
+
+  // 10.1 — Bootstrap platform owner from env (if any user matches PLATFORM_OWNER_EMAIL)
+  const ownerEmail = (process.env.PLATFORM_OWNER_EMAIL || '').trim().toLowerCase();
+  if (ownerEmail) {
+    const existing = db.prepare('SELECT id, role FROM users WHERE LOWER(email) = ?').get(ownerEmail);
+    if (existing && existing.role !== 'platform_owner') {
+      db.prepare("UPDATE users SET role = 'platform_owner' WHERE id = ?").run(existing.id);
+    }
+  }
 }

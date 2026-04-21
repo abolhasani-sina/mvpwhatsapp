@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
-import { fetchSettings, updateSettings, updateBusiness, fetchBusiness } from '../lib/api';
+import { Lock } from 'lucide-react';
+import {
+  fetchSettings, updateSettings, updateBusiness, fetchBusiness,
+  createChannelChangeRequest, fetchChannelChangeRequests,
+} from '../lib/api';
 import { useToast } from '../components/Toast';
 
 export default function SettingsPage({ businessId }) {
@@ -10,25 +14,45 @@ export default function SettingsPage({ businessId }) {
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [bizName, setBizName] = useState('');
   const [bizPhone, setBizPhone] = useState('');
+  const [locks, setLocks] = useState({ telegram: false, whatsapp: false, instagram: false });
+  const [requests, setRequests] = useState([]);
+  const [requestModal, setRequestModal] = useState(null); // { channel, currentValue }
+  const [requestValue, setRequestValue] = useState('');
+  const [requestReason, setRequestReason] = useState('');
+  const [submittingRequest, setSubmittingRequest] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!businessId) return;
-    Promise.all([fetchSettings(businessId), fetchBusiness()]).then(([s, biz]) => {
+    Promise.all([
+      fetchSettings(businessId),
+      fetchBusiness(),
+      fetchChannelChangeRequests(businessId).catch(() => []),
+    ]).then(([s, biz, reqs]) => {
       if (s) {
         setTgToken(s.telegram_bot_token || '');
         setTgChatId(s.telegram_chat_id || '');
         setBusinessEmail(s.business_email || '');
         setWhatsappNumber(s.whatsapp_number || '');
+        setLocks({
+          telegram: s.telegram_locked === 1,
+          whatsapp: s.whatsapp_locked === 1,
+          instagram: s.instagram_locked === 1,
+        });
       }
       if (biz) {
         setBizName(biz.name || '');
         setBizPhone(biz.phone || '');
       }
+      setRequests(reqs || []);
       setLoading(false);
     });
   }, [businessId]);
+
+  function pendingFor(channel) {
+    return requests.find((r) => r.channel === channel && r.status === 'pending');
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -38,10 +62,39 @@ export default function SettingsPage({ businessId }) {
         updateBusiness(businessId, { name: bizName, phone: bizPhone }),
       ]);
       addToast('Settings saved successfully', 'success');
-    } catch {
-      addToast('Failed to save settings', 'error');
+    } catch (err) {
+      if (err.code === 'CHANNEL_LOCKED') {
+        addToast(`${err.channel} is locked — submit a change request.`, 'error');
+      } else {
+        addToast(err.message || 'Failed to save settings', 'error');
+      }
     } finally {
       setSaving(false);
+    }
+  }
+
+  function openRequest(channel, currentValue) {
+    setRequestModal({ channel, currentValue });
+    setRequestValue('');
+    setRequestReason('');
+  }
+
+  async function submitRequest() {
+    if (!requestValue.trim()) {
+      addToast('New value is required', 'error');
+      return;
+    }
+    setSubmittingRequest(true);
+    try {
+      await createChannelChangeRequest(businessId, requestModal.channel, requestValue.trim(), requestReason.trim());
+      addToast('Change request submitted for owner approval', 'success');
+      const reqs = await fetchChannelChangeRequests(businessId);
+      setRequests(reqs);
+      setRequestModal(null);
+    } catch (err) {
+      addToast(err.message || 'Failed to submit request', 'error');
+    } finally {
+      setSubmittingRequest(false);
     }
   }
 
@@ -109,16 +162,17 @@ export default function SettingsPage({ businessId }) {
               className="py-2 px-3 rounded-lg border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </label>
-          <label className="flex flex-col gap-1 text-[13px] font-medium text-slate-500">
-            WhatsApp Number
-            <input
-              value={whatsappNumber}
-              onChange={(e) => setWhatsappNumber(e.target.value)}
-              placeholder="+1234567890"
-              className="py-2 px-3 rounded-lg border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <span className="text-[11px] text-slate-300 italic">WhatsApp integration coming soon</span>
-          </label>
+
+          <ChannelField
+            label="WhatsApp Number"
+            value={whatsappNumber}
+            onChange={setWhatsappNumber}
+            placeholder="+1234567890"
+            locked={locks.whatsapp}
+            pending={pendingFor('whatsapp')}
+            onRequestChange={() => openRequest('whatsapp', whatsappNumber)}
+            hint="WhatsApp integration coming soon"
+          />
         </div>
       </div>
 
@@ -130,15 +184,16 @@ export default function SettingsPage({ businessId }) {
           Create a bot via <strong>@BotFather</strong> and get the chat ID.
         </p>
         <div className="flex flex-col gap-3">
-          <label className="flex flex-col gap-1 text-[13px] font-medium text-slate-500">
-            Bot Token
-            <input
-              value={tgToken}
-              onChange={(e) => setTgToken(e.target.value)}
-              placeholder="123456:ABC-DEF..."
-              className="py-2 px-3 rounded-lg border border-slate-200 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </label>
+          <ChannelField
+            label="Bot Token"
+            value={tgToken}
+            onChange={setTgToken}
+            placeholder="123456:ABC-DEF..."
+            mono
+            locked={locks.telegram}
+            pending={pendingFor('telegram')}
+            onRequestChange={() => openRequest('telegram', tgToken)}
+          />
           <label className="flex flex-col gap-1 text-[13px] font-medium text-slate-500">
             Default Chat ID
             <input
@@ -169,6 +224,89 @@ export default function SettingsPage({ businessId }) {
           {saving ? 'Saving…' : 'Save Settings'}
         </button>
       </div>
+
+      {requestModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setRequestModal(null)}>
+          <div className="bg-white rounded-xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-3">
+              <Lock className="w-4 h-4 text-amber-600" />
+              <h3 className="font-semibold text-slate-900">Request {requestModal.channel} change</h3>
+            </div>
+            <p className="text-xs text-slate-500 mb-4">
+              The {requestModal.channel} channel is locked. Submit a request and the platform owner will review it.
+            </p>
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-500 mb-3">
+              New value
+              <input
+                value={requestValue}
+                onChange={(e) => setRequestValue(e.target.value)}
+                placeholder={requestModal.channel === 'telegram' ? 'New bot token' : 'New value'}
+                className="py-2 px-3 rounded-lg border border-slate-200 text-sm font-mono"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+              Reason
+              <textarea
+                value={requestReason}
+                onChange={(e) => setRequestReason(e.target.value)}
+                rows={3}
+                placeholder="Why do you need this change?"
+                className="py-2 px-3 rounded-lg border border-slate-200 text-sm"
+              />
+            </label>
+            <div className="flex justify-end gap-2 mt-5">
+              <button
+                onClick={() => setRequestModal(null)}
+                className="px-3 py-1.5 text-sm rounded-lg bg-slate-100 text-slate-700"
+              >Cancel</button>
+              <button
+                onClick={submitRequest}
+                disabled={submittingRequest}
+                className="px-3 py-1.5 text-sm rounded-lg bg-indigo-600 text-white disabled:opacity-50"
+              >{submittingRequest ? 'Submitting…' : 'Submit Request'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChannelField({ label, value, onChange, placeholder, mono, locked, pending, onRequestChange, hint }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between text-[13px] font-medium text-slate-500">
+        <span className="flex items-center gap-2">
+          {label}
+          {locked && (
+            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">
+              <Lock className="w-2.5 h-2.5" /> Locked
+            </span>
+          )}
+          {pending && (
+            <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700">
+              Change pending
+            </span>
+          )}
+        </span>
+        {locked && !pending && (
+          <button
+            type="button"
+            onClick={onRequestChange}
+            className="text-[11px] text-indigo-600 hover:text-indigo-800"
+          >Request change</button>
+        )}
+      </div>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={locked}
+        className={`py-2 px-3 rounded-lg border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
+          mono ? 'font-mono' : ''
+        } ${locked ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
+      />
+      {hint && <span className="text-[11px] text-slate-300 italic">{hint}</span>}
     </div>
   );
 }

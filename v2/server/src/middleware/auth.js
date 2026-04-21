@@ -31,6 +31,16 @@ export function authenticate(req, res, next) {
   try {
     const payload = jwt.verify(token, JWT_SECRET);
     req.userId = payload.userId;
+
+    // Load fresh role + suspension state from DB (authoritative; not from JWT)
+    const user = db.prepare('SELECT role, suspended FROM users WHERE id = ?').get(payload.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'User no longer exists' });
+    }
+    if (user.suspended) {
+      return res.status(403).json({ error: 'Account suspended', code: 'ACCOUNT_SUSPENDED' });
+    }
+    req.userRole = user.role || 'user';
     next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
@@ -38,6 +48,14 @@ export function authenticate(req, res, next) {
     }
     return res.status(401).json({ error: 'Invalid token' });
   }
+}
+
+// Restrict route to platform owners only — must run AFTER authenticate
+export function requireOwner(req, res, next) {
+  if (req.userRole !== 'platform_owner') {
+    return res.status(403).json({ error: 'Platform owner access required' });
+  }
+  next();
 }
 
 // Refresh token handler

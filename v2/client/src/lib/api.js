@@ -1,7 +1,7 @@
 // ── API Client for V2 Backend ──
 import { authFetch } from './auth.jsx';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const API = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:4000/api' : '/api');
 export const API_BASE = API;
 
 export async function fetchBusiness() {
@@ -159,8 +159,34 @@ export async function updateSettings(businessId, telegramBotToken, telegramChatI
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ telegramBotToken, telegramChatId, businessEmail, whatsappNumber }),
   });
-  if (!res.ok) throw new Error('Failed to update settings');
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    const err = new Error(json.error || 'Failed to update settings');
+    err.code = json.code;
+    err.channel = json.channel;
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
+}
+
+// ── Channel Change Requests (Phase 10.2) ──
+
+export async function createChannelChangeRequest(businessId, channel, requestedValue, reason) {
+  const res = await authFetch(`${API}/business/${businessId}/channel-change-requests`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel, requestedValue, reason }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to submit change request');
+  return json.data;
+}
+
+export async function fetchChannelChangeRequests(businessId) {
+  const res = await authFetch(`${API}/business/${businessId}/channel-change-requests`);
+  const json = await res.json();
+  return json.data || [];
 }
 
 // ── Flow Destinations ──
@@ -249,8 +275,128 @@ export async function fetchMediaData(businessId, mediaId) {
 // ── System Logs ──
 
 export async function fetchErrorLogs(limit = 30) {
-  const res = await authFetch(`${API}/logs/errors/readable?limit=${limit}`);
+  // Phase 10: error logs moved to /api/owner/logs/errors/readable (owner only)
+  const res = await authFetch(`${API}/owner/logs/errors/readable?limit=${limit}`);
   if (!res.ok) throw new Error('Failed to fetch error logs');
   const json = await res.json();
   return json.data?.items || [];
+}
+
+// ── Owner / Platform Admin (Phase 10.1) ──
+
+export async function fetchOwnerTenants() {
+  const res = await authFetch(`${API}/owner/tenants`);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to fetch tenants');
+  return json.data || [];
+}
+
+export async function fetchOwnerTenant(id) {
+  const res = await authFetch(`${API}/owner/tenants/${id}`);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to fetch tenant');
+  return json.data;
+}
+
+export async function suspendTenant(id) {
+  const res = await authFetch(`${API}/owner/tenants/${id}/suspend`, { method: 'POST' });
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    throw new Error(j.error || 'Failed to suspend');
+  }
+  return res.json();
+}
+
+export async function reactivateTenant(id) {
+  const res = await authFetch(`${API}/owner/tenants/${id}/reactivate`, { method: 'POST' });
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    throw new Error(j.error || 'Failed to reactivate');
+  }
+  return res.json();
+}
+
+export async function setTenantPlan(id, planId) {
+  const res = await authFetch(`${API}/owner/tenants/${id}/plan`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ planId }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to update plan');
+  return json;
+}
+
+export async function fetchOwnerPlans() {
+  const res = await authFetch(`${API}/owner/plans`);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to fetch plans');
+  return json.data || [];
+}
+
+export async function createOwnerPlan(payload) {
+  const res = await authFetch(`${API}/owner/plans`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to create plan');
+  return json.data;
+}
+
+export async function updateOwnerPlan(id, payload) {
+  const res = await authFetch(`${API}/owner/plans/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to update plan');
+  return json.data;
+}
+
+export async function deleteOwnerPlan(id) {
+  const res = await authFetch(`${API}/owner/plans/${id}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    throw new Error(j.error || 'Failed to delete plan');
+  }
+  return res.json();
+}
+
+export async function fetchOwnerChannelRequests(status = 'pending') {
+  const res = await authFetch(`${API}/owner/channel-requests?status=${encodeURIComponent(status)}`);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to fetch channel requests');
+  return json.data || [];
+}
+
+export async function approveChannelRequest(id, note) {
+  const res = await authFetch(`${API}/owner/channel-requests/${id}/approve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note: note || '' }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to approve');
+  return json;
+}
+
+export async function rejectChannelRequest(id, note) {
+  const res = await authFetch(`${API}/owner/channel-requests/${id}/reject`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note: note || '' }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to reject');
+  return json;
+}
+
+export async function fetchOwnerStats() {
+  const res = await authFetch(`${API}/owner/stats`);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed to fetch stats');
+  return json.data;
 }
