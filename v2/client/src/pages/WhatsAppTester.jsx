@@ -180,8 +180,8 @@ function createEngine(builderData) {
   }
 
   // Build FlowStep message
-  function getFlowStepMessage(stepIdx) {
-    const step = steps[stepIdx];
+  function getFlowStepMessage(stepIdx, stepsOverride) {
+    const step = (stepsOverride || steps)[stepIdx];
     if (!step) return null;
 
     if (step.type === 'text') {
@@ -571,7 +571,8 @@ export default function WhatsAppTester({ businessId }) {
     const engine = engineRef.current;
     if (!engine) return;
 
-    if (nextIdx >= engine.steps.length) {
+    const currentCustomSteps = conversationStateRef.current?.customSteps || engine.steps;
+    if (nextIdx >= currentCustomSteps.length) {
       // All steps done → submit to server + show confirmation
       const flowId = builderData?.flow?.id || null;
 
@@ -591,15 +592,14 @@ export default function WhatsAppTester({ businessId }) {
       });
 
       setTimeout(() => {
-        const conf = engine.getConfirmation(answers);
-        appendBotMessage(conf);
+        const conf = engine.getConfirmation(answers, currentCustomSteps);
         setWaitingForText(false);
       }, 400);
       return;
     }
 
     setTimeout(() => {
-      const stepMsg = engine.getFlowStepMessage(nextIdx);
+      const stepMsg = engine.getFlowStepMessage(nextIdx, conversationStateRef.current?.customSteps);
       if (stepMsg) {
         appendBotMessage(stepMsg);
         setConversationState(prev => ({
@@ -741,12 +741,16 @@ export default function WhatsAppTester({ businessId }) {
       const actionBtn = infoBtn?.infoPage?.actionButtons?.find(a => a.id === actionBtnId);
       const deliveryMethod = actionBtn?.deliveryMethod || 'none';
       const deliveryStaffId = actionBtn?.deliveryStaffId || null;
+      // [ADDED: action_button_flow_steps] Use custom steps if configured, else main flow
+      const customSteps = (actionBtn?.flowSteps && actionBtn.flowSteps.length > 0)
+        ? actionBtn.flowSteps
+        : engine.steps;
 
       setTimeout(() => {
         const newAnswers = { ...(prevState.answers || {}) };
-        if (engine.steps.length > 0 && engine.steps[0].type === 'select_from_menu') {
-          newAnswers[engine.steps[0].label || engine.steps[0].key] = serviceLabel;
-          const stepMsg = engine.getFlowStepMessage(1);
+        if (customSteps.length > 0 && customSteps[0].type === 'select_from_menu') {
+          newAnswers[customSteps[0].label || customSteps[0].key] = serviceLabel;
+          const stepMsg = engine.getFlowStepMessage(1, customSteps);
           if (stepMsg) {
             appendBotMessage(stepMsg);
             setConversationState(p => ({
@@ -756,13 +760,14 @@ export default function WhatsAppTester({ businessId }) {
               answers: newAnswers,
               deliveryMethod,
               deliveryStaffId,
+              customSteps,
             }));
             setWaitingForText(stepMsg.type === 'text');
           }
           return;
         }
 
-        const stepMsg = engine.getFlowStepMessage(0);
+        const stepMsg = engine.getFlowStepMessage(0, customSteps);
         if (stepMsg) {
           appendBotMessage(stepMsg);
           setConversationState(p => ({
@@ -772,6 +777,7 @@ export default function WhatsAppTester({ businessId }) {
             answers: newAnswers,
             deliveryMethod,
             deliveryStaffId,
+            customSteps,
           }));
           setWaitingForText(stepMsg.type === 'text');
         }
@@ -787,7 +793,7 @@ export default function WhatsAppTester({ businessId }) {
       }
 
       const prevState = conversationStateRef.current || {};
-      const step = engine.steps[prevState.flowStep];
+      const step = (prevState.customSteps || engine.steps)[prevState.flowStep];
       if (step) {
         const label = step.label || step.key;
         const newAnswers = { ...(prevState.answers || {}), [label]: item.title };
@@ -809,7 +815,7 @@ export default function WhatsAppTester({ businessId }) {
     setWaitingForText(false);
 
     const prevState = conversationStateRef.current || {};
-    const step = engine.steps[prevState.flowStep];
+    const step = (prevState.customSteps || engine.steps)[prevState.flowStep];
     if (step) {
       const label = step.label || step.key;
       const newAnswers = { ...(prevState.answers || {}), [label]: value };
