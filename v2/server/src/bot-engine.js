@@ -323,8 +323,17 @@ function buildInfoMessages(btn) {
   return msgs;
 }
 
-function buildConfirmationMsg(answers, flowSteps) {
-  let body = '✅ *Booking Confirmed!*\n\nHere\'s your summary:\n\n';
+function buildConfirmationMsg(answers, flowSteps, confirmationOverride) {
+  // [ADDED: configurable-confirmation] Resolve per-action-button overrides with
+  // safe fallbacks to the legacy hardcoded copy so untouched booking flows keep
+  // their existing UX.
+  const confirmationTitle = (confirmationOverride && confirmationOverride.title) || 'Booking Confirmed! ✅'; // [ADDED: configurable-confirmation]
+  const confirmationMessage = (confirmationOverride && confirmationOverride.message) || 'We will be in touch shortly.'; // [ADDED: configurable-confirmation]
+  const confirmationButtons = (confirmationOverride && Array.isArray(confirmationOverride.buttons) && confirmationOverride.buttons.length > 0) // [ADDED: configurable-confirmation]
+    ? confirmationOverride.buttons // [ADDED: configurable-confirmation]
+    : ['Main Menu 🏠']; // [ADDED: configurable-confirmation]
+
+  let body = `✅ *${confirmationTitle}*\n\nHere\'s your summary:\n\n`; // [ADDED: configurable-confirmation]
   for (const step of flowSteps) {
     const v = answers[step.label] || answers[step.key];
     if (v) body += `• *${step.label}*: ${v}\n`;
@@ -334,8 +343,16 @@ function buildConfirmationMsg(answers, flowSteps) {
   for (const [k, v] of Object.entries(answers)) {
     if (!k.startsWith('_') && !labels.has(k) && !keys.has(k)) body += `• *${k}*: ${v}\n`;
   }
-  body += '\nWe\'ll get back to you shortly! 🙏';
-  return { type: 'buttons', body, buttons: [{ id: 'new_booking', title: 'New Booking' }, { id: 'main_menu', title: 'Main Menu' }] };
+  body += `\n${confirmationMessage}`; // [ADDED: configurable-confirmation]
+  // [ADDED: configurable-confirmation] Map button labels to existing callback IDs
+  // (main_menu / new_booking) so the global shortcut handler keeps working.
+  const buttonsOut = confirmationButtons.slice(0, 3).map((label) => { // [ADDED: configurable-confirmation]
+    const lc = String(label).toLowerCase(); // [ADDED: configurable-confirmation]
+    let id = 'main_menu'; // [ADDED: configurable-confirmation]
+    if (lc.includes('new booking') || lc.includes('submit another')) id = 'new_booking'; // [ADDED: configurable-confirmation]
+    return { id, title: String(label).slice(0, 20) }; // [ADDED: configurable-confirmation]
+  }); // [ADDED: configurable-confirmation]
+  return { type: 'buttons', body, buttons: buttonsOut }; // [ADDED: configurable-confirmation]
 }
 
 // ═════════════════════════════════════════════════════════════════
@@ -755,5 +772,28 @@ function submitAndConfirm(conversation, state, data, businessId) {
     botLog('warn', 'telegram_notify_failed', { businessId, submissionId: subId });
   }
 
-  return deduplicateMessages([buildConfirmationMsg(state.answers, steps)]);
+  // [ADDED: configurable-confirmation] Look up this action button's confirmation
+  // overrides (title/message/buttons). better-sqlite3 is synchronous, so no await.
+  // When state.actionButtonId is null (legacy main-flow submission) we skip the
+  // query and buildConfirmationMsg falls back to the hardcoded copy.
+  let confirmationOverride = null; // [ADDED: configurable-confirmation]
+  if (state.actionButtonId) { // [ADDED: configurable-confirmation]
+    const actionBtn = db.prepare( // [ADDED: configurable-confirmation]
+      'SELECT confirmation_title, confirmation_message, confirmation_buttons FROM action_buttons WHERE id = ?' // [ADDED: configurable-confirmation]
+    ).get(state.actionButtonId); // [ADDED: configurable-confirmation]
+    if (actionBtn) { // [ADDED: configurable-confirmation]
+      let parsedButtons = null; // [ADDED: configurable-confirmation]
+      if (actionBtn.confirmation_buttons) { // [ADDED: configurable-confirmation]
+        try { parsedButtons = JSON.parse(actionBtn.confirmation_buttons); } // [ADDED: configurable-confirmation]
+        catch { parsedButtons = ['Main Menu 🏠']; } // [ADDED: configurable-confirmation]
+      } // [ADDED: configurable-confirmation]
+      confirmationOverride = { // [ADDED: configurable-confirmation]
+        title: actionBtn.confirmation_title || null, // [ADDED: configurable-confirmation]
+        message: actionBtn.confirmation_message || null, // [ADDED: configurable-confirmation]
+        buttons: Array.isArray(parsedButtons) && parsedButtons.length > 0 ? parsedButtons : null, // [ADDED: configurable-confirmation]
+      }; // [ADDED: configurable-confirmation]
+    } // [ADDED: configurable-confirmation]
+  } // [ADDED: configurable-confirmation]
+
+  return deduplicateMessages([buildConfirmationMsg(state.answers, steps, confirmationOverride)]); // [ADDED: configurable-confirmation]
 }
