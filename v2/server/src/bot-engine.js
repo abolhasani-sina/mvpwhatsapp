@@ -142,6 +142,16 @@ function loadBuilderData(businessId) {
 
   const formattedSteps = flowSteps.map(formatStep);
 
+  // [ADDED: action_button_flow_steps] Helper exposed back to the caller so the
+  // engine can resolve a per-action-button flow on the fly when the user enters
+  // the 'flow' phase via a 'book_' callback.
+  function loadActionButtonFlowSteps(actionBtnId) {
+    const rows = db.prepare(
+      'SELECT * FROM action_button_flow_steps WHERE action_button_id = ? ORDER BY step_order'
+    ).all(actionBtnId);
+    return rows.map(formatStep);
+  }
+
   function buildTree(parentId) {
     return allButtons
       .filter(b => b.parent_id === parentId)
@@ -182,6 +192,8 @@ function loadBuilderData(businessId) {
     welcomeMessage: config ? config.welcome_message : '',
     buttons: buttonTree,
     flow: flow ? { id: flow.id, name: flow.name, steps: formattedSteps } : null,
+    // [ADDED: action_button_flow_steps] expose per-action-button step loader
+    loadActionButtonFlowSteps,
   };
 }
 
@@ -403,8 +415,8 @@ function _processIncoming(businessId, channelUserId, channel, userName, input) {
   const data = loadBuilderData(businessId);
   if (!data) return [{ type: 'text', body: 'Sorry, this bot is not configured yet.' }];
 
-  const { welcomeMessage, buttons, flow } = data;
-  const steps = flow?.steps || [];
+  const { welcomeMessage, buttons, flow, loadActionButtonFlowSteps } = data;
+  const baseSteps = flow?.steps || [];
 
   const customer = getOrCreateCustomer(businessId, channel, channelUserId, userName);
 
@@ -558,17 +570,28 @@ function _processIncoming(businessId, channelUserId, channel, userName, input) {
       const infoBtn = state.currentInfoId ? findInTree(buttons, state.currentInfoId) : null;
       const actionBtn = infoBtn?.infoPage?.actionButtons?.find(a => a.id === actionBtnId);
 
+      // [ADDED: action_button_flow_steps] Prefer this action button's custom flow.
+      // Falls back to the business-wide main flow when the action button has no
+      // custom steps configured — preserves existing behavior for templates.
+      const customSteps = loadActionButtonFlowSteps(actionBtnId);
+      const flowStepsForAction = customSteps.length > 0 ? customSteps : baseSteps;
+
       state.phase = 'flow';
       state.answers = {};
       state.deliveryMethod = actionBtn?.deliveryMethod || 'none';
       state.deliveryStaffId = actionBtn?.deliveryStaffId || null;
+      // [ADDED: action_button_flow_steps] Remember which action button drove this flow
+      // so subsequent turns load the same custom steps and the submission can be
+      // attributed to it.
+      state.actionButtonId = actionBtnId;
+      state.usingCustomFlow = customSteps.length > 0;
 
       // If first step is select_from_menu, prefill with service name
-      if (steps.length > 0 && steps[0].type === 'select_from_menu' && infoBtn) {
-        state.answers[steps[0].label || steps[0].key] = infoBtn.label;
+      if (flowStepsForAction.length > 0 && flowStepsForAction[0].type === 'select_from_menu' && infoBtn) {
+        state.answers[flowStepsForAction[0].label || flowStepsForAction[0].key] = infoBtn.label;
         state.flowStep = 1;
         updateConversationState(conversation.id, state);
-        const msg = buildFlowStepMsg(steps[1]);
+        const msg = buildFlowStepMsg(flowStepsForAction[1]);
         if (!msg) {
           // Only had 1 step → submit
           return submitAndConfirm(conversation, state, data, businessId);
@@ -580,14 +603,14 @@ function _processIncoming(businessId, channelUserId, channel, userName, input) {
       updateConversationState(conversation.id, state);
 
       // Handle select_from_menu at step 0
-      if (steps[0]?.type === 'select_from_menu') {
+      if (flowStepsForAction[0]?.type === 'select_from_menu') {
         const menuRoot = buttons.find(b => b.behavior === 'menu' && b.children?.length);
         if (menuRoot) {
-          return [buildChildrenList(menuRoot.children, steps[0].question, 'View Services')];
+          return [buildChildrenList(menuRoot.children, flowStepsForAction[0].question, 'View Services')];
         }
       }
 
-      const msg = buildFlowStepMsg(steps[0]);
+      const msg = buildFlowStepMsg(flowStepsForAction[0]);
       return msg ? [msg] : [{ type: 'text', body: 'No booking flow configured.' }];
     }
     // Unrecognized in viewing_info — re-show info
@@ -597,6 +620,11 @@ function _processIncoming(businessId, channelUserId, channel, userName, input) {
   }
 
   if (phase === 'flow') {
+    // [ADDED: action_button_flow_steps] Resolve which step list to drive this turn:
+    // the action button's custom flow if any, else the business-wide main flow.
+    const customForFlow = state.actionButtonId ? loadActionButtonFlowSteps(state.actionButtonId) : [];
+    const steps = customForFlow.length > 0 ? customForFlow : baseSteps;
+
     const currentStep = steps[state.flowStep];
     if (!currentStep) return submitAndConfirm(conversation, state, data, businessId);
 
@@ -676,15 +704,23 @@ function getNextStepMsg(steps, idx, buttons) {
 }
 
 function submitAndConfirm(conversation, state, data, businessId) {
-  const { flow } = data;
-  const steps = flow?.steps || [];
+  const { flow, loadActionButtonFlowSteps } = data;
+  // [ADDED: action_button_flow_steps] Use the same step list the user actually
+  // answered against (custom action-button flow when present, else main flow).
+  const customForFlow = state.actionButtonId && loadActionButtonFlowSteps
+    ? loadActionButtonFlowSteps(state.actionButtonId)
+    : [];
+  const steps = customForFlow.length > 0 ? customForFlow : (flow?.steps || []);
 
   // Wrap submission + state update in a transaction for atomicity
   const txn = db.transaction(() => {
     // Create submission
+    // [ADDED: action_button_flow_steps] Persist action_button_id so submissions
+    // can be attributed back to the specific action button (NULL for main-flow
+    // submissions — preserves legacy behavior).
     const result = db.prepare(
-      'INSERT INTO submissions (business_id, data, status, flow_id) VALUES (?, ?, ?, ?)'
-    ).run(businessId, JSON.stringify(state.answers), 'new', flow?.id || null);
+      'INSERT INTO submissions (business_id, data, status, flow_id, action_button_id) VALUES (?, ?, ?, ?, ?)'
+    ).run(businessId, JSON.stringify(state.answers), 'new', flow?.id || null, state.actionButtonId || null);
     const subId = Number(result.lastInsertRowid);
 
     // Update state to confirmed

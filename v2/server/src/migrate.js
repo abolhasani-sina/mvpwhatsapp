@@ -254,6 +254,12 @@ export function migrate() {
   if (!subCols.includes('flow_id')) {
     db.exec("ALTER TABLE submissions ADD COLUMN flow_id INTEGER REFERENCES flows(id) ON DELETE SET NULL");
   }
+  // [ADDED: action_button_flow_steps] Track which action button (if any) triggered
+  // a submission. NULL for legacy/main-flow submissions. ON DELETE SET NULL so
+  // historical submissions survive action_button rebuilds during builder saves.
+  if (!subCols.includes('action_button_id')) {
+    db.exec("ALTER TABLE submissions ADD COLUMN action_button_id INTEGER REFERENCES action_buttons(id) ON DELETE SET NULL");
+  }
 
   const settCols = db.prepare("PRAGMA table_info(settings)").all().map(c => c.name);
   if (!settCols.includes('business_email')) {

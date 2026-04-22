@@ -267,6 +267,22 @@ router.get('/business/:id/builder', tenantScope, (req, res) => {
      ORDER BY es.step_order`
   ).all(businessId);
 
+  // [ADDED: action_button_flow_steps] Load every per-action-button custom flow step
+  // for this business in one query, then index by action_button_id.
+  const allActionButtonFlowSteps = db.prepare(
+    `SELECT abfs.* FROM action_button_flow_steps abfs
+     JOIN action_buttons ab ON abfs.action_button_id = ab.id
+     JOIN info_pages ip ON ab.info_page_id = ip.id
+     JOIN buttons b ON ip.button_id = b.id
+     WHERE b.business_id = ?
+     ORDER BY abfs.step_order`
+  ).all(businessId);
+  const actionFlowStepsByActionBtn = new Map();
+  for (const s of allActionButtonFlowSteps) {
+    if (!actionFlowStepsByActionBtn.has(s.action_button_id)) actionFlowStepsByActionBtn.set(s.action_button_id, []);
+    actionFlowStepsByActionBtn.get(s.action_button_id).push(s);
+  }
+
   // Index info pages by button_id
   const infoByButton = new Map();
   for (const ip of allInfoPages) infoByButton.set(ip.button_id, ip);
@@ -343,7 +359,11 @@ router.get('/business/:id/builder', tenantScope, (req, res) => {
             backTarget: ab.back_target || 'parent',
           };
           if (ab.behavior === 'start_flow') {
-            actionNode.flowSteps = formattedFlowSteps;
+            // [ADDED: action_button_flow_steps] Prefer per-action-button custom steps
+            // over the business-wide default flow steps when present.
+            const customRows = actionFlowStepsByActionBtn.get(ab.id) || [];
+            const customSteps = customRows.map(formatFlowStep);
+            actionNode.flowSteps = customSteps.length > 0 ? customSteps : formattedFlowSteps;
             if (ab.prefill_service) actionNode.prefillService = ab.prefill_service;
           }
           return actionNode;
@@ -468,6 +488,14 @@ router.put('/business/:id/builder', tenantScope, saveBuilderRules, validate, (re
       `INSERT INTO flow_steps (flow_id, type, question, key, summary_label, options, step_order, menu_root_button_id, manual_placeholder)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
+    // [ADDED: action_button_flow_steps] Prepared statement for per-action-button steps.
+    // Existing rows are wiped automatically because action_buttons are deleted above
+    // (CASCADE on action_button_flow_steps.action_button_id).
+    const insertActionFlowStep = db.prepare(
+      `INSERT INTO action_button_flow_steps
+         (action_button_id, type, question, key, summary_label, options, step_order, menu_root_button_id, manual_placeholder)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
 
     // Map from old frontend IDs → new DB IDs
     const oldToNew = new Map();
@@ -523,7 +551,7 @@ router.put('/business/:id/builder', tenantScope, saveBuilderRules, validate, (re
           if (ip.actionButtons && ip.actionButtons.length > 0) {
             for (let a = 0; a < ip.actionButtons.length; a++) {
               const ab = ip.actionButtons[a];
-              insertActionBtn.run(
+              const abResult = insertActionBtn.run(
                 infoPageId,
                 ab.label || '',
                 ab.behavior || 'go_back',
@@ -533,6 +561,30 @@ router.put('/business/:id/builder', tenantScope, saveBuilderRules, validate, (re
                 ab.deliveryStaffId || null,
                 ab.backTarget || 'parent'
               );
+              // [ADDED: action_button_flow_steps] Persist per-action-button custom flow steps.
+              // The first start_flow's steps are still mirrored into the business-wide
+              // flow_steps table (legacy fallback) by `baseFlowSteps` below — but every
+              // start_flow action button now also gets its own copy here so the bot engine
+              // can run a different survey per action button.
+              const newActionBtnId = Number(abResult.lastInsertRowid);
+              if (ab.behavior === 'start_flow' && Array.isArray(ab.flowSteps) && ab.flowSteps.length > 0) {
+                for (let s = 0; s < ab.flowSteps.length; s++) {
+                  const step = ab.flowSteps[s];
+                  insertActionFlowStep.run(
+                    newActionBtnId,
+                    step.type,
+                    step.question || '',
+                    step.key || '',
+                    step.label || '',
+                    JSON.stringify(step.options || []),
+                    s,
+                    step.menuRoot || null, // remapped after recursion would be ideal,
+                                           // but action-button flows don't currently use
+                                           // select_from_menu, so storing as-is is safe.
+                    step.manualPlaceholder || ''
+                  );
+                }
+              }
               if (ab.behavior === 'start_flow' && ab.flowSteps && !baseFlowSteps) {
                 baseFlowSteps = ab.flowSteps;
               }
