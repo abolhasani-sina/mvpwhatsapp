@@ -303,8 +303,8 @@ export default function SubmissionsList({ businessId }) {
 
 /* ── Single table row + expandable detail ───────────────────── */
 function SubmissionRow({ sub, staff, expanded, onToggle, onStatusChange, onAssign }) {
-  const service  = extractField(sub.data, SERVICE_KEYS);
-  const customer = extractField(sub.data, NAME_KEYS);
+  const service  = extractField(sub.data, SERVICE_KEYS) || sub.action_button_label || sub.flow_name || '—'; // [ADDED: submission-display-fallback]
+  const customer = extractField(sub.data, NAME_KEYS) || (sub.channel ? sub.channel : 'Bot Tester'); // [ADDED: submission-display-fallback]
   const phone    = extractField(sub.data, PHONE_KEYS);
   const cfg      = STATUS_CFG[sub.status] || STATUS_CFG.new;
   const assignedStaff = sub.assigned_to ? staff.find(s => s.id === sub.assigned_to) : null;
