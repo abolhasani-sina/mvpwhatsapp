@@ -610,10 +610,11 @@ export default function WhatsAppTester({ businessId }) {
         const deliveryStaffId = prev?.deliveryStaffId || null;
 
         // POST real submission
+        const actionButtonId = prev?.actionButtonId || null; // [ADDED: action-button-id-submission]
         authFetch(`${API}/business/${businessId}/submissions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: answers, flowId, deliveryMethod, deliveryStaffId }),
+          body: JSON.stringify({ data: answers, flowId, deliveryMethod, deliveryStaffId, actionButtonId }),
         }).catch(err => console.error('Failed to submit:', err));
 
         return { ...prev, phase: 'confirmed', answers };
@@ -797,6 +798,7 @@ export default function WhatsAppTester({ businessId }) {
               deliveryStaffId,
               customSteps,
               confirmationActionButton, // [ADDED: confirmation_config]
+              actionButtonId: actionBtnId, // [ADDED: action-button-id-submission]
             }));
             setWaitingForText(stepMsg.type === 'text');
           }
@@ -815,6 +817,7 @@ export default function WhatsAppTester({ businessId }) {
             deliveryStaffId,
             customSteps,
             confirmationActionButton, // [ADDED: confirmation_config]
+            actionButtonId: actionBtnId, // [ADDED: action-button-id-submission]
           }));
           setWaitingForText(stepMsg.type === 'text');
         }

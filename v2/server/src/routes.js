@@ -782,10 +782,10 @@ router.get('/business/:id/analytics', tenantScope, (req, res) => {
 
 router.post('/business/:id/submissions', tenantScope, (req, res) => {
   try {
-    const { data, flowId, deliveryMethod, deliveryStaffId } = req.body;
+    const { data, flowId, deliveryMethod, deliveryStaffId, actionButtonId } = req.body;
     const result = db.prepare(
-      'INSERT INTO submissions (business_id, data, status, flow_id) VALUES (?, ?, ?, ?)'
-    ).run(req.params.id, JSON.stringify(data || {}), 'new', flowId || null);
+      'INSERT INTO submissions (business_id, data, status, flow_id, action_button_id) VALUES (?, ?, ?, ?, ?)'
+    ).run(req.params.id, JSON.stringify(data || {}), 'new', flowId || null, actionButtonId || null);
     const subId = Number(result.lastInsertRowid);
 
     const biz = db.prepare('SELECT name FROM businesses WHERE id = ?').get(req.params.id);
@@ -882,9 +882,11 @@ router.post('/business/:id/submissions', tenantScope, (req, res) => {
 
 router.get('/business/:id/submissions', tenantScope, (req, res) => {
   const subs = db.prepare(
-    `SELECT s.*, st.name as assigned_name
+    `SELECT s.*, st.name as assigned_name, f.name as flow_name, ab.label as action_button_label
      FROM submissions s
      LEFT JOIN staff st ON s.assigned_to = st.id
+     LEFT JOIN flows f ON s.flow_id = f.id
+     LEFT JOIN action_buttons ab ON s.action_button_id = ab.id
      WHERE s.business_id = ?
      ORDER BY s.created_at DESC`
   ).all(req.params.id);

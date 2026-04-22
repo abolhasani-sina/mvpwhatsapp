@@ -23,6 +23,9 @@ function AppRoutes() {
     if (typeof window !== 'undefined') {
       const qp = new URLSearchParams(window.location.search).get('page');
       if (qp && publicPages.includes(qp)) return qp;
+      const saved = sessionStorage.getItem('nabz_page');
+      const isLoggedIn = !!localStorage.getItem('bd_user');
+      if (saved && isLoggedIn) return saved;
     }
     return user ? 'dashboard' : 'landing1';
   };
@@ -53,6 +56,7 @@ function AppRoutes() {
   function navigate(target) {
     setPage(target);
     if (typeof window !== 'undefined') {
+      sessionStorage.setItem('nabz_page', target);
       const isPublicTarget = publicPages.includes(target);
       const url = new URL(window.location.href);
       if (isPublicTarget && target.startsWith('landing')) {
