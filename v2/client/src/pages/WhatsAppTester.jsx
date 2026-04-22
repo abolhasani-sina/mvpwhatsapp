@@ -593,6 +593,7 @@ export default function WhatsAppTester({ businessId }) {
 
       setTimeout(() => {
         const conf = engine.getConfirmation(answers, currentCustomSteps);
+        appendBotMessage(conf);
         setWaitingForText(false);
       }, 400);
       return;
