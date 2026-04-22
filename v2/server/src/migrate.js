@@ -280,6 +280,19 @@ export function migrate() {
   if (!abCols.includes('back_target')) {
     db.exec("ALTER TABLE action_buttons ADD COLUMN back_target TEXT DEFAULT 'parent'");
   }
+  // [ADDED: confirmation_config] Per-action-button confirmation message customization.
+  // Defaults are intentionally generic ("Thank you!") — the bot tester preserves the
+  // legacy "Booking Confirmed!" hardcoded fallback for action buttons that don't
+  // have a custom flow, so existing booking templates are unaffected.
+  if (!abCols.includes('confirmation_title')) {
+    db.exec("ALTER TABLE action_buttons ADD COLUMN confirmation_title TEXT DEFAULT 'Thank you! 🙏'");
+  }
+  if (!abCols.includes('confirmation_message')) {
+    db.exec("ALTER TABLE action_buttons ADD COLUMN confirmation_message TEXT DEFAULT 'We have received your response.'");
+  }
+  if (!abCols.includes('confirmation_buttons')) {
+    db.exec("ALTER TABLE action_buttons ADD COLUMN confirmation_buttons TEXT DEFAULT '[\"Main Menu\"]'");
+  }
 
   // ── Phase 7 tables ──
 

@@ -277,20 +277,48 @@ function createEngine(builderData) {
   }
 
   // Build confirmation message
-  function getConfirmation(answers) {
-    let body = '✅ *Booking Confirmed!*\n\nHere\'s your summary:\n\n';
-    for (const [k, v] of Object.entries(answers)) {
-      if (!k.startsWith('_')) body += `• *${k}*: ${v}\n`;
-    }
-    body += '\nWe\'ll get back to you shortly! 🙏';
-    return {
-      type: 'buttons',
-      body,
-      buttons: [
+  // [ADDED: confirmation_config] Optional `actionButton` arg carries per-action-button
+  // confirmation overrides. When omitted (legacy booking flow / no custom steps),
+  // we keep the original hardcoded "Booking Confirmed!" UX so existing templates
+  // are unaffected.
+  function getConfirmation(answers, _customSteps, actionButton) {
+    const useCustom = actionButton && (actionButton.confirmationTitle || actionButton.confirmationMessage);
+    let body;
+    let buttons;
+    if (useCustom) {
+      const title = actionButton.confirmationTitle || 'Thank you! 🙏';
+      const message = actionButton.confirmationMessage || 'We have received your response.';
+      let btnLabels = actionButton.confirmationButtons;
+      if (typeof btnLabels === 'string') {
+        try { btnLabels = JSON.parse(btnLabels); } catch { btnLabels = ['Main Menu']; }
+      }
+      if (!Array.isArray(btnLabels) || btnLabels.length === 0) btnLabels = ['Main Menu'];
+      body = `✅ *${title}*\n\n`;
+      for (const [k, v] of Object.entries(answers)) {
+        if (!k.startsWith('_')) body += `• *${k}*: ${v}\n`;
+      }
+      body += `\n${message}`;
+      buttons = btnLabels.slice(0, 3).map((label) => {
+        const id = label === 'Main Menu' ? 'main_menu'
+          : label === 'New Booking' ? 'new_booking'
+          : label === 'Submit Another' ? 'new_booking'
+          : label === 'Back to Start' ? 'main_menu'
+          : label === 'Contact Us' ? 'main_menu'
+          : 'main_menu';
+        return { id, title: label };
+      });
+    } else {
+      body = '✅ *Booking Confirmed!*\n\nHere\'s your summary:\n\n';
+      for (const [k, v] of Object.entries(answers)) {
+        if (!k.startsWith('_')) body += `• *${k}*: ${v}\n`;
+      }
+      body += '\nWe\'ll get back to you shortly! 🙏';
+      buttons = [
         { id: 'new_booking', title: 'New Booking' },
         { id: 'main_menu', title: 'Main Menu' },
-      ],
-    };
+      ];
+    }
+    return { type: 'buttons', body, buttons };
   }
 
   return { getWelcome, getFlowStepMessage, getInfoMessage, getConfirmation, getChildrenList, findInTree, steps, buttons, flattenLeaves };
@@ -592,7 +620,7 @@ export default function WhatsAppTester({ businessId }) {
       });
 
       setTimeout(() => {
-        const conf = engine.getConfirmation(answers, currentCustomSteps);
+        const conf = engine.getConfirmation(answers, currentCustomSteps, conversationStateRef.current?.confirmationActionButton);
         appendBotMessage(conf);
         setWaitingForText(false);
       }, 400);
@@ -746,6 +774,12 @@ export default function WhatsAppTester({ businessId }) {
       const customSteps = (actionBtn?.flowSteps && actionBtn.flowSteps.length > 0)
         ? actionBtn.flowSteps
         : engine.steps;
+      // [ADDED: confirmation_config] Only carry the actionButton through to the
+      // confirmation renderer when this action button uses its OWN custom flow.
+      // For legacy/booking flows that fall back to engine.steps we leave it null
+      // so the original "Booking Confirmed!" UX is preserved.
+      const usingCustomFlow = customSteps !== engine.steps;
+      const confirmationActionButton = usingCustomFlow ? actionBtn : null;
 
       setTimeout(() => {
         const newAnswers = { ...(prevState.answers || {}) };
@@ -762,6 +796,7 @@ export default function WhatsAppTester({ businessId }) {
               deliveryMethod,
               deliveryStaffId,
               customSteps,
+              confirmationActionButton, // [ADDED: confirmation_config]
             }));
             setWaitingForText(stepMsg.type === 'text');
           }
@@ -779,6 +814,7 @@ export default function WhatsAppTester({ businessId }) {
             deliveryMethod,
             deliveryStaffId,
             customSteps,
+            confirmationActionButton, // [ADDED: confirmation_config]
           }));
           setWaitingForText(stepMsg.type === 'text');
         }

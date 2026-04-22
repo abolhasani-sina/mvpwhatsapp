@@ -357,6 +357,15 @@ router.get('/business/:id/builder', tenantScope, (req, res) => {
             deliveryMethod: ab.delivery_method || 'none',
             deliveryStaffId: ab.delivery_staff_id || null,
             backTarget: ab.back_target || 'parent',
+            // [ADDED: confirmation_config] Expose per-action-button confirmation
+            // settings to the client. Buttons are stored as a JSON string in DB;
+            // parse defensively so a malformed value can't break the builder load.
+            confirmationTitle: ab.confirmation_title || 'Thank you! 🙏',
+            confirmationMessage: ab.confirmation_message || 'We have received your response.',
+            confirmationButtons: (() => {
+              try { return JSON.parse(ab.confirmation_buttons || '["Main Menu"]'); }
+              catch { return ['Main Menu']; }
+            })(),
           };
           if (ab.behavior === 'start_flow') {
             // [ADDED: action_button_flow_steps] Prefer per-action-button custom steps
@@ -477,8 +486,9 @@ router.put('/business/:id/builder', tenantScope, saveBuilderRules, validate, (re
       `INSERT INTO info_pages (button_id, title, description, amount, currency, duration, style, show_price, show_duration)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
+    // [ADDED: confirmation_config] Added confirmation_title/message/buttons columns.
     const insertActionBtn = db.prepare(
-      'INSERT INTO action_buttons (info_page_id, label, behavior, prefill_service, sort_order, delivery_method, delivery_staff_id, back_target) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO action_buttons (info_page_id, label, behavior, prefill_service, sort_order, delivery_method, delivery_staff_id, back_target, confirmation_title, confirmation_message, confirmation_buttons) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     const insertExtraStep = db.prepare(
       `INSERT INTO extra_steps (button_id, type, question, key, summary_label, options, step_order, manual_placeholder)
@@ -551,6 +561,15 @@ router.put('/business/:id/builder', tenantScope, saveBuilderRules, validate, (re
           if (ip.actionButtons && ip.actionButtons.length > 0) {
             for (let a = 0; a < ip.actionButtons.length; a++) {
               const ab = ip.actionButtons[a];
+              // [ADDED: confirmation_config] Persist confirmation fields. Buttons array
+              // is JSON-stringified; if the client omits any field, the column DEFAULT
+              // would normally apply — but since we always provide a value here we fall
+              // back to the same defaults explicitly to keep behavior consistent.
+              const confirmationButtonsJson = JSON.stringify(
+                Array.isArray(ab.confirmationButtons) && ab.confirmationButtons.length > 0
+                  ? ab.confirmationButtons.slice(0, 3)
+                  : ['Main Menu']
+              );
               const abResult = insertActionBtn.run(
                 infoPageId,
                 ab.label || '',
@@ -559,7 +578,10 @@ router.put('/business/:id/builder', tenantScope, saveBuilderRules, validate, (re
                 a,
                 ab.deliveryMethod || 'none',
                 ab.deliveryStaffId || null,
-                ab.backTarget || 'parent'
+                ab.backTarget || 'parent',
+                ab.confirmationTitle || 'Thank you! 🙏',
+                ab.confirmationMessage || 'We have received your response.',
+                confirmationButtonsJson
               );
               // [ADDED: action_button_flow_steps] Persist per-action-button custom flow steps.
               // The first start_flow's steps are still mirrored into the business-wide

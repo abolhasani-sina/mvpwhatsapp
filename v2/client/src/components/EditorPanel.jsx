@@ -821,6 +821,14 @@ function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons,
                   />
                 )}
 
+                {/* [ADDED: confirmation_config] Per-action-button confirmation message editor */}
+                {ab.behavior === 'start_flow' && (
+                  <ConfirmationSettings
+                    actionButton={ab}
+                    onChange={(changes) => updateAb(changes)}
+                  />
+                )}
+
                 {/* Per-button Delivery Settings */}
                 {ab.behavior === 'start_flow' && (
                   <ButtonDelivery
@@ -848,6 +856,106 @@ function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons,
         Double-click the button on the phone to preview the info page.
       </p>
     </div>
+  );
+}
+
+// [ADDED: confirmation_config] Collapsible editor for the message a customer
+// receives after completing this action button's flow. Shown only for
+// start_flow buttons (gated by parent). Buttons list is constrained to a
+// fixed catalog (1-3 selected).
+const CONFIRMATION_BUTTON_OPTIONS = ['Main Menu', 'New Booking', 'Submit Another', 'Contact Us', 'Back to Start'];
+
+function ConfirmationSettings({ actionButton, onChange }) {
+  const title = actionButton.confirmationTitle ?? 'Thank you! 🙏';
+  const message = actionButton.confirmationMessage ?? 'We have received your response.';
+  const rawButtons = actionButton.confirmationButtons;
+  let selectedButtons;
+  if (Array.isArray(rawButtons)) {
+    selectedButtons = rawButtons;
+  } else if (typeof rawButtons === 'string') {
+    try { selectedButtons = JSON.parse(rawButtons); } catch { selectedButtons = ['Main Menu']; }
+  } else {
+    selectedButtons = ['Main Menu'];
+  }
+  if (!Array.isArray(selectedButtons) || selectedButtons.length === 0) selectedButtons = ['Main Menu'];
+
+  const toggleButton = (label) => {
+    const isSelected = selectedButtons.includes(label);
+    let next;
+    if (isSelected) {
+      // Don't allow zero selections
+      if (selectedButtons.length <= 1) return;
+      next = selectedButtons.filter((b) => b !== label);
+    } else {
+      // Cap at 3
+      if (selectedButtons.length >= 3) return;
+      next = [...selectedButtons, label];
+    }
+    onChange({ confirmationButtons: next });
+  };
+
+  return (
+    <details style={{ marginTop: '4px', padding: '6px 8px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+      <summary style={{ cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#475569', userSelect: 'none' }}>
+        💬 Confirmation message
+      </summary>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+          <label style={{ fontSize: '11px', fontWeight: 500, color: '#64748b' }}>Title</label>
+          <input
+            type="text"
+            maxLength={50}
+            value={title}
+            onChange={(e) => onChange({ confirmationTitle: e.target.value.slice(0, 50) })}
+            style={{ padding: '6px 8px', fontSize: '13px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
+          />
+          <span style={{ fontSize: '10px', color: '#94a3b8', alignSelf: 'flex-end' }}>{title.length}/50</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+          <label style={{ fontSize: '11px', fontWeight: 500, color: '#64748b' }}>Message</label>
+          <textarea
+            maxLength={200}
+            rows={3}
+            value={message}
+            onChange={(e) => onChange({ confirmationMessage: e.target.value.slice(0, 200) })}
+            style={{ padding: '6px 8px', fontSize: '13px', border: '1px solid #e2e8f0', borderRadius: '6px', resize: 'vertical', fontFamily: 'inherit' }}
+          />
+          <span style={{ fontSize: '10px', color: '#94a3b8', alignSelf: 'flex-end' }}>{message.length}/200</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <label style={{ fontSize: '11px', fontWeight: 500, color: '#64748b' }}>
+            Buttons ({selectedButtons.length}/3) — pick 1 to 3
+          </label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            {CONFIRMATION_BUTTON_OPTIONS.map((label) => {
+              const active = selectedButtons.includes(label);
+              const disabled = !active && selectedButtons.length >= 3;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => toggleButton(label)}
+                  disabled={disabled}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    fontWeight: active ? 600 : 400,
+                    background: active ? '#eef2ff' : '#fff',
+                    border: active ? '1.5px solid #6366f1' : '1px solid #e2e8f0',
+                    borderRadius: '14px',
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    color: active ? '#6366f1' : disabled ? '#cbd5e1' : '#64748b',
+                    opacity: disabled ? 0.5 : 1,
+                  }}
+                >
+                  {active ? '✓ ' : '+ '}{label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </details>
   );
 }
 
