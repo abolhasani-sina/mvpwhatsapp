@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageSquare, ArrowRight, CheckCircle2, Star, ChevronDown, Sparkles, Play, Bot, Users, CalendarCheck, Shield, Zap, BarChart3, Globe, Headphones } from 'lucide-react';
+import { MessageSquare, ArrowRight, CheckCircle2, ChevronDown, Sparkles, Bot, Users, CalendarCheck, Shield, Zap } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════
    LANDING 1 — "The Floating Command Center"
@@ -11,21 +11,10 @@ const FEATURES = [
   { icon: Users, title: 'Lead Capture', desc: 'Collect customer info through interactive flows automatically.', color: 'from-pink-500 to-rose-500' },
   { icon: CalendarCheck, title: 'Request Management', desc: 'Track bookings, orders, and inquiries in one dashboard.', color: 'from-amber-500 to-orange-500' },
   { icon: Zap, title: 'Multi-Channel', desc: 'Deploy on WhatsApp, Telegram, and Instagram from one builder.', color: 'from-cyan-500 to-blue-500' },
-  { icon: BarChart3, title: 'Live Analytics', desc: 'Monitor submissions, assignments, and performance.', color: 'from-emerald-500 to-teal-500' },
   { icon: Shield, title: 'Enterprise Security', desc: 'JWT auth, encrypted data, and full tenant isolation.', color: 'from-slate-500 to-zinc-600' },
 ];
 
-const PRICING = [
-  { name: 'Starter', price: '0', desc: 'Get started free', features: ['1 bot flow', '50 submissions/mo', 'Telegram channel', 'Community support'], cta: 'Start free', highlighted: false },
-  { name: 'Pro', price: '29', desc: 'For growing businesses', features: ['Unlimited flows', '2,000 submissions/mo', 'All channels', '5 staff members', 'Priority support'], cta: 'Start free trial', highlighted: true },
-  { name: 'Business', price: '79', desc: 'For teams & agencies', features: ['Everything in Pro', '10,000 submissions/mo', 'Unlimited staff', 'API access', 'Dedicated support'], cta: 'Contact us', highlighted: false },
-];
 
-const TESTIMONIALS = [
-  { name: 'Sara M.', role: 'Salon Owner', text: 'Cut our no-show rate by 40%. Clients book directly on WhatsApp.', stars: 5 },
-  { name: 'Omar K.', role: 'Clinic Manager', text: 'We handle 200+ patient inquiries per week without extra staff.', stars: 5 },
-  { name: 'Lina T.', role: 'Restaurant Owner', text: 'Setup took under 10 minutes. Our WhatsApp handles orders now.', stars: 5 },
-];
 
 const FAQ = [
   { q: 'Do I need coding skills?', a: 'No. Just pick a template, customize, and publish. Zero code needed.' },
@@ -35,10 +24,10 @@ const FAQ = [
 ];
 
 const STATS = [
-  { value: '10K+', label: 'Messages handled' },
-  { value: '500+', label: 'Businesses' },
-  { value: '99.9%', label: 'Uptime' },
+  { value: '3', label: 'Channels supported' },
+  { value: '0', label: 'Coding required' },
   { value: '<5min', label: 'Setup time' },
+  { value: '24/7', label: 'Bot availability' },
 ];
 
 /* ── 3D Phone Component ── */
@@ -388,13 +377,7 @@ export default function Landing1({ onNavigate }) {
               padding: '14px 28px', fontSize: 15, fontWeight: 600, color: '#fff',
               background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none',
               borderRadius: 16, cursor: 'pointer', boxShadow: '0 8px 24px rgba(99,102,241,0.35)',
-            }}>Start for free <ArrowRight size={16} /></button>
-            <button style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '14px 28px', fontSize: 15, fontWeight: 600, color: '#cbd5e1',
-              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 16, cursor: 'pointer',
-            }}><Play size={16} /> See demo</button>
+            }}>Get started <ArrowRight size={16} /></button>
           </div>
 
           {/* Channel flow visualization */}
@@ -461,90 +444,6 @@ export default function Landing1({ onNavigate }) {
         </div>
       </section>
 
-      {/* ── Testimonials ── */}
-      <section style={{ padding: '100px 24px', background: '#0a0a1a' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 60 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Testimonials</p>
-            <h2 style={{ fontSize: 36, fontWeight: 700, color: '#fff' }}>Loved by business owners</h2>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
-            {TESTIMONIALS.map(t => (
-              <div key={t.name} style={{
-                background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(8px)',
-                borderRadius: 16, padding: 28, border: '1px solid rgba(255,255,255,0.08)',
-              }}>
-                <div style={{ display: 'flex', gap: 2, marginBottom: 16 }}>
-                  {Array.from({ length: t.stars }).map((_, i) => <Star key={i} size={14} fill="#fbbf24" color="#fbbf24" />)}
-                </div>
-                <p style={{ fontSize: 14, color: '#cbd5e1', lineHeight: 1.7, marginBottom: 20 }}>"{t.text}"</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 14, fontWeight: 700, color: '#fff',
-                  }}>{t.name[0]}</div>
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{t.name}</p>
-                    <p style={{ fontSize: 12, color: '#64748b' }}>{t.role}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Pricing ── */}
-      <section style={{ padding: '100px 24px' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 60 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Pricing</p>
-            <h2 style={{ fontSize: 36, fontWeight: 700, color: '#0f172a' }}>Simple, transparent pricing</h2>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
-            {PRICING.map(p => (
-              <div key={p.name} style={{
-                borderRadius: 16, padding: 28,
-                border: p.highlighted ? '2px solid #6366f1' : '1px solid #e2e8f0',
-                background: p.highlighted ? 'linear-gradient(180deg, #eef2ff, #fff)' : '#fff',
-                boxShadow: p.highlighted ? '0 12px 40px rgba(99,102,241,0.12)' : 'none',
-                position: 'relative', transform: p.highlighted ? 'scale(1.03)' : 'none',
-              }}>
-                {p.highlighted && (
-                  <div style={{
-                    position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
-                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff',
-                    fontSize: 11, fontWeight: 700, padding: '4px 14px', borderRadius: 20,
-                  }}>Most Popular</div>
-                )}
-                <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>{p.name}</h3>
-                <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 4 }}>{p.desc}</p>
-                <div style={{ margin: '20px 0' }}>
-                  <span style={{ fontSize: 40, fontWeight: 800, color: '#0f172a' }}>${p.price}</span>
-                  <span style={{ fontSize: 14, color: '#94a3b8' }}>/mo</span>
-                </div>
-                <ul style={{ listStyle: 'none', padding: 0, marginBottom: 24 }}>
-                  {p.features.map(f => (
-                    <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: '#475569', marginBottom: 10 }}>
-                      <CheckCircle2 size={16} color="#6366f1" /> {f}
-                    </li>
-                  ))}
-                </ul>
-                <button onClick={() => onNavigate('register')} style={{
-                  width: '100%', padding: '12px 0', fontSize: 14, fontWeight: 600, borderRadius: 12,
-                  border: 'none', cursor: 'pointer',
-                  background: p.highlighted ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : '#f1f5f9',
-                  color: p.highlighted ? '#fff' : '#475569',
-                  boxShadow: p.highlighted ? '0 4px 12px rgba(99,102,241,0.3)' : 'none',
-                }}>{p.cta}</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── FAQ ── */}
       <section style={{ padding: '100px 24px', background: 'linear-gradient(180deg, #0a0a1a, #0f0d2e)', position: 'relative', overflow: 'hidden' }}>
         <div style={{ maxWidth: 700, margin: '0 auto' }}>
@@ -588,13 +487,13 @@ export default function Landing1({ onNavigate }) {
             }} />
             <div style={{ position: 'relative' }}>
               <h2 style={{ fontSize: 32, fontWeight: 700, color: '#fff', marginBottom: 16 }}>Ready to automate?</h2>
-              <p style={{ color: '#94a3b8', marginBottom: 32, fontSize: 16 }}>Join hundreds of businesses using NabzChat.</p>
+              <p style={{ color: '#94a3b8', marginBottom: 32, fontSize: 16 }}>Be one of the first businesses to automate with NabzChat.</p>
               <button onClick={() => onNavigate('register')} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 padding: '14px 28px', fontSize: 15, fontWeight: 600, color: '#fff',
                 background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none',
                 borderRadius: 16, cursor: 'pointer', boxShadow: '0 8px 24px rgba(99,102,241,0.35)',
-              }}>Start for free <ArrowRight size={16} /></button>
+              }}>Get started <ArrowRight size={16} /></button>
             </div>
           </div>
         </div>

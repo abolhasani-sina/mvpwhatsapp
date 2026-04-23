@@ -11,7 +11,6 @@ export default function SettingsPage({ businessId }) {
   const [tgToken, setTgToken] = useState('');
   const [tgChatId, setTgChatId] = useState('');
   const [businessEmail, setBusinessEmail] = useState('');
-  const [whatsappNumber, setWhatsappNumber] = useState('');
   const [bizName, setBizName] = useState('');
   const [bizPhone, setBizPhone] = useState('');
   const [locks, setLocks] = useState({ telegram: false, whatsapp: false, instagram: false });
@@ -34,7 +33,6 @@ export default function SettingsPage({ businessId }) {
         setTgToken(s.telegram_bot_token || '');
         setTgChatId(s.telegram_chat_id || '');
         setBusinessEmail(s.business_email || '');
-        setWhatsappNumber(s.whatsapp_number || '');
         setLocks({
           telegram: s.telegram_locked === 1,
           whatsapp: s.whatsapp_locked === 1,
@@ -58,7 +56,8 @@ export default function SettingsPage({ businessId }) {
     setSaving(true);
     try {
       await Promise.all([
-        updateSettings(businessId, tgToken, tgChatId, businessEmail, whatsappNumber),
+        updateSettings(businessId, tgToken, tgChatId, businessEmail, ''),
+        // [ADDED: remove-whatsapp-field]
         updateBusiness(businessId, { name: bizName, phone: bizPhone }),
       ]);
       addToast('Settings saved successfully', 'success');
@@ -150,7 +149,7 @@ export default function SettingsPage({ businessId }) {
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="text-lg font-semibold text-slate-900 mb-1">Business Contact</h2>
         <p className="text-[13px] text-slate-400 mb-4">
-          Main contact info for your business. Used for delivery notifications.
+          Your contact details so we can notify you when a new booking arrives.
         </p>
         <div className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-[13px] font-medium text-slate-500">
@@ -163,26 +162,31 @@ export default function SettingsPage({ businessId }) {
             />
           </label>
 
-          <ChannelField
-            label="WhatsApp Number"
-            value={whatsappNumber}
-            onChange={setWhatsappNumber}
-            placeholder="+1234567890"
-            locked={locks.whatsapp}
-            pending={pendingFor('whatsapp')}
-            onRequestChange={() => openRequest('whatsapp', whatsappNumber)}
-            hint="WhatsApp integration coming soon"
-          />
         </div>
       </div>
 
       {/* Telegram */}
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="text-lg font-semibold text-slate-900 mb-1">Telegram Notifications</h2>
-        <p className="text-[13px] text-slate-400 mb-4">
-          Get instant notifications on Telegram when a new submission arrives.
-          Create a bot via <strong>@BotFather</strong> and get the chat ID.
-        </p>
+        <div className="mb-4">
+          <p className="text-[13px] text-slate-400 mb-3">
+            Get notified on Telegram every time a new booking arrives. Follow these steps to connect:
+          </p>
+          <ol className="flex flex-col gap-2">
+            <li className="flex gap-2 text-[13px] text-slate-600">
+              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[11px] font-bold flex items-center justify-center">1</span>
+              <span>Open Telegram and message <strong>@BotFather</strong></span>
+            </li>
+            <li className="flex gap-2 text-[13px] text-slate-600">
+              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[11px] font-bold flex items-center justify-center">2</span>
+              <span>Type <strong>/newbot</strong> and follow the steps  you'll get a token</span>
+            </li>
+            <li className="flex gap-2 text-[13px] text-slate-600">
+              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[11px] font-bold flex items-center justify-center">3</span>
+              <span>Copy the token and paste it in the field below</span>
+            </li>
+          </ol>
+        </div>
         <div className="flex flex-col gap-3">
           <ChannelField
             label="Bot Token"
@@ -202,16 +206,11 @@ export default function SettingsPage({ businessId }) {
               placeholder="-100123456789"
               className="py-2 px-3 rounded-lg border border-slate-200 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
+            <p className="text-[11px] text-slate-400 mt-1">
+              Don't know your Chat ID? Message <strong>@userinfobot</strong> on Telegram and it will reply with your ID.
+            </p>
           </label>
         </div>
-      </div>
-
-      {/* Future Channels */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 opacity-60">
-        <h2 className="text-lg font-semibold text-slate-900 mb-1">More Channels</h2>
-        <p className="text-[13px] text-slate-400">
-          SMS, Slack, Webhooks, and more integrations coming soon.
-        </p>
       </div>
 
       {/* Save */}

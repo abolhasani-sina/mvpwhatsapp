@@ -23,6 +23,7 @@ import { processMessageQueue } from './message-queue.js';
 
 const log = createLogger('server');
 const app = express();
+app.set("trust proxy", 1); // [ADDED: trust-proxy-cloudflare]
 const PORT = process.env.PORT || 4000;
 
 // ── Process-level error handlers ──
@@ -116,6 +117,13 @@ app.post('/api/client-error', (req, res) => {
 app.post('/api/telegram/webhook/:id', async (req, res) => {
   const result = await handleWebhook(Number(req.params.id), req.body);
   res.json(result);
+});
+
+
+// PUBLIC plans
+app.get("/api/plans", (_req, res) => {
+  const plans = db.prepare("SELECT id, name, monthly_price, max_flows, max_staff, max_submissions_per_month, allow_whatsapp, allow_telegram, allow_instagram, is_default FROM plans ORDER BY monthly_price ASC").all();
+  res.json({ plans });
 });
 
 // ── New API routes ──
