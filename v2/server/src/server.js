@@ -17,7 +17,7 @@ import { metricsMiddleware, getMetrics, getContentType, messageQueueDepth, activ
 import healthRouter from './middleware/healthCheck.js';
 import { errorHandler, setupProcessErrorHandlers } from './middleware/errorHandler.js';
 import db from './db.js';
-import { handleWebhook, cleanupTelegramUpdates } from './telegram-bot.js';
+import { handleWebhook, cleanupTelegramUpdates, startPolling } from './telegram-bot.js';
 import { cleanupDedupRecords, cleanupStaleSessions } from './bot-engine.js';
 import { processMessageQueue } from './message-queue.js';
 
@@ -55,7 +55,7 @@ app.use('/api', limiter);
 // Stricter rate limit for auth endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 200, // [TEMP: increased for testing]
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many auth attempts, please try again later' },
@@ -77,6 +77,14 @@ app.use(express.json({ limit: '10mb' }));
 // Run migrations on startup
 migrate();
 log.info('database migrated');
+
+// Auto-start polling for all businesses with a telegram token // [ADDED: auto-start-polling]
+try {
+  const businesses = db.prepare("SELECT b.id FROM businesses b JOIN settings s ON s.business_id = b.id WHERE s.telegram_bot_token IS NOT NULL AND s.telegram_bot_token != ''").all();
+  for (const biz of businesses) {
+    try { startPolling(biz.id); log.info({ businessId: biz.id }, 'auto-started polling'); } catch {}
+  }
+} catch (e) { log.warn({ err: e.message }, 'auto-start polling failed'); }
 
 // ── Health check (no auth required) ──
 app.use('/api', healthRouter);

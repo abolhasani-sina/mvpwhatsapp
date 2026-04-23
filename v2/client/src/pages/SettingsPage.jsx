@@ -56,7 +56,7 @@ export default function SettingsPage({ businessId }) {
     setSaving(true);
     try {
       await Promise.all([
-        updateSettings(businessId, tgToken, tgChatId, businessEmail, ''),
+        updateSettings(businessId, locks.telegram ? undefined : tgToken, tgChatId, businessEmail, ''), // [ADDED: dont-send-locked-token]
         // [ADDED: remove-whatsapp-field]
         updateBusiness(businessId, { name: bizName, phone: bizPhone }),
       ]);

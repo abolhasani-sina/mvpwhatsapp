@@ -735,9 +735,12 @@ function submitAndConfirm(conversation, state, data, businessId) {
     // [ADDED: action_button_flow_steps] Persist action_button_id so submissions
     // can be attributed back to the specific action button (NULL for main-flow
     // submissions — preserves legacy behavior).
+    // Get next business_submission_number for this business // [ADDED: business-submission-number]
+    const lastNum = db.prepare('SELECT MAX(business_submission_number) as n FROM submissions WHERE business_id = ?').get(businessId);
+    const nextNum = (lastNum?.n || 0) + 1;
     const result = db.prepare(
-      'INSERT INTO submissions (business_id, data, status, flow_id, action_button_id) VALUES (?, ?, ?, ?, ?)'
-    ).run(businessId, JSON.stringify(state.answers), 'new', flow?.id || null, state.actionButtonId || null);
+      'INSERT INTO submissions (business_id, data, status, flow_id, action_button_id, business_submission_number) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(businessId, JSON.stringify(state.answers), 'new', flow?.id || null, state.actionButtonId || null, nextNum);
     const subId = Number(result.lastInsertRowid);
 
     // Update state to confirmed

@@ -316,7 +316,7 @@ function SubmissionRow({ sub, staff, expanded, onToggle, onStatusChange, onAssig
           expanded ? 'bg-indigo-50/50' : 'hover:bg-slate-50'
         }`}>
         {/* ID */}
-        <td className="px-6 py-3.5 text-xs text-slate-400 font-mono">{sub.id}</td>
+        <td className="px-6 py-3.5 text-xs text-slate-400 font-mono">#{sub.business_submission_number || sub.id}</td>
 
         {/* Customer */}
         <td className="px-4 py-3.5">

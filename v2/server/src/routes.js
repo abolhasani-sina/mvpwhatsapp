@@ -1026,7 +1026,7 @@ router.put('/business/:id/settings', tenantScope, updateSettingsRules, validate,
   const lockNow = (current, next, alreadyLocked) =>
     alreadyLocked || (!current && next ? 1 : 0);
   const stampNow = (current, next, existingStamp) =>
-    existingStamp || (!current && next ? now : null);
+    existingStamp || (!current && next ? now : null) || null; // [ADDED: fix-undefined-to-null]
 
   const telegramLocked = lockNow(currentTelegramToken, newTelegramToken, existing && existing.telegram_locked === 1);
   const telegramSetAt  = stampNow(currentTelegramToken, newTelegramToken, existing && existing.telegram_set_at);
@@ -1036,6 +1036,8 @@ router.put('/business/:id/settings', tenantScope, updateSettingsRules, validate,
   const instagramSetAt  = stampNow(currentInstagram, newInstagram, existing && existing.instagram_set_at);
 
   if (existing) {
+    // Ensure all values are safe for SQLite (no undefined)
+    const safeRun = (v, fallback = '') => (v === undefined || v === null) ? (fallback === null ? null : fallback) : v;
     db.prepare(`
       UPDATE settings SET
         telegram_bot_token = ?, telegram_chat_id = ?, business_email = ?,
@@ -1045,12 +1047,12 @@ router.put('/business/:id/settings', tenantScope, updateSettingsRules, validate,
         instagram_set_at = ?, instagram_locked = ?
       WHERE business_id = ?
     `).run(
-      encryptedToken, telegramChatId || '', businessEmail || '',
-      newWhatsapp, newInstagram,
-      telegramSetAt, telegramLocked,
-      whatsappSetAt, whatsappLocked,
-      instagramSetAt, instagramLocked,
-      businessId
+      String(encryptedToken || ''), String(telegramChatId || ''), String(businessEmail || ''),
+      String(newWhatsapp || ''), String(newInstagram || ''),
+      telegramSetAt || null, Number(telegramLocked || 0),
+      whatsappSetAt || null, Number(whatsappLocked || 0),
+      instagramSetAt || null, Number(instagramLocked || 0),
+      String(businessId)
     );
   } else {
     db.prepare(`
@@ -1068,6 +1070,10 @@ router.put('/business/:id/settings', tenantScope, updateSettingsRules, validate,
       whatsappSetAt, whatsappLocked,
       instagramSetAt, instagramLocked
     );
+  }
+  // Auto-start polling if telegram token was just set // [ADDED: auto-start-polling]
+  if (newTelegramToken) {
+    try { startPolling(Number(businessId)); } catch {}
   }
   res.json({ success: true });
 });

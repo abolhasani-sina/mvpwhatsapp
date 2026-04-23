@@ -250,7 +250,8 @@ export function migrate() {
     db.exec("ALTER TABLE staff ADD COLUMN telegram_chat_id TEXT DEFAULT ''");
   }
 
-  const subCols = db.prepare("PRAGMA table_info(submissions)").all().map(c => c.name);
+  const subBizNumCols = db.prepare("PRAGMA table_info(submissions)").all().map(c => c.name);
+  const subCols = subBizNumCols;
   if (!subCols.includes('flow_id')) {
     db.exec("ALTER TABLE submissions ADD COLUMN flow_id INTEGER REFERENCES flows(id) ON DELETE SET NULL");
   }
@@ -398,6 +399,20 @@ export function migrate() {
   }
 
   // 10.1 — Plan assignment per business + audit log
+
+  // Add business_submission_number column to submissions
+  const subNumCols = db.prepare("PRAGMA table_info(submissions)").all().map(c => c.name);
+  if (!subNumCols.includes('business_submission_number')) {
+    db.exec("ALTER TABLE submissions ADD COLUMN business_submission_number INTEGER NOT NULL DEFAULT 0");
+    // Backfill existing submissions with per-business sequential numbers
+    const businesses = db.prepare("SELECT DISTINCT business_id FROM submissions").all();
+    for (const { business_id } of businesses) {
+      const subs = db.prepare("SELECT id FROM submissions WHERE business_id = ? ORDER BY id ASC").all(business_id);
+      const update = db.prepare("UPDATE submissions SET business_submission_number = ? WHERE id = ?");
+      subs.forEach((s, i) => update.run(i + 1, s.id));
+    }
+  } // [ADDED: business-submission-number]
+
   // Add contact_sales column to plans if missing
   const planCols = db.prepare("PRAGMA table_info(plans)").all().map(c => c.name);
   if (!planCols.includes('contact_sales')) {
