@@ -135,9 +135,9 @@ const planRules = [
   body('max_flows').isInt({ min: 0 }),
   body('max_staff').isInt({ min: 0 }),
   body('max_submissions_per_month').isInt({ min: 0 }),
-  body('allow_whatsapp').isBoolean(),
-  body('allow_telegram').isBoolean(),
-  body('allow_instagram').isBoolean(),
+  body('allow_whatsapp').isInt({ min: 0, max: 1 }),
+  body('allow_telegram').isInt({ min: 0, max: 1 }),
+  body('allow_instagram').isInt({ min: 0, max: 1 }),
 ];
 
 router.post('/plans', planRules, (req, res) => {

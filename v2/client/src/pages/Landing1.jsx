@@ -1,514 +1,759 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageSquare, ArrowRight, CheckCircle2, ChevronDown, Sparkles, Bot, Users, CalendarCheck, Shield, Zap } from 'lucide-react';
+import { MessageSquare, ArrowRight, ChevronDown } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════
-   LANDING 1 — "The Floating Command Center"
-   Dark glassmorphism + floating 3D phones with parallax
+   LANDING 1 — 3D Neon Glow Design
+   Dark glassmorphism + 3D floating phones + live plans
    ═══════════════════════════════════════════════════ */
 
-const FEATURES = [
-  { icon: Bot, title: 'Smart Auto-Replies', desc: 'Handle customer messages 24/7 with contextual responses.', color: 'from-indigo-500 to-violet-500' },
-  { icon: Users, title: 'Lead Capture', desc: 'Collect customer info through interactive flows automatically.', color: 'from-pink-500 to-rose-500' },
-  { icon: CalendarCheck, title: 'Request Management', desc: 'Track bookings, orders, and inquiries in one dashboard.', color: 'from-amber-500 to-orange-500' },
-  { icon: Zap, title: 'Multi-Channel', desc: 'Deploy on WhatsApp, Telegram, and Instagram from one builder.', color: 'from-cyan-500 to-blue-500' },
-  { icon: Shield, title: 'Enterprise Security', desc: 'JWT auth, encrypted data, and full tenant isolation.', color: 'from-slate-500 to-zinc-600' },
+const TEMPLATES = [
+  { emoji: '💇‍♀️', title: 'Beauty Salon', desc: 'Bookings, services, offers', tag: 'Popular' },
+  { emoji: '💈', title: 'Barbershop', desc: 'Walk-ins, bookings, styles', tag: 'Ready' },
+  { emoji: '🍽️', title: 'Restaurant', desc: 'Reservations, menu, delivery', tag: 'Popular' },
+  { emoji: '☕', title: 'Café', desc: 'Orders, loyalty, hours', tag: 'Ready' },
+  { emoji: '🦷', title: 'Dental Clinic', desc: 'Appointments, emergencies', tag: 'Ready' },
+  { emoji: '🏥', title: 'Medical Clinic', desc: 'Bookings, consultations', tag: 'Ready' },
+  { emoji: '💆', title: 'Spa', desc: 'Treatments, packages, gifts', tag: 'Ready' },
+  { emoji: '💪', title: 'Gym', desc: 'Memberships, classes, trials', tag: 'Popular' },
+  { emoji: '🚗', title: 'Car Dealership', desc: 'Test drives, inventory', tag: 'Ready' },
+  { emoji: '🏠', title: 'Real Estate', desc: 'Listings, viewings, leads', tag: 'Ready' },
+  { emoji: '🏨', title: 'Hotel', desc: 'Rooms, reservations, FAQ', tag: 'Ready' },
+  { emoji: '💊', title: 'Pharmacy', desc: 'Orders, delivery, Rx refills', tag: 'Ready' },
+  { emoji: '🐕', title: 'Pet Grooming', desc: 'Appointments, services', tag: 'Ready' },
+  { emoji: '👔', title: 'Laundry', desc: 'Pickup, delivery, status', tag: 'Ready' },
+  { emoji: '👗', title: 'Boutique', desc: 'Products, orders, styling', tag: 'Ready' },
 ];
 
-
-
-const FAQ = [
-  { q: 'Do I need coding skills?', a: 'No. Just pick a template, customize, and publish. Zero code needed.' },
-  { q: 'Which channels are supported?', a: 'WhatsApp, Telegram, and Instagram. More coming soon.' },
-  { q: 'Can I try it free?', a: 'Yes! Starter plan includes 1 flow and 50 submissions/month. No card needed.' },
-  { q: 'Is my data secure?', a: 'Absolutely. JWT auth, encrypted storage, full tenant isolation.' },
+const WA_SCRIPT = [
+  { type: 'received', text: 'Hi! Welcome to Beauty Salon ✨', delay: 700 },
+  { type: 'received', text: 'How can I help?', buttons: ['📅 Book', '💅 Services', '📍 Find us'], delay: 500 },
+  { type: 'sent', text: '📅 Book', delay: 1400 },
+  { type: 'received', text: 'Which service?', buttons: ['Haircut', 'Color', 'Manicure'], delay: 800 },
+  { type: 'sent', text: 'Haircut', delay: 1200 },
+  { type: 'received', text: 'Your name?', delay: 700 },
+  { type: 'sent', text: 'Fatima', delay: 1300 },
+  { type: 'received', text: '✅ Booked! Tomorrow, 2 PM', delay: 700 },
+  { type: 'info', text: '⏰ Next day — auto reminder sent', delay: 2500 },
+  { type: 'received', text: 'Reminder: your haircut is in 24h 💇', delay: 800 },
 ];
 
-const STATS = [
-  { value: '3', label: 'Channels supported' },
-  { value: '0', label: 'Coding required' },
-  { value: '<5min', label: 'Setup time' },
-  { value: '24/7', label: 'Bot availability' },
+const TG_SCRIPT = [
+  { type: 'received', text: 'Welcome to Dental Clinic 🦷', delay: 600 },
+  { type: 'received', text: 'How can I help?', buttons: ['📋 Book', 'ℹ️ Services', '👤 Talk to team'], delay: 500 },
+  { type: 'sent', text: '👤 Talk to team', delay: 1400 },
+  { type: 'received', text: 'What do you need help with?', delay: 700 },
+  { type: 'sent', text: 'I need a refund for last visit', delay: 1400 },
+  { type: 'received', text: '✅ Our team will reply shortly 🙏', delay: 700 },
+  { type: 'info', text: '🔔 Staff notified on Telegram', delay: 1800 },
+  { type: 'info', text: '🔗 Dr. Sara tapped the reply link', delay: 1500 },
+  { type: 'staff', text: 'Hi! I reviewed your case — full refund approved. Processing today.', delay: 1200, staffBadge: 'Dr. Sara' },
 ];
 
-/* ── 3D Phone Component ── */
-/*  Channel Flow  1 flow  3 channels with brand logos  */
-function ChannelFlow() {
-  const channels = [
-    {
-      name: 'WhatsApp',
-      desc: 'Bookings 24/7',
-      bg: '#25D366',
-      tintBg: 'rgba(37,211,102,0.08)',
-      tintBorder: 'rgba(37,211,102,0.35)',
-      logo: (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.304-1.654a11.88 11.88 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-      ),
-    },
-    {
-      name: 'Telegram',
-      desc: 'FAQ auto-reply',
-      bg: '#2AABEE',
-      tintBg: 'rgba(42,171,238,0.08)',
-      tintBorder: 'rgba(42,171,238,0.35)',
-      logo: (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-      ),
-    },
-    {
-      name: 'Instagram',
-      desc: 'DM leads',
-      bg: 'linear-gradient(135deg, #833AB4, #E1306C, #F56040)',
-      tintBg: 'rgba(225,48,108,0.08)',
-      tintBorder: 'rgba(225,48,108,0.35)',
-      logo: (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
-      ),
-    },
-  ];
+const IG_SCRIPT = [
+  { type: 'received', text: 'Hey! Welcome to FitZone 💪', delay: 700 },
+  { type: 'received', text: 'How can I help?', buttons: ['🏋️ Free trial', '📋 Memberships', '📅 Classes'], delay: 600 },
+  { type: 'sent', text: '🏋️ Free trial', delay: 1400 },
+  { type: 'received', text: 'Great! Your name?', delay: 800 },
+  { type: 'sent', text: 'Ahmed', delay: 1300 },
+  { type: 'received', text: 'When works for you?', buttons: ['Today', 'Tomorrow', 'This weekend'], delay: 900 },
+  { type: 'sent', text: 'Tomorrow', delay: 1200 },
+  { type: 'received', text: 'Morning or evening?', buttons: ['Morning', 'Evening'], delay: 800 },
+  { type: 'sent', text: 'Evening', delay: 1100 },
+  { type: 'received', text: '✅ Trial booked! Tomorrow, 6 PM 🔥', delay: 800 },
+];
+
+/* ── Phone Chat Component ── */
+function PhoneChat({ id, theme, avatar, title, status, script, avatarBg, delay: startDelay = 0 }) {
+  const chatRef = useRef(null);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      await new Promise(r => setTimeout(r, startDelay));
+      while (!cancelled) {
+        if (chatRef.current) chatRef.current.innerHTML = '';
+        for (const item of script) {
+          if (cancelled) break;
+          await new Promise(r => setTimeout(r, item.delay));
+          if (!chatRef.current || cancelled) break;
+          const el = document.createElement('div');
+          if (item.type === 'info') {
+            el.className = 'msg-info';
+            el.textContent = item.text;
+          } else {
+            el.className = `msg ${item.type}`;
+            let html = '';
+            if (item.staffBadge) html += `<div class="staff-badge">${item.staffBadge}</div>`;
+            html += item.text;
+            if (item.buttons) html += item.buttons.map(b => `<div class="msg-btn">${b}</div>`).join('');
+            el.innerHTML = html;
+          }
+          chatRef.current.appendChild(el);
+          requestAnimationFrame(() => {
+            if (chatRef.current) chatRef.current.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
+          });
+        }
+        if (!cancelled) await new Promise(r => setTimeout(r, 3000));
+      }
+    }
+    run();
+    return () => { cancelled = true; };
+  }, []);
 
   return (
-    <div className="channel-flow">
-      <div className="flow-node">
-        <div style={{ fontSize: 30, marginBottom: 6 }}>&#9889;</div>
-        <p style={{ fontSize: 13, fontWeight: 600, margin: 0, color: 'white' }}>Your Flow</p>
-        <p style={{ fontSize: 10, opacity: 0.85, margin: '4px 0 0', color: 'white' }}>Built once</p>
+    <div className={`phone-screen screen-${theme}`}>
+      <div className="phone-notch" />
+      <div className={`app-header app-header-${theme}`}>
+        <div className="app-avatar" style={{ background: avatarBg }}>{avatar}</div>
+        <div>
+          <div className="app-title">{title}</div>
+          <div className="app-status">{status}</div>
+        </div>
       </div>
-      <div className="mobile-beam" />
-      <svg className="flow-lines" width="90" height="120" style={{ overflow: 'visible' }}>
-        <line x1="0" y1="25" x2="90" y2="15" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 4" className="flow-line" />
-        <line x1="0" y1="60" x2="90" y2="60" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 4" className="flow-line" />
-        <line x1="0" y1="95" x2="90" y2="105" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 4" className="flow-line" />
-      </svg>
-      <div className="channel-list">
-        {channels.map((c) => (
-          <div
-            key={c.name}
-            className="channel-card"
-            style={{ background: c.tintBg, border: `1px solid ${c.tintBorder}` }}
-          >
-            <div className="channel-logo" style={{ background: c.bg }}>
-              {c.logo}
-            </div>
-            <div>
-              <p style={{ color: 'white', fontSize: 13, fontWeight: 600, margin: 0 }}>{c.name}</p>
-              <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, margin: 0 }}>{c.desc}</p>
-            </div>
-          </div>
-        ))}
+      <div className={`app-body app-body-${theme}`} ref={chatRef} />
+    </div>
+  );
+}
+
+/* ── FAQ Item ── */
+function FaqItem({ q, a, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className={`faq-item${open ? ' open' : ''}`}>
+      <button className="faq-q" onClick={() => setOpen(!open)}>
+        {q}
+        <div className="faq-chevron">
+          <ChevronDown size={14} />
+        </div>
+      </button>
+      <div className="faq-a">
+        <p>{a}</p>
       </div>
     </div>
   );
 }
 
 export default function Landing1({ onNavigate }) {
-  const [openFaq, setOpenFaq] = useState(null);
-  const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
-  const heroRef = useRef(null);
+  const [plans, setPlans] = useState([]);
+  const stageRef = useRef(null);
+
+  useEffect(() => {
+    fetch('/api/plans')
+      .then(r => r.json())
+      .then(d => { if (d.plans) setPlans(d.plans); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
-      if (!heroRef.current) return;
-      const rect = heroRef.current.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      setMouseOffset({ x: e.clientX - cx, y: e.clientY - cy });
+      if (!stageRef.current || window.innerWidth < 1024) return;
+      const x = (e.clientX / window.innerWidth - 0.5) * 12;
+      const y = (e.clientY / window.innerHeight - 0.5) * 6;
+      stageRef.current.style.transform = `rotateY(${x}deg) rotateX(${-y}deg)`;
     };
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
+  function getPlanFeatures(plan) {
+    const features = [
+      `${plan.max_flows === 100 ? 'Unlimited' : plan.max_flows} bot flow${plan.max_flows === 1 ? '' : 's'}`,
+      `${plan.max_submissions_per_month.toLocaleString()} submissions/month`,
+    ];
+    const channels = [];
+    if (plan.allow_telegram) channels.push('Telegram');
+    if (plan.allow_whatsapp) channels.push('WhatsApp');
+    if (plan.allow_instagram) channels.push('Instagram');
+    features.push(channels.join(', ') || 'Telegram');
+    if (plan.allow_whatsapp) {
+      features.push('Analytics dashboard');
+      features.push('Staff handover system');
+      features.push('Customer CRM');
+      features.push('Auto reminders');
+    }
+    if (plan.max_staff >= 100) {
+      features.push('Unlimited staff members');
+      features.push('Campaigns & broadcasts');
+      features.push('Priority support');
+    }
+    return features;
+  }
+
+  const templateCount = TEMPLATES.length;
+  const radius = 560;
+
   return (
-    <div style={{ minHeight: '100vh', background: '#fff', fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: '#05050f', color: '#fff', fontFamily: "'Inter', system-ui, sans-serif", overflowX: 'hidden' }}>
       <style>{`
-        @keyframes floatBadge {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-12px); }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        .bg-mesh {
+          position: fixed; inset: 0; z-index: 0;
+          background:
+            radial-gradient(ellipse 60% 50% at 20% 20%, rgba(99,102,241,0.25), transparent 60%),
+            radial-gradient(ellipse 50% 60% at 80% 30%, rgba(168,85,247,0.25), transparent 60%),
+            radial-gradient(ellipse 80% 40% at 50% 80%, rgba(6,182,212,0.18), transparent 60%),
+            #05050f;
+          animation: meshMove 20s ease-in-out infinite;
         }
-        @keyframes floatPhone {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-8px); }
-        }
-        @keyframes pulseGlow {
-          0%, 100% { opacity: 0.5; }
-          50% { opacity: 1; }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
+        @keyframes meshMove { 0%,100% { filter: hue-rotate(0deg); } 50% { filter: hue-rotate(20deg); } }
+
+        .bg-grid {
+          position: fixed; inset: 0; z-index: 1; pointer-events: none;
+          background-image: linear-gradient(rgba(99,102,241,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.06) 1px, transparent 1px);
+          background-size: 80px 80px;
+          mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
         }
 
-        .channel-flow {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 48px;
-          width: 100%;
-          max-width: 720px;
-          margin: 0 auto;
-          min-height: 320px;
-          padding: 20px 0;
+        .gradient-text {
+          background: linear-gradient(135deg, #818cf8, #c084fc, #f0abfc, #22d3ee);
+          background-size: 200% 200%;
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+          animation: gradientFlow 4s ease-in-out infinite;
         }
-        .flow-node {
-          background: linear-gradient(135deg, #6366f1, #8b5cf6);
-          padding: 28px 24px;
-          border-radius: 18px;
-          text-align: center;
-          box-shadow: 0 20px 40px rgba(99,102,241,0.3), 0 0 60px rgba(139,92,246,0.2);
+        @keyframes gradientFlow { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+
+        /* NAV */
+        .landing-nav {
+          position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 16px 24px;
+        }
+        .nav-inner {
+          max-width: 1280px; margin: 0 auto;
+          background: rgba(10,10,20,0.6); backdrop-filter: blur(20px);
+          border: 1px solid rgba(255,255,255,0.08); border-radius: 16px;
+          padding: 10px 20px; display: flex; align-items: center; justify-content: space-between;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon {
+          width: 32px; height: 32px; border-radius: 9px;
+          background: linear-gradient(135deg, #6366f1, #a855f7);
+          display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 0 20px rgba(139,92,246,0.6);
           position: relative;
-          border: 1px solid rgba(255,255,255,0.15);
-          animation: flowRotate 8s ease-in-out infinite;
+        }
+        .logo-icon::before {
+          content: ''; position: absolute; inset: -2px; border-radius: 11px; z-index: -1;
+          background: linear-gradient(135deg, #6366f1, #a855f7, #06b6d4);
+          filter: blur(8px); opacity: 0.5; animation: logoGlow 3s ease-in-out infinite;
+        }
+        @keyframes logoGlow { 0%,100% { opacity: 0.5; } 50% { opacity: 0.9; } }
+        .logo-text { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+        .nav-buttons { display: flex; align-items: center; gap: 8px; }
+        .btn-ghost { padding: 8px 14px; font-size: 14px; font-weight: 500; color: #cbd5e1; background: transparent; border: none; cursor: pointer; border-radius: 8px; }
+        .btn-ghost:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        .btn-nav-primary {
+          padding: 9px 18px; font-size: 14px; font-weight: 600; color: #fff;
+          background: linear-gradient(135deg, #6366f1, #a855f7); border: none; border-radius: 10px; cursor: pointer;
+          box-shadow: 0 4px 14px rgba(99,102,241,0.5); transition: all 0.2s;
+        }
+        .btn-nav-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,0.6); }
+
+        /* HERO */
+        .hero-badge {
+          display: inline-flex; align-items: center; gap: 10px;
+          padding: 8px 16px; border-radius: 100px;
+          background: rgba(255,255,255,0.05); border: 1px solid rgba(139,92,246,0.3);
+          color: #c4b5fd; font-size: 13px; font-weight: 500; margin-bottom: 24px;
+        }
+        .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; box-shadow: 0 0 12px #10b981; animation: pulseDot 2s ease-in-out infinite; }
+        @keyframes pulseDot { 0%,100% { opacity:1; transform: scale(1); } 50% { opacity:0.5; transform: scale(1.3); } }
+        .cta-primary {
+          display: inline-flex; align-items: center; gap: 8px;
+          padding: 16px 28px; font-size: 15px; font-weight: 600; color: #fff;
+          background: linear-gradient(135deg, #6366f1, #a855f7); border: none; border-radius: 12px; cursor: pointer;
+          box-shadow: 0 8px 30px rgba(99,102,241,0.5); transition: all 0.2s; position: relative; overflow: hidden;
+        }
+        .cta-primary::before { content:''; position:absolute; top:0; left:-100%; width:100%; height:100%; background: linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent); transition: left 0.5s; }
+        .cta-primary:hover::before { left: 100%; }
+        .cta-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(99,102,241,0.65); }
+        .cta-secondary {
+          padding: 16px 24px; font-size: 15px; font-weight: 500; color: #cbd5e1;
+          background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; cursor: pointer;
+        }
+        .cta-secondary:hover { background: rgba(255,255,255,0.08); }
+
+        /* PHONES */
+        .phones-3d { position: relative; height: 640px; perspective: 2400px; perspective-origin: 50% 50%; }
+        .phones-stage {
+          position: relative; width: 100%; height: 100%; transform-style: preserve-3d;
+          animation: stageRotate 20s ease-in-out infinite;
+        }
+        @keyframes stageRotate { 0%,100% { transform: rotateY(-4deg) rotateX(2deg); } 50% { transform: rotateY(4deg) rotateX(-1deg); } }
+        .phone-3d {
+          position: absolute; width: 220px; height: 460px; border-radius: 32px;
+          background: linear-gradient(145deg, #1e1e3a, #0f0f20); padding: 8px;
+          box-shadow: 0 40px 80px -20px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.1);
           transform-style: preserve-3d;
-          min-width: 130px;
-          flex-shrink: 0;
         }
-        @keyframes flowRotate {
-          0%, 100% { transform: perspective(800px) rotateY(-4deg); }
-          50%      { transform: perspective(800px) rotateY(4deg); }
+        .phone-3d::before { content:''; position:absolute; inset:-2px; border-radius:34px; z-index:-1; opacity:0.7; filter:blur(18px); }
+        .phone-wa { top:120px; left:-10px; animation: phoneFloat1 7s ease-in-out infinite; }
+        .phone-wa::before { background: linear-gradient(135deg,#25D366,#128C7E); }
+        @keyframes phoneFloat1 { 0%,100% { transform: translateZ(-120px) rotateY(18deg) translateY(0); } 50% { transform: translateZ(-120px) rotateY(20deg) translateY(-15px); } }
+        .phone-tg { top:60px; left:50%; animation: phoneFloat2 8s ease-in-out infinite; z-index:3; }
+        .phone-tg::before { background: linear-gradient(135deg,#2AABEE,#229ED9); }
+        @keyframes phoneFloat2 { 0%,100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-20px); } }
+        .phone-ig { top:120px; right:-10px; animation: phoneFloat3 9s ease-in-out infinite; }
+        .phone-ig::before { background: linear-gradient(135deg,#833AB4,#E1306C,#F56040); }
+        @keyframes phoneFloat3 { 0%,100% { transform: translateZ(-120px) rotateY(-18deg) translateY(0); } 50% { transform: translateZ(-120px) rotateY(-20deg) translateY(-15px); } }
+
+        .phone-screen { width:100%; height:100%; border-radius:26px; overflow:hidden; display:flex; flex-direction:column; position:relative; }
+        .phone-notch { position:absolute; top:5px; left:50%; transform:translateX(-50%); width:70px; height:18px; background:#0a0a14; border-radius:20px; z-index:10; }
+
+        .screen-wa { background: #0b141a; }
+        .app-header-wa { background:#1f2c33; padding:32px 10px 8px; display:flex; align-items:center; gap:8px; color:#fff; }
+        .app-body-wa { flex:1; background: linear-gradient(rgba(11,20,26,0.85),rgba(11,20,26,0.85)), repeating-linear-gradient(45deg,#182229 0 8px,#1f2c33 8px 16px); padding:8px 6px; overflow-y:auto; scrollbar-width:none; display:flex; flex-direction:column; gap:3px; }
+        .app-body-wa::-webkit-scrollbar { display:none; }
+        .screen-wa .msg.received { background:#1f2c33; color:#e9edef; align-self:flex-start; }
+        .screen-wa .msg.sent { background:#005c4b; color:#e9edef; align-self:flex-end; }
+        .screen-wa .msg-btn { background:rgba(0,168,132,0.15); border:1px solid rgba(0,168,132,0.3); color:#00a884; padding:3px 5px; border-radius:4px; font-size:9.5px; margin-top:3px; text-align:center; }
+
+        .screen-tg { background: #17212b; }
+        .app-header-tg { background:#17212b; padding:32px 10px 8px; display:flex; align-items:center; gap:8px; color:#fff; border-bottom:1px solid #1a2733; }
+        .app-body-tg { flex:1; background:#0e1621; padding:8px 6px; overflow-y:auto; scrollbar-width:none; display:flex; flex-direction:column; gap:3px; }
+        .app-body-tg::-webkit-scrollbar { display:none; }
+        .screen-tg .msg.received { background:#182533; color:#fff; align-self:flex-start; }
+        .screen-tg .msg.sent { background:#2b5278; color:#fff; align-self:flex-end; }
+        .screen-tg .msg.staff { background:linear-gradient(135deg,#1e3a8a,#2b5278); color:#fff; align-self:flex-end; border-left:2px solid #60a5fa; }
+        .screen-tg .msg-btn { background:rgba(42,171,238,0.15); border:1px solid rgba(42,171,238,0.3); color:#2AABEE; padding:3px 5px; border-radius:4px; font-size:9.5px; margin-top:3px; text-align:center; }
+
+        .screen-ig { background: #000; }
+        .app-header-ig { background:#000; padding:32px 10px 8px; display:flex; align-items:center; gap:8px; color:#fff; border-bottom:1px solid #262626; }
+        .app-body-ig { flex:1; background:#000; padding:8px 6px; overflow-y:auto; scrollbar-width:none; display:flex; flex-direction:column; gap:3px; }
+        .app-body-ig::-webkit-scrollbar { display:none; }
+        .screen-ig .msg.received { background:#262626; color:#fff; align-self:flex-start; }
+        .screen-ig .msg.sent { background:linear-gradient(135deg,#833AB4,#E1306C); color:#fff; align-self:flex-end; }
+        .screen-ig .msg-btn { background:rgba(225,48,108,0.15); border:1px solid rgba(225,48,108,0.3); color:#E1306C; padding:3px 5px; border-radius:4px; font-size:9.5px; margin-top:3px; text-align:center; }
+
+        .msg { max-width:82%; padding:5px 8px; border-radius:9px; font-size:10.5px; line-height:1.3; opacity:0; animation:msgIn 0.4s ease-out forwards; }
+        @keyframes msgIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+        .msg-info { background:rgba(255,193,7,0.1); border:1px solid rgba(255,193,7,0.25); color:#ffc107; padding:5px 7px; border-radius:6px; font-size:9.5px; align-self:center; text-align:center; font-style:italic; max-width:90%; opacity:0; animation:msgIn 0.4s ease-out forwards; }
+        .staff-badge { display:inline-block; font-size:8px; font-weight:700; background:rgba(96,165,250,0.2); color:#60a5fa; padding:1px 4px; border-radius:3px; margin-bottom:2px; text-transform:uppercase; letter-spacing:0.04em; }
+        .app-avatar { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; }
+        .app-title { font-size:10.5px; font-weight:600; }
+        .app-status { font-size:8.5px; opacity:0.6; }
+
+        /* SECTIONS */
+        .section-tag {
+          display:inline-block; font-size:12px; font-weight:600; color:#a78bfa;
+          text-transform:uppercase; letter-spacing:0.12em; padding:6px 14px;
+          background:rgba(139,92,246,0.1); border:1px solid rgba(139,92,246,0.25); border-radius:100px;
+          margin-bottom:20px;
         }
-        .flow-lines {
-          flex-shrink: 0;
+
+        /* STEPS */
+        .step-card {
+          padding:36px 28px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);
+          border-radius:20px; backdrop-filter:blur(20px); position:relative; transition:all 0.3s; overflow:hidden;
         }
-        .flow-line {
-          animation: dashFlow 1.5s linear infinite;
+        .step-card::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(99,102,241,0.1),transparent); opacity:0; transition:opacity 0.3s; }
+        .step-card:hover { transform:translateY(-6px); border-color:rgba(139,92,246,0.4); box-shadow:0 20px 40px rgba(99,102,241,0.2); }
+        .step-card:hover::before { opacity:1; }
+        .step-num { font-family:'JetBrains Mono',monospace; font-size:48px; font-weight:700; background:linear-gradient(135deg,#6366f1,#a855f7); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; line-height:1; margin-bottom:16px; opacity:0.5; }
+
+        /* TEMPLATES */
+        .templates-showcase { position:relative; height:440px; perspective:1600px; }
+        .templates-track { position:relative; width:100%; height:100%; transform-style:preserve-3d; animation:carouselSpin 50s linear infinite; }
+        @keyframes carouselSpin { from { transform:rotateY(0deg); } to { transform:rotateY(360deg); } }
+        .template-card {
+          position:absolute; top:50%; left:50%; width:220px; height:280px; margin:-140px 0 0 -110px;
+          background:linear-gradient(145deg,rgba(30,30,55,0.9),rgba(15,15,30,0.95));
+          border:1px solid rgba(139,92,246,0.3); border-radius:20px; padding:24px 20px;
+          backdrop-filter:blur(20px); box-shadow:0 20px 40px rgba(0,0,0,0.5);
+          display:flex; flex-direction:column; align-items:center; text-align:center;
         }
-        @keyframes dashFlow {
-          to { stroke-dashoffset: -16; }
+        .template-emoji { font-size:56px; margin-bottom:14px; filter:drop-shadow(0 4px 12px rgba(139,92,246,0.4)); }
+        .template-title { font-size:17px; font-weight:700; margin-bottom:6px; }
+        .template-desc { font-size:12px; color:#94a3b8; line-height:1.5; margin-bottom:14px; }
+        .template-badge { font-size:10px; font-weight:600; color:#a78bfa; padding:4px 10px; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.3); border-radius:100px; margin-top:auto; }
+        .carousel-mask { position:relative; }
+        .carousel-mask::before,.carousel-mask::after { content:''; position:absolute; top:0; bottom:0; width:200px; z-index:10; pointer-events:none; }
+        .carousel-mask::before { left:0; background:linear-gradient(90deg,#05050f 0%,transparent 100%); }
+        .carousel-mask::after { right:0; background:linear-gradient(-90deg,#05050f 0%,transparent 100%); }
+
+        /* FEATURES */
+        .feature-card {
+          padding:28px 24px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);
+          border-radius:18px; backdrop-filter:blur(20px); transition:all 0.3s; position:relative; overflow:hidden;
         }
-        .channel-list {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-        .channel-card {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 12px 18px;
-          border-radius: 12px;
-          min-width: 180px;
-          box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-          transform: perspective(600px) rotateY(3deg);
-          transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
-          cursor: default;
-        }
-        .channel-card:hover {
-          transform: perspective(600px) rotateY(0deg) translateY(-4px);
-          box-shadow: 0 16px 32px rgba(0,0,0,0.3);
-        }
-        .channel-logo {
-          width: 28px;
-          height: 28px;
-          border-radius: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-        @media (max-width: 900px) {
-          .channel-flow { gap: 28px; max-width: 600px; }
-          .flow-node { padding: 20px 18px; min-width: 110px; }
-          .flow-lines { width: 60px; }
-          .channel-card { min-width: 150px; padding: 10px 14px; }
-        }
-        .mobile-beam {
-          display: none;
+        .feature-card::before { content:''; position:absolute; top:-50%; left:-50%; width:200%; height:200%; background:radial-gradient(circle,var(--glow) 0%,transparent 40%); opacity:0; transition:opacity 0.4s; }
+        .feature-card:hover::before { opacity:0.15; }
+        .feature-card:hover { transform:translateY(-4px); border-color:rgba(139,92,246,0.4); }
+        .feature-icon { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:18px; position:relative; }
+        .feature-icon::before { content:''; position:absolute; inset:-4px; border-radius:14px; filter:blur(10px); background:var(--glow); opacity:0.5; }
+
+        /* HANDOVER */
+        .flow-node { display:flex; align-items:center; gap:14px; padding:14px 18px; background:rgba(10,10,20,0.6); border:1px solid rgba(139,92,246,0.2); border-radius:12px; }
+        .flow-node-icon { width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg,#6366f1,#a855f7); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:18px; }
+        .flow-arrow { display:flex; justify-content:center; color:#a78bfa; animation:arrowPulse 2s ease-in-out infinite; }
+        @keyframes arrowPulse { 0%,100% { transform:translateY(0); opacity:0.6; } 50% { transform:translateY(4px); opacity:1; } }
+
+        /* PRICING */
+        .plan-card { padding:32px 28px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:20px; backdrop-filter:blur(20px); display:flex; flex-direction:column; gap:8px; }
+        .plan-card.highlighted { background:linear-gradient(145deg,rgba(99,102,241,0.15),rgba(168,85,247,0.1)); border-color:rgba(139,92,246,0.5); box-shadow:0 20px 60px rgba(99,102,241,0.25); transform:scale(1.03); position:relative; }
+        .plan-badge { position:absolute; top:-14px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,#6366f1,#a855f7); color:#fff; font-size:11px; font-weight:700; padding:5px 16px; border-radius:100px; white-space:nowrap; }
+
+        /* FAQ */
+        .faq-item { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; margin-bottom:10px; backdrop-filter:blur(20px); overflow:hidden; transition:all 0.3s; }
+        .faq-item:hover { border-color:rgba(139,92,246,0.25); }
+        .faq-item.open { border-color:rgba(139,92,246,0.4); }
+        .faq-q { width:100%; display:flex; justify-content:space-between; align-items:center; padding:22px 28px; background:none; border:none; cursor:pointer; text-align:left; font-size:16px; font-weight:600; color:#fff; }
+        .faq-chevron { transition:transform 0.3s; color:#a78bfa; width:24px; height:24px; background:rgba(139,92,246,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .faq-item.open .faq-chevron { transform:rotate(180deg); }
+        .faq-a { max-height:0; overflow:hidden; transition:max-height 0.3s ease; }
+        .faq-item.open .faq-a { max-height:400px; }
+        .faq-a p { font-size:15px; color:#94a3b8; line-height:1.7; padding:0 28px 22px; }
+
+        /* FOOTER */
+        .footer-link { font-size:14px; color:#64748b; text-decoration:none; display:block; margin-bottom:10px; }
+        .footer-link:hover { color:#cbd5e1; }
+        .footer-col-title { font-size:13px; font-weight:700; color:#fff; margin-bottom:16px; text-transform:uppercase; letter-spacing:0.06em; }
+
+        /* RESPONSIVE */
+        @media (max-width: 1024px) {
+          .hero-grid { grid-template-columns: 1fr !important; text-align: center; }
+          .hero-left { display: flex; flex-direction: column; align-items: center; }
+          .phones-3d { margin-top: 60px; height: 560px; }
+          .steps-grid { grid-template-columns: 1fr !important; }
+          .features-grid { grid-template-columns: 1fr !important; }
+          .handover-grid { grid-template-columns: 1fr !important; gap: 40px; }
+          .pricing-grid { grid-template-columns: 1fr !important; }
+          .footer-grid { grid-template-columns: 1fr 1fr !important; }
         }
         @media (max-width: 640px) {
-          .mobile-beam {
-            display: block;
-            width: 2px;
-            height: 32px;
-            background: linear-gradient(180deg, #8b5cf6, #25D366);
-            border-radius: 2px;
-            position: relative;
-            overflow: hidden;
-            margin: -4px auto 4px;
-          }
-          .mobile-beam::after {
-            content: '';
-            position: absolute;
-            top: -30%;
-            left: 0;
-            right: 0;
-            height: 30%;
-            background: linear-gradient(180deg, transparent, rgba(255,255,255,0.8), transparent);
-            animation: beamPulse 2s ease-in-out infinite;
-          }
-          @keyframes beamPulse {
-            0%   { top: -30%; }
-            100% { top: 100%; }
-          }
-        }
-        @media (max-width: 640px) {
-          .channel-flow {
-            flex-direction: column;
-            gap: 16px;
-            max-width: 340px;
-            min-height: auto;
-          }
-          .flow-node {
-            transform: none;
-            animation: none;
-            padding: 18px 32px;
-          }
-          .flow-lines {
-            display: none;
-          }
-          .channel-list {
-            width: 100%;
-            gap: 10px;
-          }
-          .channel-card {
-            width: 100%;
-            min-width: 0;
-            transform: none;
-          }
-          .channel-card:hover {
-            transform: translateY(-2px);
-          }
+          .phone-wa, .phone-ig { display: none; }
+          .phone-tg { transform: translateX(-50%) !important; animation: none !important; }
+          .phones-3d { height: 480px; perspective: none; }
+          .phones-stage { animation: none; transform: none !important; }
+          .btn-ghost { display: none; }
+          .hero-meta { flex-wrap: wrap; justify-content: center; }
         }
       `}</style>
 
-      {/* ── Nav ── */}
-      <nav style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
-        background: 'rgba(15,15,30,0.8)', backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-      }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(99,102,241,0.3)',
-            }}>
-              <MessageSquare size={18} color="#fff" />
+      <div className="bg-mesh" />
+      <div className="bg-grid" />
+
+      {/* NAV */}
+      <nav className="landing-nav">
+        <div className="nav-inner">
+          <div className="logo">
+            <div className="logo-icon">
+              <MessageSquare size={16} color="#fff" />
             </div>
-            <span style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>NabzChat</span>
+            <span className="logo-text">NabzChat</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button onClick={() => onNavigate('login')} style={{
-              padding: '8px 16px', fontSize: 14, fontWeight: 500, color: '#94a3b8',
-              background: 'transparent', border: 'none', cursor: 'pointer',
-            }}>Log in</button>
-            <button onClick={() => onNavigate('register')} style={{
-              padding: '10px 20px', fontSize: 14, fontWeight: 600, color: '#fff',
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none',
-              borderRadius: 12, cursor: 'pointer', boxShadow: '0 4px 12px rgba(99,102,241,0.3)',
-            }}>Get started</button>
+          <div className="nav-buttons">
+            <button className="btn-ghost">Features</button>
+            <button className="btn-ghost">Templates</button>
+            <button className="btn-ghost" onClick={() => onNavigate('login')}>Log in</button>
+            <button className="btn-nav-primary" onClick={() => onNavigate('register')}>Get started</button>
           </div>
         </div>
       </nav>
 
-      {/* ── Hero — Floating Command Center ── */}
-      <section ref={heroRef} style={{
-        position: 'relative', overflow: 'hidden', paddingTop: 64,
-        background: 'linear-gradient(180deg, #0a0a1a 0%, #0f0d2e 40%, #1a1145 100%)',
-        minHeight: '100vh',
-      }}>
-        {/* Ambient glows */}
-        <div style={{
-          position: 'absolute', top: '10%', left: '30%', width: 500, height: 500,
-          background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)',
-          borderRadius: '50%', filter: 'blur(60px)', animation: 'pulseGlow 4s ease-in-out infinite',
-        }} />
-        <div style={{
-          position: 'absolute', top: '30%', right: '10%', width: 400, height: 400,
-          background: 'radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%)',
-          borderRadius: '50%', filter: 'blur(80px)', animation: 'pulseGlow 5s ease-in-out 1s infinite',
-        }} />
-        <div style={{
-          position: 'absolute', bottom: '10%', left: '10%', width: 300, height: 300,
-          background: 'radial-gradient(circle, rgba(167,139,250,0.08) 0%, transparent 70%)',
-          borderRadius: '50%', filter: 'blur(60px)',
-        }} />
-
-        {/* Grid pattern */}
-        <div style={{
-          position: 'absolute', inset: 0, opacity: 0.04,
-          backgroundImage: 'linear-gradient(rgba(99,102,241,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.5) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
-        }} />
-
-        <div style={{
-          position: 'relative', maxWidth: 1200, margin: '0 auto', padding: '80px 24px 60px',
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-        }}>
-          {/* Badge */}
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '6px 16px', borderRadius: 20,
-            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-            color: '#a5b4fc', fontSize: 13, fontWeight: 500, marginBottom: 32,
-            
-          }}>
-            <Sparkles size={14} /> Multi-channel bot automation
+      {/* HERO */}
+      <section style={{ position: 'relative', zIndex: 2, minHeight: '100vh', padding: '140px 24px 80px', display: 'flex', alignItems: 'center' }}>
+        <div className="hero-grid" style={{ maxWidth: 1400, margin: '0 auto', width: '100%', display: 'grid', gridTemplateColumns: '1fr 1.35fr', gap: 60, alignItems: 'center' }}>
+          <div className="hero-left">
+            <div className="hero-badge">
+              <div className="badge-dot" />
+              Live on WhatsApp, Telegram & Instagram
+            </div>
+            <h1 style={{ fontSize: 'clamp(40px,5vw,64px)', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.04em', marginBottom: 24 }}>
+              One bot.<br />Three channels.<br /><span className="gradient-text">Zero code.</span>
+            </h1>
+            <p style={{ fontSize: 18, color: '#94a3b8', lineHeight: 1.6, maxWidth: 520, marginBottom: 36 }}>
+              The complete chatbot platform for small businesses. Handle bookings, manage conversations, hand over to staff, and grow — all from one visual builder.
+            </p>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 36, flexWrap: 'wrap' }}>
+              <button className="cta-primary" onClick={() => onNavigate('register')}>
+                Get started <ArrowRight size={16} />
+              </button>
+              <button className="cta-secondary">
+                ▷ Watch demo
+              </button>
+            </div>
+            <div className="hero-meta" style={{ display: 'flex', gap: 24, fontSize: 13, color: '#64748b' }}>
+              {['15 industry templates', 'Setup in 5 minutes', 'No credit card'].map(t => (
+                <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5"><path d="M20 6L9 17l-5-5" /></svg>
+                  {t}
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Headline */}
-          <h1 style={{
-            fontSize: 'clamp(36px, 6vw, 72px)', fontWeight: 800, color: '#fff',
-            textAlign: 'center', lineHeight: 1.1, maxWidth: 700, margin: '0 auto 24px',
-            letterSpacing: '-0.03em', 
-          }}>
-            Your business on{' '}
-            <span style={{
-              background: 'linear-gradient(135deg, #6366f1, #a78bfa, #c084fc)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            }}>autopilot</span>
-          </h1>
-
-          <p style={{
-            fontSize: 18, color: '#94a3b8', textAlign: 'center', maxWidth: 520,
-            margin: '0 auto 40px', lineHeight: 1.7,
-            
-          }}>
-            Build bots that handle bookings, answer FAQs, and capture leads across WhatsApp, Telegram & Instagram.
-          </p>
-
-          {/* CTA */}
-          <div style={{
-            display: 'flex', gap: 12, marginBottom: 60, flexWrap: 'wrap', justifyContent: 'center',
-            
-          }}>
-            <button onClick={() => onNavigate('register')} style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '14px 28px', fontSize: 15, fontWeight: 600, color: '#fff',
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none',
-              borderRadius: 16, cursor: 'pointer', boxShadow: '0 8px 24px rgba(99,102,241,0.35)',
-            }}>Get started <ArrowRight size={16} /></button>
+          {/* 3D PHONES */}
+          <div className="phones-3d">
+            <div className="phones-stage" ref={stageRef}>
+              <div className="phone-3d phone-wa">
+                <PhoneChat theme="wa" avatar="🌸" avatarBg="#25D366" title="Beauty Salon" status="WhatsApp • online" script={WA_SCRIPT} delay={0} />
+              </div>
+              <div className="phone-3d phone-tg">
+                <PhoneChat theme="tg" avatar="🦷" avatarBg="#2AABEE" title="Dental Clinic" status="Telegram" script={TG_SCRIPT} delay={1500} />
+              </div>
+              <div className="phone-3d phone-ig">
+                <PhoneChat theme="ig" avatar="💪" avatarBg="linear-gradient(135deg,#833AB4,#E1306C)" title="FitZone Gym" status="Instagram • Active" script={IG_SCRIPT} delay={3000} />
+              </div>
+            </div>
           </div>
+        </div>
+      </section>
 
-          {/* Channel flow visualization */}
-          <div style={{
-            position: 'relative', width: '100%',
-            margin: '0 auto',
-            animation: 'slideUp 0.8s ease-out 0.4s both',
-          }}>
-            <ChannelFlow />
+      {/* HOW IT WORKS */}
+      <section style={{ position: 'relative', zIndex: 2, padding: '120px 24px', maxWidth: 1280, margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: 72 }}>
+          <div className="section-tag">How it works</div>
+          <h2 style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 16 }}>
+            Live in <span className="gradient-text">3 simple steps</span>
+          </h2>
+          <p style={{ fontSize: 18, color: '#94a3b8', maxWidth: 600, margin: '0 auto', lineHeight: 1.6 }}>No developers. No consultants. Just pick, customize, launch.</p>
+        </div>
+        <div className="steps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24 }}>
+          {[
+            { n: '01', title: 'Pick a template', desc: 'Start from one of 15 ready-made templates built for your industry — salon, restaurant, clinic, dealership, and more.' },
+            { n: '02', title: 'Customize visually', desc: 'Edit buttons, messages, and questions in a visual builder. See changes live as you type, no code ever.' },
+            { n: '03', title: 'Connect and go', desc: 'Link WhatsApp, Telegram, or Instagram in one click. Your bot is handling customers before your coffee cools.' },
+          ].map(s => (
+            <div key={s.n} className="step-card">
+              <div className="step-num" style={{ position: 'relative', zIndex: 1 }}>{s.n}</div>
+              <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 10, position: 'relative', zIndex: 1 }}>{s.title}</h3>
+              <p style={{ fontSize: 15, color: '#94a3b8', lineHeight: 1.6, position: 'relative', zIndex: 1 }}>{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* TEMPLATES */}
+      <section style={{ position: 'relative', zIndex: 2, padding: '120px 24px', maxWidth: 1280, margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: 72 }}>
+          <div className="section-tag">Templates</div>
+          <h2 style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 16 }}>
+            Built for <span className="gradient-text">15 industries</span>
+          </h2>
+          <p style={{ fontSize: 18, color: '#94a3b8', maxWidth: 600, margin: '0 auto', lineHeight: 1.6 }}>Every template is purpose-built with the right questions, flow, and buttons for your business type.</p>
+        </div>
+        <div className="carousel-mask">
+          <div className="templates-showcase">
+            <div className="templates-track">
+              {TEMPLATES.map((t, i) => (
+                <div key={t.title} className="template-card" style={{ transform: `rotateY(${(i / templateCount) * 360}deg) translateZ(${radius}px)` }}>
+                  <div className="template-emoji">{t.emoji}</div>
+                  <div className="template-title">{t.title}</div>
+                  <div className="template-desc">{t.desc}</div>
+                  <div className="template-badge">{t.tag}</div>
+                </div>
+              ))}
+            </div>
           </div>
+        </div>
+      </section>
 
-          {/* Stats */}
-          <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16,
-            maxWidth: 500, margin: '40px auto 0', width: '100%',
-          }}>
-            {STATS.map(s => (
-              <div key={s.label} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#fff' }}>{s.value}</div>
-                <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{s.label}</div>
+      {/* FEATURES */}
+      <section style={{ position: 'relative', zIndex: 2, padding: '120px 24px', maxWidth: 1280, margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: 72 }}>
+          <div className="section-tag">Features</div>
+          <h2 style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 16 }}>
+            Everything you need to <span className="gradient-text">automate & grow</span>
+          </h2>
+          <p style={{ fontSize: 18, color: '#94a3b8', maxWidth: 600, margin: '0 auto', lineHeight: 1.6 }}>A complete toolkit — from the first customer message to the lifetime repeat booking.</p>
+        </div>
+        <div className="features-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
+          {[
+            { glow: 'rgba(99,102,241,0.4)', bg: 'linear-gradient(135deg,#6366f1,#4f46e5)', title: 'Visual bot builder', desc: 'Drag-and-drop flows with live preview. What you build is exactly what your customers see.', icon: <><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M12 8v8"/></> },
+            { glow: 'rgba(236,72,153,0.4)', bg: 'linear-gradient(135deg,#ec4899,#db2777)', title: 'Handover to staff', desc: 'Customer needs a human? Staff gets a secure one-time link — replies without ever logging in.', icon: <><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></> },
+            { glow: 'rgba(6,182,212,0.4)', bg: 'linear-gradient(135deg,#06b6d4,#0891b2)', title: 'Multi-channel deploy', desc: 'Build once, publish to WhatsApp, Telegram, Instagram. Same flow, three channels.', icon: <><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></> },
+            { glow: 'rgba(168,85,247,0.4)', bg: 'linear-gradient(135deg,#a855f7,#9333ea)', title: 'Booking management', desc: 'Track every booking, inquiry, and request. Kanban view with status, notes, and assignment.', icon: <><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></> },
+            { glow: 'rgba(16,185,129,0.4)', bg: 'linear-gradient(135deg,#10b981,#059669)', title: 'Analytics dashboard', desc: 'See message volume, peak hours, top services, and conversion rate. Real data, clear decisions.', icon: <><path d="M3 3v18h18"/><path d="M7 14l3-3 4 4 5-5"/></> },
+            { glow: 'rgba(245,158,11,0.4)', bg: 'linear-gradient(135deg,#f59e0b,#d97706)', title: 'Customer CRM', desc: 'Every customer auto-saved with history, preferences, and total bookings. Searchable, taggable.', icon: <><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></> },
+            { glow: 'rgba(239,68,68,0.4)', bg: 'linear-gradient(135deg,#ef4444,#dc2626)', title: 'Auto reminders', desc: 'Bot sends reminder 24h before each booking. Fewer no-shows, more revenue, zero manual work.', icon: <><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></> },
+            { glow: 'rgba(251,113,133,0.4)', bg: 'linear-gradient(135deg,#fb7185,#e11d48)', title: 'Reviews & ratings', desc: 'Bot asks customers to rate 1–5 stars after service. Collect reviews, spot issues, boost reputation.', icon: <><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></> },
+            { glow: 'rgba(139,92,246,0.4)', bg: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', title: 'Campaigns & broadcasts', desc: 'Send promos, offers, and follow-ups to all customers or filtered segments. Grow revenue on autopilot.', icon: <><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></> },
+            { glow: 'rgba(132,204,22,0.4)', bg: 'linear-gradient(135deg,#84cc16,#65a30d)', title: 'Bank-grade security', desc: 'Encrypted storage, JWT auth, strict tenant isolation. Your customer data stays yours — always.', icon: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></> },
+            { glow: 'rgba(251,146,60,0.4)', bg: 'linear-gradient(135deg,#fb923c,#ea580c)', title: 'Owner dashboard', desc: 'See every conversation, every booking, every stat. Inbox, Kanban, and analytics in one place.', icon: <><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></> },
+            { glow: 'rgba(34,211,238,0.4)', bg: 'linear-gradient(135deg,#22d3ee,#0891b2)', title: 'Smart lead capture', desc: 'Collect names, phones, and service choices automatically. Every conversation becomes structured data.', icon: <><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></> },
+          ].map(f => (
+            <div key={f.title} className="feature-card" style={{ '--glow': f.glow }}>
+              <div className="feature-icon" style={{ background: f.bg, '--glow': f.glow }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" style={{ position: 'relative', zIndex: 1 }}>{f.icon}</svg>
+              </div>
+              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, position: 'relative', zIndex: 1 }}>{f.title}</h3>
+              <p style={{ fontSize: 13.5, color: '#94a3b8', lineHeight: 1.6, position: 'relative', zIndex: 1 }}>{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* HANDOVER DEEP DIVE */}
+      <section style={{ position: 'relative', zIndex: 2, padding: '120px 24px', maxWidth: 1280, margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: 72 }}>
+          <div className="section-tag">Handover system</div>
+          <h2 style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 16 }}>
+            When your customer needs a <span className="gradient-text">human</span>
+          </h2>
+          <p style={{ fontSize: 18, color: '#94a3b8', maxWidth: 600, margin: '0 auto', lineHeight: 1.6 }}>The bot handles 90% of messages. For the other 10% — staff can help without logging into anything.</p>
+        </div>
+        <div className="handover-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' }}>
+          <div style={{ padding: 40, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 20, backdropFilter: 'blur(20px)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {[
+                { icon: '💬', text: <><strong>Customer</strong> taps "Talk to team"</> },
+                { arrow: true },
+                { icon: '🔔', text: <><strong>Staff notified</strong> via Telegram, Email, or WhatsApp</> },
+                { arrow: true },
+                { icon: '🔗', text: <><strong>Staff taps link</strong> — replies without logging in</> },
+                { arrow: true },
+                { icon: '✅', text: <><strong>Customer gets reply</strong> on their channel</> },
+              ].map((item, i) => item.arrow ? (
+                <div key={i} className="flow-arrow">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M19 12l-7 7-7-7" /></svg>
+                </div>
+              ) : (
+                <div key={i} className="flow-node">
+                  <div className="flow-node-icon">{item.icon}</div>
+                  <div style={{ fontSize: 14, color: '#cbd5e1' }}>{item.text}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3 style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 16 }}>No app. No login. No training.</h3>
+            <p style={{ fontSize: 16, color: '#94a3b8', lineHeight: 1.7, marginBottom: 20 }}>Your staff doesn't need a NabzChat account. When a customer needs help, staff get a notification and a secure one-time reply link.</p>
+            {[
+              'Route to the right staff by department',
+              'Full conversation history saved for you',
+              'Control what each staff member can see',
+              'Links auto-expire when conversation ends',
+            ].map(b => (
+              <div key={b} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: '#cbd5e1', marginBottom: 10 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5"><path d="M20 6L9 17l-5-5" /></svg>
+                {b}
               </div>
             ))}
           </div>
         </div>
-
-        {/* Bottom fade */}
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: 120,
-          background: 'linear-gradient(to top, #fff, transparent)',
-        }} />
       </section>
 
-      {/* ── Features ── */}
-      <section style={{ padding: '100px 24px', maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 60 }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Features</p>
-          <h2 style={{ fontSize: 36, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em' }}>Everything you need to automate</h2>
-          <p style={{ marginTop: 16, color: '#64748b', fontSize: 18 }}>Powerful tools in an interface anyone can use</p>
+      {/* PRICING */}
+      <section style={{ position: 'relative', zIndex: 2, padding: '120px 24px', maxWidth: 1280, margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: 72 }}>
+          <div className="section-tag">Pricing</div>
+          <h2 style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 16 }}>
+            Simple, <span className="gradient-text">transparent pricing</span>
+          </h2>
+          <p style={{ fontSize: 18, color: '#94a3b8', maxWidth: 600, margin: '0 auto', lineHeight: 1.6 }}>Start free. Scale as you grow. No hidden fees, cancel anytime.</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
-          {FEATURES.map(f => (
-            <div key={f.title} style={{
-              background: '#fff', borderRadius: 16, padding: 28,
-              border: '1px solid #f1f5f9', transition: 'all 0.2s',
-              cursor: 'default',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-            onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#f1f5f9'; }}
-            >
-              <div style={{
-                width: 44, height: 44, borderRadius: 12,
-                background: `linear-gradient(135deg, var(--c1), var(--c2))`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                '--c1': f.color.includes('indigo') ? '#6366f1' : f.color.includes('pink') ? '#ec4899' : f.color.includes('amber') ? '#f59e0b' : f.color.includes('cyan') ? '#06b6d4' : f.color.includes('emerald') ? '#10b981' : '#64748b',
-                '--c2': f.color.includes('violet') ? '#8b5cf6' : f.color.includes('rose') ? '#f43f5e' : f.color.includes('orange') ? '#f97316' : f.color.includes('blue') ? '#3b82f6' : f.color.includes('teal') ? '#14b8a6' : '#71717a',
-              }}>
-                <f.icon size={20} color="#fff" />
-              </div>
-              <h3 style={{ fontSize: 17, fontWeight: 600, color: '#0f172a', marginBottom: 8 }}>{f.title}</h3>
-              <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6 }}>{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── FAQ ── */}
-      <section style={{ padding: '100px 24px', background: 'linear-gradient(180deg, #0a0a1a, #0f0d2e)', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ maxWidth: 700, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 60 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>FAQ</p>
-            <h2 style={{ fontSize: 36, fontWeight: 700, color: '#fff' }}>Frequently asked questions</h2>
-          </div>
-          {FAQ.map((item, idx) => (
-            <div key={idx} style={{
-              background: 'rgba(255,255,255,0.04)', borderRadius: 12, border: '1px solid rgba(167,139,250,0.25)',
-              marginBottom: 8, overflow: 'hidden', boxShadow: '0 0 20px rgba(139,92,246,0.08)',
-            }}>
-              <button onClick={() => setOpenFaq(openFaq === idx ? null : idx)} style={{
-                width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '18px 24px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
-              }}>
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{item.q}</span>
-                <ChevronDown size={18} color="#a78bfa" style={{ transform: openFaq === idx ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />
-              </button>
-              {openFaq === idx && (
-                <div style={{ padding: '0 24px 18px' }}>
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 1.7 }}>{item.a}</p>
+        <div className="pricing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20, maxWidth: 1000, margin: '0 auto' }}>
+          {plans.length > 0 ? plans.map((plan, i) => {
+            const isHighlighted = plan.monthly_price === 29;
+            const features = getPlanFeatures(plan);
+            return (
+              <div key={plan.id} className={`plan-card${isHighlighted ? ' highlighted' : ''}`}>
+                {isHighlighted && <div className="plan-badge">Most Popular</div>}
+                <div style={{ fontSize: 13, fontWeight: 600, color: isHighlighted ? '#a78bfa' : '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{plan.name}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                  <span style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.03em' }}>{plan.monthly_price === 0 ? 'Free' : `$${plan.monthly_price}`}</span>
+                  {plan.monthly_price > 0 && <span style={{ fontSize: 14, color: '#64748b' }}>/month</span>}
                 </div>
-              )}
-            </div>
-          ))}
+                <div style={{ fontSize: 14, color: '#64748b', marginBottom: 16 }}>
+                  {plan.monthly_price === 0 ? 'Get started, no card needed' : plan.monthly_price === 29 ? 'For growing businesses' : 'For teams & agencies'}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
+                  {features.map(f => (
+                    <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: '#cbd5e1' }}>
+                      <span style={{ color: '#10b981' }}>✓</span> {f}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => onNavigate('register')}
+                  className={isHighlighted ? 'cta-primary' : 'cta-secondary'}
+                  style={{ marginTop: 24, width: '100%', justifyContent: 'center', borderRadius: 12, padding: '12px 0' }}
+                >
+                  {plan.monthly_price === 0 ? 'Get started free' : plan.monthly_price === 79 ? 'Contact us' : 'Get started'}
+                </button>
+              </div>
+            );
+          }) : (
+            // Fallback skeleton while loading
+            [0,1,2].map(i => (
+              <div key={i} className="plan-card" style={{ opacity: 0.3, height: 400 }} />
+            ))
+          )}
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section style={{ padding: '100px 24px' }}>
-        <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center' }}>
-          <div style={{
-            borderRadius: 24, padding: '60px 40px', position: 'relative', overflow: 'hidden',
-            background: 'linear-gradient(135deg, #0f172a, #1e1b4b, #312e81)',
-          }}>
-            <div style={{
-              position: 'absolute', top: 0, right: 0, width: 300, height: 300,
-              background: 'radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%)',
-              borderRadius: '50%', filter: 'blur(40px)',
-            }} />
-            <div style={{ position: 'relative' }}>
-              <h2 style={{ fontSize: 32, fontWeight: 700, color: '#fff', marginBottom: 16 }}>Ready to automate?</h2>
-              <p style={{ color: '#94a3b8', marginBottom: 32, fontSize: 16 }}>Be one of the first businesses to automate with NabzChat.</p>
-              <button onClick={() => onNavigate('register')} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                padding: '14px 28px', fontSize: 15, fontWeight: 600, color: '#fff',
-                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none',
-                borderRadius: 16, cursor: 'pointer', boxShadow: '0 8px 24px rgba(99,102,241,0.35)',
-              }}>Get started <ArrowRight size={16} /></button>
-            </div>
+      {/* FAQ */}
+      <section style={{ position: 'relative', zIndex: 2, padding: '120px 24px', maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: 72 }}>
+          <div className="section-tag">FAQ</div>
+          <h2 style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+            Common <span className="gradient-text">questions</span>
+          </h2>
+        </div>
+        <FaqItem defaultOpen q="Do I need coding skills?" a="No. NabzChat is built for non-technical owners. Pick a template, customize with clicks, publish. Zero code required — ever." />
+        <FaqItem q="Which channels are supported?" a="WhatsApp, Telegram, and Instagram — the three channels your customers already use every day. Build one bot, it works on all three." />
+        <FaqItem q="How does the handover to staff work?" a="When a customer needs a human, your staff gets notified on Telegram, Email, or WhatsApp — and receives a secure one-time link to reply. No login required, no app to install. First staff member to respond takes the conversation." />
+        <FaqItem q="How long does setup take?" a="Under 5 minutes for most businesses. Pick a template matching your industry, customize the text, connect your channel — you're live." />
+        <FaqItem q="Is my data secure?" a="Yes. JWT authentication, encrypted storage for sensitive tokens, and strict tenant isolation. Your customer data is never mixed with any other business's data." />
+        <FaqItem q="Can I customize the bot for my specific business?" a="Absolutely. Every template is fully editable — change buttons, questions, confirmations, media, everything. Make it yours in minutes." />
+      </section>
+
+      {/* FINAL CTA */}
+      <section style={{ padding: '120px 24px', position: 'relative', zIndex: 2 }}>
+        <div style={{
+          maxWidth: 1000, margin: '0 auto', padding: '80px 40px', borderRadius: 32,
+          background: 'radial-gradient(ellipse at top left,rgba(139,92,246,0.3),transparent 50%), radial-gradient(ellipse at bottom right,rgba(6,182,212,0.2),transparent 50%), linear-gradient(135deg,#0f0f25,#1a1140)',
+          border: '1px solid rgba(139,92,246,0.3)', position: 'relative', overflow: 'hidden', textAlign: 'center',
+          boxShadow: '0 40px 80px rgba(99,102,241,0.2)',
+        }}>
+          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(139,92,246,0.08) 1px,transparent 1px),linear-gradient(90deg,rgba(139,92,246,0.08) 1px,transparent 1px)', backgroundSize: '40px 40px', maskImage: 'radial-gradient(ellipse at center,black 30%,transparent 70%)' }} />
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            <h2 style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800, marginBottom: 16, letterSpacing: '-0.025em', lineHeight: 1.1 }}>
+              Put your business on<br /><span className="gradient-text">autopilot today</span>
+            </h2>
+            <p style={{ fontSize: 18, color: '#cbd5e1', maxWidth: 560, margin: '0 auto 32px' }}>Be one of the first businesses to automate customer conversations with NabzChat. Setup takes 5 minutes.</p>
+            <button className="cta-primary" onClick={() => onNavigate('register')} style={{ padding: '18px 32px', fontSize: 16 }}>
+              Get started <ArrowRight size={16} />
+            </button>
           </div>
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer style={{ borderTop: '1px solid #e2e8f0', padding: '24px', background: '#f8fafc' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: '#94a3b8' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <MessageSquare size={14} color="#fff" />
+      {/* FOOTER */}
+      <footer style={{ position: 'relative', zIndex: 2, borderTop: '1px solid rgba(255,255,255,0.08)', padding: '60px 24px 40px', background: 'rgba(5,5,15,0.5)' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+          <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 40, paddingBottom: 48, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <div>
+              <div className="logo" style={{ marginBottom: 16 }}>
+                <div className="logo-icon"><MessageSquare size={16} color="#fff" /></div>
+                <span style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>NabzChat</span>
+              </div>
+              <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, maxWidth: 280 }}>The chatbot platform built for small businesses. Handle bookings, answer FAQs, and capture leads — automatically.</p>
             </div>
-            <span style={{ fontWeight: 600, color: '#475569' }}>NabzChat</span>
+            <div>
+              <div className="footer-col-title">Product</div>
+              <a className="footer-link" href="#">Features</a>
+              <a className="footer-link" href="#">Templates</a>
+              <a className="footer-link" href="#">Pricing</a>
+            </div>
+            <div>
+              <div className="footer-col-title">Company</div>
+              <a className="footer-link" href="#">About</a>
+              <a className="footer-link" href="#">Contact</a>
+              <a className="footer-link" href="mailto:info@nabzchat.tech">info@nabzchat.tech</a>
+            </div>
+            <div>
+              <div className="footer-col-title">Legal</div>
+              <a className="footer-link" href="#">Privacy Policy</a>
+              <a className="footer-link" href="#">Terms of Service</a>
+            </div>
           </div>
-          <span>&copy; {new Date().getFullYear()} NabzChat. All rights reserved.</span>
+          <div style={{ paddingTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: '#475569', flexWrap: 'wrap', gap: 12 }}>
+            <span>© 2026 NabzChat. All rights reserved.</span>
+            <span>Built for small businesses in Dubai & beyond 🌍</span>
+          </div>
         </div>
       </footer>
     </div>

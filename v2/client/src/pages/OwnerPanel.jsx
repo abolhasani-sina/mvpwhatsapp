@@ -229,11 +229,11 @@ function PlansTab() {
     try {
       if (editing.id) await updateOwnerPlan(editing.id, editing);
       else await createOwnerPlan(editing);
-      addToast('Plan saved', 'success');
       setEditing(null);
       await load();
+      addToast('Plan saved successfully ', 'success');
     } catch (err) {
-      addToast(err.message, 'error');
+      addToast(err.message || 'Failed to save plan', 'error');
     }
   }
 
