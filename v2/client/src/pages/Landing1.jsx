@@ -443,9 +443,13 @@ export default function Landing1({ onNavigate }) {
             </div>
             <span className="logo-text">NabzChat</span>
           </div>
-          <div className="nav-buttons">
-            <button className="btn-ghost">Features</button>
-            <button className="btn-ghost">Templates</button>
+          <div className="nav-center">
+            <button className="btn-ghost" onClick={() => document.getElementById('features').scrollIntoView({behavior:'smooth'})}>Features</button>
+            <button className="btn-ghost" onClick={() => document.getElementById('templates').scrollIntoView({behavior:'smooth'})}>Templates</button>
+            <button className="btn-ghost" onClick={() => document.getElementById('pricing').scrollIntoView({behavior:'smooth'})}>Pricing</button>
+            <button className="btn-ghost" onClick={() => document.getElementById('faq').scrollIntoView({behavior:'smooth'})}>FAQ</button>
+          </div>
+          <div className="nav-right">
             <button className="btn-ghost" onClick={() => onNavigate('login')}>Log in</button>
             <button className="btn-nav-primary" onClick={() => onNavigate('register')}>Get started</button>
           </div>
@@ -469,9 +473,6 @@ export default function Landing1({ onNavigate }) {
             <div style={{ display: 'flex', gap: 12, marginBottom: 36, flexWrap: 'wrap' }}>
               <button className="cta-primary" onClick={() => onNavigate('register')}>
                 Get started <ArrowRight size={16} />
-              </button>
-              <button className="cta-secondary">
-                ▷ Watch demo
               </button>
             </div>
             <div className="hero-meta" style={{ display: 'flex', gap: 24, fontSize: 13, color: '#64748b' }}>
@@ -526,7 +527,7 @@ export default function Landing1({ onNavigate }) {
       </section>
 
       {/* TEMPLATES */}
-      <section style={{ position: 'relative', zIndex: 2, padding: '120px 24px', maxWidth: 1280, margin: '0 auto' }}>
+      <section id="templates" style={{ position: 'relative', zIndex: 2, padding: '120px 24px', maxWidth: 1280, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 72 }}>
           <div className="section-tag">Templates</div>
           <h2 style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 16 }}>
@@ -551,7 +552,7 @@ export default function Landing1({ onNavigate }) {
       </section>
 
       {/* FEATURES */}
-      <section style={{ position: 'relative', zIndex: 2, padding: '120px 24px', maxWidth: 1280, margin: '0 auto' }}>
+      <section id="features" style={{ position: 'relative', zIndex: 2, padding: '120px 24px', maxWidth: 1280, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 72 }}>
           <div className="section-tag">Features</div>
           <h2 style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 16 }}>
@@ -636,7 +637,7 @@ export default function Landing1({ onNavigate }) {
       </section>
 
       {/* PRICING */}
-      <section style={{ position: 'relative', zIndex: 2, padding: '120px 24px', maxWidth: 1280, margin: '0 auto' }}>
+      <section id="pricing" style={{ position: 'relative', zIndex: 2, padding: '120px 24px', maxWidth: 1280, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 72 }}>
           <div className="section-tag">Pricing</div>
           <h2 style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 16 }}>
@@ -685,7 +686,7 @@ export default function Landing1({ onNavigate }) {
       </section>
 
       {/* FAQ */}
-      <section style={{ position: 'relative', zIndex: 2, padding: '120px 24px', maxWidth: 760, margin: '0 auto' }}>
+      <section id="faq" style={{ position: 'relative', zIndex: 2, padding: '120px 24px', maxWidth: 760, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 72 }}>
           <div className="section-tag">FAQ</div>
           <h2 style={{ fontSize: 'clamp(32px,4vw,48px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1 }}>
@@ -734,9 +735,9 @@ export default function Landing1({ onNavigate }) {
             </div>
             <div>
               <div className="footer-col-title">Product</div>
-              <a className="footer-link" href="#">Features</a>
-              <a className="footer-link" href="#">Templates</a>
-              <a className="footer-link" href="#">Pricing</a>
+              <a className="footer-link" href="#features">Features</a>
+              <a className="footer-link" href="#templates">Templates</a>
+              <a className="footer-link" href="#pricing">Pricing</a>
             </div>
             <div>
               <div className="footer-col-title">Company</div>
