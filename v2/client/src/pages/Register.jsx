@@ -71,12 +71,11 @@ export default function Register({ onNavigate }) {
               <span className="text-2xl font-bold text-white tracking-tight">NabzChat</span>
             </div>
             <h2 className="text-3xl font-bold text-white leading-snug mb-4">Start automating in minutes</h2>
-            <p className="text-slate-400 leading-relaxed mb-10">Join hundreds of businesses using NabzChat to handle customer messages on WhatsApp, Telegram, and more.</p>
+            <p className="text-slate-400 leading-relaxed mb-10">Be one of the first businesses to automate customer conversations on WhatsApp, Telegram, and Instagram.</p>
             <div className="space-y-4">
               {[
-                { icon: CheckCircle2, text: 'Free plan — no credit card required' },
+                { icon: CheckCircle2, text: 'Setup in under 5 minutes' },
                 { icon: Sparkles, text: 'Pre-built templates for any industry' },
-                { icon: Users, text: 'Multi-staff assignment & tracking' },
               ].map(item => (
                 <div key={item.text} className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center backdrop-blur-sm">
@@ -107,7 +106,7 @@ export default function Register({ onNavigate }) {
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Create your account</h1>
-          <p className="text-sm text-slate-500 mb-8">Get started with NabzChat for free</p>
+          <p className="text-sm text-slate-500 mb-8">Get started with NabzChat today</p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
