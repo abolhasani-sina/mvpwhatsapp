@@ -138,6 +138,7 @@ const planRules = [
   body('allow_whatsapp').isInt({ min: 0, max: 1 }),
   body('allow_telegram').isInt({ min: 0, max: 1 }),
   body('allow_instagram').isInt({ min: 0, max: 1 }),
+  body('contact_sales').isInt({ min: 0, max: 1 }).optional(),
 ];
 
 router.post('/plans', planRules, (req, res) => {
@@ -146,10 +147,11 @@ router.post('/plans', planRules, (req, res) => {
   try {
     const result = db.prepare(`
       INSERT INTO plans (name, monthly_price, max_flows, max_staff, max_submissions_per_month,
-        allow_whatsapp, allow_telegram, allow_instagram, is_default)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+        allow_whatsapp, allow_telegram, allow_instagram, is_default, contact_sales)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
     `).run(p.name, p.monthly_price, p.max_flows, p.max_staff, p.max_submissions_per_month,
-      p.allow_whatsapp ? 1 : 0, p.allow_telegram ? 1 : 0, p.allow_instagram ? 1 : 0);
+      p.allow_whatsapp ? 1 : 0, p.allow_telegram ? 1 : 0, p.allow_instagram ? 1 : 0,
+      p.contact_sales ? 1 : 0); // [ADDED: contact-sales-column]
     res.status(201).json({ data: { id: Number(result.lastInsertRowid) } });
   } catch (err) {
     if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'Plan name already exists' });
@@ -165,10 +167,11 @@ router.put('/plans/:id', planRules, (req, res) => {
   const p = req.body;
   db.prepare(`
     UPDATE plans SET name=?, monthly_price=?, max_flows=?, max_staff=?, max_submissions_per_month=?,
-      allow_whatsapp=?, allow_telegram=?, allow_instagram=?, updated_at=datetime('now')
+      allow_whatsapp=?, allow_telegram=?, allow_instagram=?, contact_sales=?, updated_at=datetime('now')
     WHERE id=?
   `).run(p.name, p.monthly_price, p.max_flows, p.max_staff, p.max_submissions_per_month,
-    p.allow_whatsapp ? 1 : 0, p.allow_telegram ? 1 : 0, p.allow_instagram ? 1 : 0, id);
+    p.allow_whatsapp ? 1 : 0, p.allow_telegram ? 1 : 0, p.allow_instagram ? 1 : 0,
+    p.contact_sales ? 1 : 0, id); // [ADDED: contact-sales-column]
   res.json({ success: true });
 });
 

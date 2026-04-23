@@ -221,7 +221,7 @@ function PlansTab() {
     setEditing({
       id: null, name: '', monthly_price: 0, max_flows: 1, max_staff: 1,
       max_submissions_per_month: 100,
-      allow_whatsapp: 0, allow_telegram: 1, allow_instagram: 0, is_default: 0,
+      allow_whatsapp: 0, allow_telegram: 1, allow_instagram: 0, is_default: 0, contact_sales: 0,
     });
   }
 
@@ -340,6 +340,8 @@ function PlansTab() {
                   onChange={(v) => setEditing({ ...editing, allow_instagram: v })} />
                 <Toggle label="Default plan" value={editing.is_default}
                   onChange={(v) => setEditing({ ...editing, is_default: v })} />
+                <Toggle label="Contact us (no self-serve)" value={editing.contact_sales}
+                  onChange={(v) => setEditing({ ...editing, contact_sales: v })} /> {/* [ADDED: contact-sales-toggle] */}
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-5">

@@ -122,7 +122,7 @@ app.post('/api/telegram/webhook/:id', async (req, res) => {
 
 // PUBLIC plans
 app.get("/api/plans", (_req, res) => {
-  const plans = db.prepare("SELECT id, name, monthly_price, max_flows, max_staff, max_submissions_per_month, allow_whatsapp, allow_telegram, allow_instagram, is_default FROM plans ORDER BY monthly_price ASC").all();
+  const plans = db.prepare("SELECT id, name, monthly_price, max_flows, max_staff, max_submissions_per_month, allow_whatsapp, allow_telegram, allow_instagram, is_default, contact_sales FROM plans ORDER BY monthly_price ASC").all();
   res.json({ plans });
 });
 

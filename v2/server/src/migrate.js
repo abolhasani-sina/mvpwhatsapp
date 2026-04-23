@@ -398,6 +398,12 @@ export function migrate() {
   }
 
   // 10.1 — Plan assignment per business + audit log
+  // Add contact_sales column to plans if missing
+  const planCols = db.prepare("PRAGMA table_info(plans)").all().map(c => c.name);
+  if (!planCols.includes('contact_sales')) {
+    db.exec("ALTER TABLE plans ADD COLUMN contact_sales INTEGER NOT NULL DEFAULT 0");
+  } // [ADDED: contact-sales-column]
+
   const bizCols = db.prepare("PRAGMA table_info(businesses)").all().map(c => c.name);
   if (!bizCols.includes('plan_id')) {
     db.exec("ALTER TABLE businesses ADD COLUMN plan_id INTEGER REFERENCES plans(id)");

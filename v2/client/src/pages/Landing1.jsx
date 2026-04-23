@@ -671,8 +671,8 @@ export default function Landing1({ onNavigate }) {
                   className={isHighlighted ? 'cta-primary' : 'cta-secondary'}
                   style={{ marginTop: 24, width: '100%', justifyContent: 'center', borderRadius: 12, padding: '12px 0' }}
                 >
-                  {plan.monthly_price === 0 ? 'Get started free' : plan.monthly_price === 79 ? 'Contact us' : 'Get started'}
-                </button>
+                  {plan.contact_sales ? 'Contact us' : plan.monthly_price === 0 ? 'Get started free' : 'Get started'}
+                </button> {/* [ADDED: contact-sales-button] */}
               </div>
             );
           }) : (
