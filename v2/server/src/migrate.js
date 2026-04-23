@@ -400,6 +400,12 @@ export function migrate() {
 
   // 10.1 — Plan assignment per business + audit log
 
+  // Add conversation_id column to submissions
+  const subConvCols = db.prepare("PRAGMA table_info(submissions)").all().map(c => c.name);
+  if (!subConvCols.includes('conversation_id')) {
+    db.exec("ALTER TABLE submissions ADD COLUMN conversation_id INTEGER REFERENCES conversations(id)");
+  } // [ADDED: conversation-id-in-submissions]
+
   // Add business_submission_number column to submissions
   const subNumCols = db.prepare("PRAGMA table_info(submissions)").all().map(c => c.name);
   if (!subNumCols.includes('business_submission_number')) {

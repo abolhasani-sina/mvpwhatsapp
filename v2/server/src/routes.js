@@ -882,7 +882,9 @@ router.post('/business/:id/submissions', tenantScope, (req, res) => {
 
 router.get('/business/:id/submissions', tenantScope, (req, res) => {
   const subs = db.prepare(
-    `SELECT s.*, st.name as assigned_name, f.name as flow_name, ab.label as action_button_label
+    `SELECT s.*, st.name as assigned_name, f.name as flow_name, ab.label as action_button_label,
+     (SELECT cu.name FROM customers cu JOIN conversations cv ON cv.customer_id = cu.id WHERE cv.id = s.conversation_id) as customer_name,
+     (SELECT cu.channel FROM customers cu JOIN conversations cv ON cv.customer_id = cu.id WHERE cv.id = s.conversation_id) as customer_channel
      FROM submissions s
      LEFT JOIN staff st ON s.assigned_to = st.id
      LEFT JOIN flows f ON s.flow_id = f.id

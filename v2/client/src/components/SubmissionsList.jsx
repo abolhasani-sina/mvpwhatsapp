@@ -19,7 +19,7 @@ const DATE_RANGES = [
 ];
 
 const SERVICE_KEYS = ['Selected service', 'Service', 'selected service', 'service'];
-const NAME_KEYS   = ['Your name', 'Name', 'your name', 'name', 'Customer name'];
+const NAME_KEYS   = ['step_name', 'Your name', 'Name', 'your name', 'name', 'Customer name', 'Guest name', 'Patient name', 'Student name', 'Pet parent name'];
 const PHONE_KEYS  = ['Phone', 'phone', 'Phone number', 'phone number', 'Mobile', 'mobile'];
 
 function extractField(data, keys) {
@@ -304,7 +304,7 @@ export default function SubmissionsList({ businessId }) {
 /* ── Single table row + expandable detail ───────────────────── */
 function SubmissionRow({ sub, staff, expanded, onToggle, onStatusChange, onAssign }) {
   const service  = extractField(sub.data, SERVICE_KEYS) || sub.action_button_label || sub.flow_name || '—'; // [ADDED: submission-display-fallback]
-  const customer = extractField(sub.data, NAME_KEYS) || (sub.channel ? sub.channel : 'Bot Tester'); // [ADDED: submission-display-fallback]
+  const customer = extractField(sub.data, NAME_KEYS) || sub.customer_name || (sub.customer_channel ? `${sub.customer_channel} user` : 'Bot Tester'); // [ADDED: customer-from-conversations]
   const phone    = extractField(sub.data, PHONE_KEYS);
   const cfg      = STATUS_CFG[sub.status] || STATUS_CFG.new;
   const assignedStaff = sub.assigned_to ? staff.find(s => s.id === sub.assigned_to) : null;
@@ -325,7 +325,12 @@ function SubmissionRow({ sub, staff, expanded, onToggle, onStatusChange, onAssig
               {getInitials(customer)}
             </div>
             <div className="min-w-0">
-              <div className="text-sm font-medium text-slate-800 truncate">{customer || '—'}</div>
+              <div className="text-sm font-medium text-slate-800 truncate" style={{display:'flex',alignItems:'center',gap:'4px'}}>
+                {sub.customer_channel === 'telegram' && <span style={{fontSize:'10px',background:'#229ED9',color:'white',borderRadius:'3px',padding:'1px 4px',fontWeight:600}}>TG</span>}
+                {sub.customer_channel === 'whatsapp' && <span style={{fontSize:'10px',background:'#25D366',color:'white',borderRadius:'3px',padding:'1px 4px',fontWeight:600}}>WA</span>}
+                {sub.customer_channel === 'instagram' && <span style={{fontSize:'10px',background:'#E1306C',color:'white',borderRadius:'3px',padding:'1px 4px',fontWeight:600}}>IG</span>}
+                {customer || ''}
+              </div>
               {phone && <div className="text-[11px] text-slate-400">{phone}</div>}
             </div>
           </div>

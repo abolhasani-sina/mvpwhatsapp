@@ -739,9 +739,25 @@ function submitAndConfirm(conversation, state, data, businessId) {
     const lastNum = db.prepare('SELECT MAX(business_submission_number) as n FROM submissions WHERE business_id = ?').get(businessId);
     const nextNum = (lastNum?.n || 0) + 1;
     const result = db.prepare(
-      'INSERT INTO submissions (business_id, data, status, flow_id, action_button_id, business_submission_number) VALUES (?, ?, ?, ?, ?, ?)'
-    ).run(businessId, JSON.stringify(state.answers), 'new', flow?.id || null, state.actionButtonId || null, nextNum);
+      'INSERT INTO submissions (business_id, data, status, flow_id, action_button_id, business_submission_number, conversation_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).run(businessId, JSON.stringify(state.answers), 'new', flow?.id || null, state.actionButtonId || null, nextNum, conversation.id || null); // [ADDED: conversation-id-in-submissions]
     const subId = Number(result.lastInsertRowid);
+    // Update customer name from submission answers if available // [ADDED: customer-name-from-answers]
+    const submissionNameKeys = ['step_name', 'name', 'your_name', 'customer_name', 'full_name', 'first_name'];
+    const answeredName = submissionNameKeys.map(k => state.answers?.[k]).find(v => v && String(v).trim().length > 0);
+    if (answeredName && conversation?.id) {
+      const conv = db.prepare('SELECT customer_id FROM conversations WHERE id = ?').get(conversation.id);
+      if (conv?.customer_id) {
+        db.prepare('UPDATE customers SET name = ? WHERE id = ?').run(String(answeredName).trim(), conv.customer_id);
+      }
+    }
+    // Update customer name from submission answers if available // [ADDED: customer-name-from-answers]
+    if (answeredName && conversation?.id) {
+      const conv = db.prepare('SELECT customer_id FROM conversations WHERE id = ?').get(conversation.id);
+      if (conv?.customer_id) {
+        db.prepare('UPDATE customers SET name = ? WHERE id = ?').run(String(answeredName).trim(), conv.customer_id);
+      }
+    }
 
     // Update state to confirmed
     state.phase = 'confirmed';
