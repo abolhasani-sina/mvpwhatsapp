@@ -31,7 +31,7 @@ export default function Dashboard({ businessId, onNavigate }) {
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Welcome to NabzChat</h2>
             <p className="text-slate-400 mb-8 max-w-md mx-auto">
-              Build your AI chat bot in minutes. Pick a template, customize it, and start receiving customer requests on WhatsApp, Telegram & Instagram.
+              Build your smart bot in minutes. Pick a template, customize it, and start receiving customer requests on WhatsApp, Telegram & Instagram.
             </p>
             <button
               onClick={() => onNavigate?.('builder')}
@@ -48,16 +48,16 @@ export default function Dashboard({ businessId, onNavigate }) {
   const stats = data || { totalSubmissions: 0, newCount: 0, inProgress: 0, doneCount: 0, staffCount: 0, recentSubmissions: [], dailyCounts: [] };
 
   const cards = [
-    { label: 'Total Submissions', value: stats.totalSubmissions, icon: Inbox, iconColor: 'text-blue-500', bgColor: 'bg-blue-50', borderColor: 'border-blue-100' },
-    { label: 'New / Pending', value: stats.newCount, icon: TrendingUp, iconColor: 'text-amber-500', bgColor: 'bg-amber-50', borderColor: 'border-amber-100' },
-    { label: 'In Progress', value: stats.inProgress, icon: Clock, iconColor: 'text-violet-500', bgColor: 'bg-violet-50', borderColor: 'border-violet-100' },
-    { label: 'Completed', value: stats.doneCount, icon: CheckCircle2, iconColor: 'text-emerald-500', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-100' },
+    { label: 'Total Requests', value: stats.totalSubmissions, icon: Inbox, iconColor: 'text-blue-500', bgColor: 'bg-blue-50', borderColor: 'border-blue-100' },
+    { label: 'Waiting for Reply', value: stats.newCount, icon: TrendingUp, iconColor: 'text-amber-500', bgColor: 'bg-amber-50', borderColor: 'border-amber-100' },
+    { label: 'Being Handled', value: stats.inProgress, icon: Clock, iconColor: 'text-violet-500', bgColor: 'bg-violet-50', borderColor: 'border-violet-100' },
+    { label: 'Done', value: stats.doneCount, icon: CheckCircle2, iconColor: 'text-emerald-500', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-100' },
   ];
 
   const quickActions = [
     { label: 'Edit Bot', page: 'builder', icon: Bot, desc: 'Customize menus & flows', gradient: 'from-indigo-500 to-violet-500' },
     { label: 'View Submissions', page: 'submissions', icon: Inbox, desc: 'Review incoming requests', gradient: 'from-blue-500 to-cyan-500' },
-    { label: 'Manage Staff', page: 'staff', icon: Users, desc: 'Assign team members', gradient: 'from-amber-500 to-orange-500' },
+    { label: 'Connect WhatsApp', page: 'settings', icon: Users, desc: 'Link your WhatsApp channel', gradient: 'from-amber-500 to-orange-500' },
   ];
 
   const maxDaily = Math.max(...(stats.dailyCounts || []).map((d) => d.count), 1);
@@ -65,8 +65,8 @@ export default function Dashboard({ businessId, onNavigate }) {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Dashboard</h2>
-        <p className="text-sm text-slate-500 mt-1">Overview of your bot activity</p>
+        <h2 className="text-2xl font-bold text-slate-900">Good morning </h2>
+        <p className="text-sm text-slate-500 mt-1">Here is what is happening today</p>
       </div>
 
       {loading ? (

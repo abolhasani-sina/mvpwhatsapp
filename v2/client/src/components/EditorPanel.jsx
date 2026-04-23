@@ -7,13 +7,13 @@ import { fetchStaff, uploadButtonMedia, deleteButtonMedia } from '../lib/api';
 const BEHAVIORS = [
   {
     key: 'menu',
-    label: 'Show more options',
+    label: 'Show sub-menu',
     description: 'This button will show sub-buttons',
     icon: '▸',
   },
   {
     key: 'info',
-    label: 'Show information',
+    label: 'Show service page',
     description: 'This button will show a description page',
     icon: 'ℹ',
   },
@@ -94,10 +94,10 @@ function Accordion({ title, defaultOpen, open, onToggle, summary, children }) {
 }
 
 const STEP_TYPES = [
-  { value: 'text', label: 'Text input' },
-  { value: 'choice', label: 'Choice buttons' },
-  { value: 'choice_with_manual', label: 'Choice + manual' },
-  { value: 'select_from_menu', label: 'Select from existing menu (with preview)' },
+  { value: 'text', label: 'Customer types their answer' },
+  { value: 'choice', label: 'Multiple choice' },
+  { value: 'choice_with_manual', label: 'Customer picks or types their own' },
+  { value: 'select_from_menu', label: 'Pick from your service list' },
 ];
 
 function StepTypeLabel(type) {
@@ -276,7 +276,7 @@ function InfoActionFlowBuilder({ flowSteps, onUpdateSteps, genId, allButtons }) 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
-      <div style={{ fontSize: '12px', fontWeight: 600, color: '#555' }}>Flow steps</div>
+      <div style={{ fontSize: '12px', fontWeight: 600, color: '#555' }}>Booking questions (asked for all services)</div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={flowSteps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
           {flowSteps.map((step, idx) => (
@@ -357,7 +357,7 @@ function FlowBuilder({ flowSteps, buttonId, onUpdateButton, genId, allButtons, o
   }
 
   return (
-    <Accordion title="⚡ Flow steps" defaultOpen={open === undefined} open={open} onToggle={onToggle} summary={flowSteps.length > 0 ? `${flowSteps.length} step${flowSteps.length !== 1 ? 's' : ''}` : null}>
+    <Accordion title="⚡ Booking questions (asked for all services)" defaultOpen={open === undefined} open={open} onToggle={onToggle} summary={flowSteps.length > 0 ? `${flowSteps.length} step${flowSteps.length !== 1 ? 's' : ''}` : null}>
       <p style={styles.accordionDesc}>Define the step-by-step questions for this action.</p>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={flowSteps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
@@ -669,7 +669,7 @@ function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons,
       </Accordion>
 
       {/* Media */}
-      <Accordion title="📷 Media (Optional)" summary={infoPage.media && infoPage.media.length > 0 ? `${infoPage.media.length} file${infoPage.media.length !== 1 ? 's' : ''}` : null}>
+      <Accordion title="📷 Service photo (optional)" summary={infoPage.media && infoPage.media.length > 0 ? `${infoPage.media.length} file${infoPage.media.length !== 1 ? 's' : ''}` : null}>
         <p style={styles.accordionDesc}>Upload images or files to show in this info page. The first image will appear as a header in the chat.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {(infoPage.media || []).map((m, idx) => (
@@ -727,7 +727,7 @@ function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons,
       </Accordion>
 
       {/* Actions */}
-      <Accordion title="❓ Extra Questions (Optional)" summary={infoPage.extraSteps && infoPage.extraSteps.length > 0 ? `${infoPage.extraSteps.length} step${infoPage.extraSteps.length !== 1 ? 's' : ''}` : null}>
+      <Accordion title="❓ Service-specific questions (only for this service)" summary={infoPage.extraSteps && infoPage.extraSteps.length > 0 ? `${infoPage.extraSteps.length} step${infoPage.extraSteps.length !== 1 ? 's' : ''}` : null}>
         <p style={styles.accordionDesc}>Add service-specific questions appended to the booking flow when "Book this" is clicked.</p>
         <InfoActionFlowBuilder
           flowSteps={infoPage.extraSteps || []}
@@ -737,7 +737,7 @@ function InfoPageEditor({ infoPage, buttonId, onUpdateButton, genId, allButtons,
         />
       </Accordion>
 
-      <Accordion title="👆 Buttons inside this page" defaultOpen>
+      <Accordion title="👆 Buttons on this page" defaultOpen>
         <p style={styles.accordionDesc}>These buttons will be shown after entering this page</p>
         <div style={styles.actionButtonsList}>
           {infoPage.actionButtons.map((ab, idx) => {
@@ -978,7 +978,7 @@ function ButtonDelivery({ deliveryMethod, deliveryStaffId, staff, onChange }) {
     <div style={{ background: '#f0f8ff', borderRadius: '8px', padding: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <div style={{ fontSize: '12px', fontWeight: 600, color: '#555' }}>📨 Delivery</div>
 
-      <label style={{ fontSize: '11px', fontWeight: 500, color: '#888' }}>Delivery Method</label>
+      <label style={{ fontSize: '11px', fontWeight: 500, color: '#888' }}>Who receives this booking?</label>
       <select
         value={deliveryMethod}
         onChange={(e) => onChange({ deliveryMethod: e.target.value, deliveryStaffId: '' })}
@@ -1182,7 +1182,7 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
 
         {/* Behavior */}
         <Accordion
-          title="⚙️ What happens on tap?"
+          title="⚙️ When customer taps this button"
           open={openSections.behavior}
           onToggle={() => setOpenSections((prev) => ({ ...prev, behavior: !prev.behavior }))}
           summary={behaviorSummary}
@@ -1342,7 +1342,7 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
         This is the first thing your customers see when they message your bot.
       </p>
 
-      <label style={styles.label}>Message text</label>
+      <label style={styles.label}>Welcome Message</label>
       <textarea
         style={{
           ...styles.textarea,

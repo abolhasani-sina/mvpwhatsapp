@@ -178,7 +178,7 @@ export default function SubmissionsList({ businessId }) {
       <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
-            <h1 className="text-lg font-bold text-slate-900 tracking-tight">Submissions</h1>
+            <h1 className="text-lg font-bold text-slate-900 tracking-tight">Bookings & Requests</h1>
             <span className="bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full">
               {filtered.length}
             </span>
@@ -208,10 +208,10 @@ export default function SubmissionsList({ businessId }) {
               <span className="w-2 h-2 rounded-full bg-indigo-500" /> {stats.new} New
             </span>
             <span className="flex items-center gap-1.5 text-slate-500">
-              <span className="w-2 h-2 rounded-full bg-amber-500" /> {stats.in_progress} In Progress
+              <span className="w-2 h-2 rounded-full bg-amber-500" /> {stats.in_progress} Being Handled
             </span>
             <span className="flex items-center gap-1.5 text-slate-500">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" /> {stats.done} Completed
+              <span className="w-2 h-2 rounded-full bg-emerald-500" /> {stats.done} Done
             </span>
           </div>
 
@@ -276,7 +276,7 @@ export default function SubmissionsList({ businessId }) {
                 <th className="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-4 py-3">Customer</th>
                 <th className="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-4 py-3 hidden md:table-cell">Service</th>
                 <th className="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-4 py-3">Status</th>
-                <th className="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-4 py-3 hidden lg:table-cell">Assigned</th>
+                <th className="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-4 py-3 hidden">Assigned</th>
                 <th className="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-4 py-3">Date</th>
                 <th className="w-10 px-4 py-3" />
               </tr>
@@ -345,7 +345,7 @@ function SubmissionRow({ sub, staff, expanded, onToggle, onStatusChange, onAssig
         </td>
 
         {/* Assigned */}
-        <td className="px-4 py-3.5 hidden lg:table-cell">
+        <td className="px-4 py-3.5 hidden">
           {sub.assigned_name ? (
             <span className="text-sm text-slate-600 flex items-center gap-1.5">
               <User className="w-3 h-3 text-slate-400" /> {sub.assigned_name}
@@ -387,7 +387,7 @@ function SubmissionRow({ sub, staff, expanded, onToggle, onStatusChange, onAssig
                   </select>
                 </div>
                 <div className="flex-1 min-w-[180px]">
-                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Assign to</label>
+                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Assign to staff member</label>
                   <select value={sub.assigned_to || ''} onChange={e => onAssign(sub.id, e.target.value ? Number(e.target.value) : null)}
                     className="w-full px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 cursor-pointer transition-all">
                     <option value="">Unassigned</option>
@@ -417,7 +417,7 @@ function SubmissionRow({ sub, staff, expanded, onToggle, onStatusChange, onAssig
               )}
 
               {/* Submitted data */}
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Submitted data</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Customer's Answers</p>
               <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                 {Object.entries(sub.data || {}).filter(([k]) => !k.startsWith('_')).map(([key, value], i, arr) => (
                   <div key={key} className={`flex px-4 py-3 ${i < arr.length - 1 ? 'border-b border-slate-100' : ''}`}>
