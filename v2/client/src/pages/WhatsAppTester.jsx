@@ -1004,7 +1004,7 @@ export default function WhatsAppTester({ businessId }) {
         {CHANNEL_TABS.map(ch => (
           <button key={ch.key} onClick={() => { setActiveChannel(ch.key); setPreviewChannel(ch.key); }}
             style={{
-              padding: '8px 10px', fontSize: 12, fontWeight: activeChannel === ch.key ? 700 : 500, // [ADDED: mobile-responsive]
+              flex: 1, padding: '8px 4px', fontSize: 12, fontWeight: activeChannel === ch.key ? 700 : 500, // [ADDED: mobile-responsive]
               background: activeChannel === ch.key ? ch.color : 'transparent',
               color: activeChannel === ch.key ? '#fff' : undefined,
               border: 'none', borderRadius: 8, cursor: 'pointer',

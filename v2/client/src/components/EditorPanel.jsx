@@ -1131,7 +1131,7 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
 
     return (
       // [ADDED: mobile-responsive] full-width on mobile, fixed 420px on lg+
-      <div className="w-full lg:w-[420px] lg:shrink-0">
+      <div className="w-full lg:flex-1 lg:min-w-[380px]">
       <div style={styles.panel}>
         {/* Contextual guide banner */}
         <div style={styles.guideBanner}>
@@ -1271,7 +1271,7 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
   if (path && path.length > 0 && parentButton) {
     return (
       // [ADDED: mobile-responsive] full-width on mobile, fixed 420px on lg+
-      <div className="w-full lg:w-[420px] lg:shrink-0">
+      <div className="w-full lg:flex-1 lg:min-w-[380px]">
       <div style={styles.panel}>
         {/* Contextual guide banner */}
         <div style={styles.guideBanner}>
@@ -1330,7 +1330,7 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
 
   return (
     // [ADDED: mobile-responsive] full-width on mobile, fixed 420px on lg+
-    <div className="w-full lg:w-[420px] lg:shrink-0">
+    <div className="w-full lg:flex-1 lg:min-w-[380px]">
     <div style={styles.panel}>
       {/* Contextual guide banner */}
       <div style={styles.guideBanner}>

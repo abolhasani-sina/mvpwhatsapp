@@ -387,7 +387,7 @@ export default function BuilderPage({ businessId, setBusinessId }) {
       </div>
 
       {/* [ADDED: mobile-responsive] stack PhoneMockup + EditorPanel vertically on mobile, side-by-side on lg+ */}
-      <div className="flex flex-col lg:flex-row items-start gap-6 p-4 lg:p-8">
+      <div className="flex flex-col lg:flex-row items-start gap-6 p-4 lg:p-8 w-full">
         <PhoneMockup
           businessName={businessName}
           businessId={businessId}
