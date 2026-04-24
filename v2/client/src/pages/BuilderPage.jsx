@@ -371,7 +371,8 @@ export default function BuilderPage({ businessId, setBusinessId }) {
 
       {/* Save bar with contextual tip */}
       <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center gap-3">
-        <div className="flex-1 text-xs text-slate-500 leading-relaxed">
+        {/* [ADDED: mobile-responsive] hide tip on mobile to keep Save button visible */}
+        <div className="flex-1 text-xs text-slate-500 leading-relaxed hidden sm:block">
           💡 {contextTip}
         </div>
         {saveStatus === 'saved' && <span className="text-sm text-indigo-600 font-medium whitespace-nowrap">✓ Saved</span>}
@@ -385,7 +386,8 @@ export default function BuilderPage({ businessId, setBusinessId }) {
         </button>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '2rem', padding: '2rem' }}>
+      {/* [ADDED: mobile-responsive] stack PhoneMockup + EditorPanel vertically on mobile, side-by-side on lg+ */}
+      <div className="flex flex-col lg:flex-row items-start gap-6 p-4 lg:p-8">
         <PhoneMockup
           businessName={businessName}
           businessId={businessId}

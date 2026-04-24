@@ -1130,6 +1130,8 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
     const behaviorSummary = selectedButton.behavior ? (BEHAVIORS.find((b) => b.key === selectedButton.behavior)?.label || null) : null;
 
     return (
+      // [ADDED: mobile-responsive] full-width on mobile, fixed 420px on lg+
+      <div className="w-full lg:w-[420px] lg:shrink-0">
       <div style={styles.panel}>
         {/* Contextual guide banner */}
         <div style={styles.guideBanner}>
@@ -1261,12 +1263,15 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
           </Accordion>
         )}
       </div>
+      </div>
     );
   }
 
   // Inside a submenu (no button selected) → show submenu editor
   if (path && path.length > 0 && parentButton) {
     return (
+      // [ADDED: mobile-responsive] full-width on mobile, fixed 420px on lg+
+      <div className="w-full lg:w-[420px] lg:shrink-0">
       <div style={styles.panel}>
         {/* Contextual guide banner */}
         <div style={styles.guideBanner}>
@@ -1310,6 +1315,7 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
           💡 Click any sub-option to set what it does. Double-click on the phone preview to drill into nested menus.
         </div>
       </div>
+      </div>
     );
   }
 
@@ -1323,6 +1329,8 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
   if (igOverLimit) channelWarnings.push('Instagram supports max 13 quick replies. Extra buttons will be hidden.');
 
   return (
+    // [ADDED: mobile-responsive] full-width on mobile, fixed 420px on lg+
+    <div className="w-full lg:w-[420px] lg:shrink-0">
     <div style={styles.panel}>
       {/* Contextual guide banner */}
       <div style={styles.guideBanner}>
@@ -1408,6 +1416,7 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
           )}
         </>
       )}
+    </div>
     </div>
   );
 }

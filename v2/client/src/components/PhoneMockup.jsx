@@ -77,7 +77,9 @@ export default function PhoneMockupWithTabs({ channel: controlledChannel, onChan
   const channel = controlledChannel || internalChannel;
   const handleChange = (ch) => { if (onChannelChange) onChannelChange(ch); else setInternalChannel(ch); };
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0' }}>
+    // [ADDED: mobile-responsive] outer wrapper centers the phone on mobile, left-aligns on lg+
+    <div className="w-full lg:w-auto flex justify-center lg:justify-start shrink-0">
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0' }}>
       {/* Channel tabs */}
       <div style={{ display: 'flex', gap: '0', borderRadius: '12px 12px 0 0', overflow: 'hidden', border: '1px solid #e2e8f0', borderBottom: 'none' }}>
         {CHANNEL_TABS.map(tab => (
@@ -93,6 +95,7 @@ export default function PhoneMockupWithTabs({ channel: controlledChannel, onChan
         ))}
       </div>
       <PhoneMockup {...props} channel={channel} />
+      </div>
     </div>
   );
 }
