@@ -266,6 +266,15 @@ export function migrate() {
   if (!settCols.includes('business_email')) {
     db.exec("ALTER TABLE settings ADD COLUMN business_email TEXT DEFAULT ''");
   }
+  if (!settCols.includes('whatsapp_phone_number_id')) {
+    db.exec("ALTER TABLE settings ADD COLUMN whatsapp_phone_number_id TEXT DEFAULT ''");
+  }
+  if (!settCols.includes('whatsapp_access_token')) {
+    db.exec("ALTER TABLE settings ADD COLUMN whatsapp_access_token TEXT DEFAULT ''");
+  }
+  if (!settCols.includes('whatsapp_waba_id')) {
+    db.exec("ALTER TABLE settings ADD COLUMN whatsapp_waba_id TEXT DEFAULT ''");
+  }
   if (!settCols.includes('whatsapp_number')) {
     db.exec("ALTER TABLE settings ADD COLUMN whatsapp_number TEXT DEFAULT ''");
   }

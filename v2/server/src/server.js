@@ -18,6 +18,7 @@ import healthRouter from './middleware/healthCheck.js';
 import { errorHandler, setupProcessErrorHandlers } from './middleware/errorHandler.js';
 import db from './db.js';
 import { handleWebhook, cleanupTelegramUpdates, startPolling } from './telegram-bot.js';
+import { handleWhatsAppWebhook } from './whatsapp-bot.js'; // [ADDED: whatsapp-webhook]
 import { cleanupDedupRecords, cleanupStaleSessions } from './bot-engine.js';
 import { processMessageQueue } from './message-queue.js';
 
@@ -150,11 +151,10 @@ app.get('/api/webhook/whatsapp', (req, res) => {
   }
 });
 
-app.post('/api/webhook/whatsapp', (req, res) => {
-  const body = req.body;
-  console.log('WhatsApp webhook received:', JSON.stringify(body));
-  res.sendStatus(200);
-});
+app.post('/api/webhook/whatsapp', async (req, res) => {
+  res.sendStatus(200); // Respond immediately to Meta
+  await handleWhatsAppWebhook(req.body); // Process async
+}); // [ADDED: whatsapp-webhook]
 
 app.use('/api/auth', authRoutes);
 app.use('/api/owner', ownerRoutes);
