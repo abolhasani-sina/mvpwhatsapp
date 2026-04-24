@@ -153,11 +153,11 @@ export async function fetchSettings(businessId) {
   return json.data;
 }
 
-export async function updateSettings(businessId, telegramBotToken, telegramChatId, businessEmail, whatsappNumber) {
+export async function updateSettings(businessId, telegramBotToken, telegramChatId, businessEmail, whatsappNumber, whatsappPhoneNumberId, whatsappAccessToken, whatsappWabaId) {
   const res = await authFetch(`${API}/business/${businessId}/settings`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ telegramBotToken, telegramChatId, businessEmail, whatsappNumber }),
+    body: JSON.stringify({ telegramBotToken, telegramChatId, businessEmail, whatsappNumber, whatsappPhoneNumberId, whatsappAccessToken, whatsappWabaId }),
   });
   if (!res.ok) {
     const json = await res.json().catch(() => ({}));

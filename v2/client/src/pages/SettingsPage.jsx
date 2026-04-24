@@ -19,6 +19,10 @@ export default function SettingsPage({ businessId }) {
   const [requestValue, setRequestValue] = useState('');
   const [requestReason, setRequestReason] = useState('');
   const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [waPhoneNumberId, setWaPhoneNumberId] = useState('');
+  const [waAccessToken, setWaAccessToken] = useState('');
+  const [waWabaId, setWaWabaId] = useState('');
+  const [showWaToken, setShowWaToken] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -33,6 +37,9 @@ export default function SettingsPage({ businessId }) {
         setTgToken(s.telegram_bot_token || '');
         setTgChatId(s.telegram_chat_id || '');
         setBusinessEmail(s.business_email || '');
+        setWaPhoneNumberId(s.whatsapp_phone_number_id || '');
+        setWaAccessToken(s.whatsapp_access_token || '');
+        setWaWabaId(s.whatsapp_waba_id || '');
         setLocks({
           telegram: s.telegram_locked === 1,
           whatsapp: s.whatsapp_locked === 1,
@@ -56,7 +63,7 @@ export default function SettingsPage({ businessId }) {
     setSaving(true);
     try {
       await Promise.all([
-        updateSettings(businessId, locks.telegram ? undefined : tgToken, tgChatId, businessEmail, ''), // [ADDED: dont-send-locked-token]
+        updateSettings(businessId, locks.telegram ? undefined : tgToken, tgChatId, businessEmail, '', waPhoneNumberId, waAccessToken, waWabaId), // [ADDED: dont-send-locked-token]
         // [ADDED: remove-whatsapp-field]
         updateBusiness(businessId, { name: bizName, phone: bizPhone }),
       ]);
@@ -209,6 +216,54 @@ export default function SettingsPage({ businessId }) {
             <p className="text-[11px] text-slate-400 mt-1">
               Don't know your Chat ID? Message <strong>@userinfobot</strong> on Telegram and it will reply with your ID.
             </p>
+          </label>
+        </div>
+      </div>
+
+      {/* WhatsApp Cloud API */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <h2 className="text-lg font-semibold text-slate-900 mb-1">WhatsApp Cloud API</h2>
+        <p className="text-[13px] text-slate-400 mb-4">
+          Connect your WhatsApp Business number via Meta Cloud API. You need a verified Meta Business account and a WhatsApp Business Account (WABA).
+        </p>
+        <div className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1 text-[13px] font-medium text-slate-500">
+            Phone Number ID
+            <input
+              value={waPhoneNumberId}
+              onChange={(e) => setWaPhoneNumberId(e.target.value)}
+              placeholder="1093820477142269"
+              className="py-2 px-3 rounded-lg border border-slate-200 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">Found in Meta Developer App  WhatsApp  API Setup</p>
+          </label>
+          <label className="flex flex-col gap-1 text-[13px] font-medium text-slate-500">
+            Access Token
+            <div className="relative">
+              <input
+                value={waAccessToken}
+                onChange={(e) => setWaAccessToken(e.target.value)}
+                type={showWaToken ? 'text' : 'password'}
+                placeholder="EAAxxxxxxxx..."
+                className="w-full py-2 px-3 rounded-lg border border-slate-200 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 pr-16"
+              />
+              <button
+                type="button"
+                onClick={() => setShowWaToken(!showWaToken)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-indigo-600 hover:text-indigo-800"
+              >{showWaToken ? 'Hide' : 'Show'}</button>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">Temporary or permanent access token from Meta Developer App</p>
+          </label>
+          <label className="flex flex-col gap-1 text-[13px] font-medium text-slate-500">
+            WhatsApp Business Account ID (WABA ID)
+            <input
+              value={waWabaId}
+              onChange={(e) => setWaWabaId(e.target.value)}
+              placeholder="2998883523654864"
+              className="py-2 px-3 rounded-lg border border-slate-200 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">Found in Meta Developer App  WhatsApp  API Setup</p>
           </label>
         </div>
       </div>

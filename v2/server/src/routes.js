@@ -984,12 +984,12 @@ router.get('/business/:id/settings', tenantScope, (req, res) => {
     // Decrypt sensitive fields before returning
     settings.telegram_bot_token = decryptField(settings.telegram_bot_token);
   }
-  res.json({ data: settings || { telegram_bot_token: '', telegram_chat_id: '', business_email: '', whatsapp_number: '' } });
+  res.json({ data: settings || { telegram_bot_token: '', telegram_chat_id: '', business_email: '', whatsapp_number: '', whatsapp_phone_number_id: '', whatsapp_access_token: '', whatsapp_waba_id: '' } });
 });
 
 router.put('/business/:id/settings', tenantScope, updateSettingsRules, validate, (req, res) => {
   const businessId = req.params.id;
-  const { telegramBotToken, telegramChatId, businessEmail, whatsappNumber, instagramPageId } = req.body;
+  const { telegramBotToken, telegramChatId, businessEmail, whatsappNumber, instagramPageId, whatsappPhoneNumberId, whatsappAccessToken, whatsappWabaId } = req.body;
 
   const existing = db.prepare('SELECT * FROM settings WHERE business_id = ?').get(businessId);
 
@@ -1046,7 +1046,8 @@ router.put('/business/:id/settings', tenantScope, updateSettingsRules, validate,
         whatsapp_number = ?, instagram_page_id = ?,
         telegram_set_at = ?, telegram_locked = ?,
         whatsapp_set_at = ?, whatsapp_locked = ?,
-        instagram_set_at = ?, instagram_locked = ?
+        instagram_set_at = ?, instagram_locked = ?,
+        whatsapp_phone_number_id = ?, whatsapp_access_token = ?, whatsapp_waba_id = ?
       WHERE business_id = ?
     `).run(
       String(encryptedToken || ''), String(telegramChatId || ''), String(businessEmail || ''),
@@ -1054,6 +1055,7 @@ router.put('/business/:id/settings', tenantScope, updateSettingsRules, validate,
       telegramSetAt || null, Number(telegramLocked || 0),
       whatsappSetAt || null, Number(whatsappLocked || 0),
       instagramSetAt || null, Number(instagramLocked || 0),
+      String(whatsappPhoneNumberId || ''), String(whatsappAccessToken || ''), String(whatsappWabaId || ''),
       String(businessId)
     );
   } else {
@@ -1063,14 +1065,16 @@ router.put('/business/:id/settings', tenantScope, updateSettingsRules, validate,
          whatsapp_number, instagram_page_id,
          telegram_set_at, telegram_locked,
          whatsapp_set_at, whatsapp_locked,
-         instagram_set_at, instagram_locked)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         instagram_set_at, instagram_locked,
+         whatsapp_phone_number_id, whatsapp_access_token, whatsapp_waba_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       businessId, encryptedToken, telegramChatId || '', businessEmail || '',
       newWhatsapp, newInstagram,
       telegramSetAt, telegramLocked,
       whatsappSetAt, whatsappLocked,
-      instagramSetAt, instagramLocked
+      instagramSetAt, instagramLocked,
+      whatsappPhoneNumberId || '', whatsappAccessToken || '', whatsappWabaId || ''
     );
   }
   // Auto-start polling if telegram token was just set // [ADDED: auto-start-polling]
