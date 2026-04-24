@@ -143,7 +143,7 @@ export default function Login({ onNavigate }) {
           </p>
 
           <p className="mt-6 text-center text-xs text-slate-400">
-            By signing in you agree to our Terms of Service and Privacy Policy
+            By signing in you agree to our <a href="https://nabzchat.tech/terms-of-service.html" target="_blank" style={{color:"#6366f1"}}>Terms of Service</a> and <a href="https://nabzchat.tech/privacy-policy.html" target="_blank" style={{color:"#6366f1"}}>Privacy Policy</a>
           </p>
         </div>
       </div>

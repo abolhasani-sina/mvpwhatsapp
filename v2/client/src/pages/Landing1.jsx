@@ -747,8 +747,8 @@ export default function Landing1({ onNavigate }) {
             </div>
             <div>
               <div className="footer-col-title">Legal</div>
-              <a className="footer-link" href="#">Privacy Policy</a>
-              <a className="footer-link" href="#">Terms of Service</a>
+              <a className="footer-link" href="https://nabzchat.tech/privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+              <a className="footer-link" href="https://nabzchat.tech/terms-of-service.html" target="_blank" rel="noopener noreferrer">Terms of Service</a>
             </div>
           </div>
           <div style={{ paddingTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: '#475569', flexWrap: 'wrap', gap: 12 }}>
