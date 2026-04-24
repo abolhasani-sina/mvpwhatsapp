@@ -215,9 +215,9 @@ export default function SubmissionsList({ businessId }) {
             </span>
           </div>
 
-          <div className="sm:ml-auto flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2"> {/* [ADDED: mobile-responsive] */}
             {/* Status filter chips */}
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1"> {/* [ADDED: mobile-responsive] */}
               {['all', 'new', 'in_progress', 'done', 'cancelled'].map(f => {
                 const active = statusFilter === f;
                 const cfg = STATUS_CFG[f];
@@ -234,11 +234,11 @@ export default function SubmissionsList({ businessId }) {
               })}
             </div>
 
-            {/* Search */}
-            <div className="relative">
+            {/* Search */}{/* [ADDED: mobile-responsive] */}
+            <div className="relative w-full sm:w-auto">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
               <input type="text" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}
-                className="w-44 pl-8 pr-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg text-slate-700 placeholder:text-slate-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all" />
+                className="w-full sm:w-44 pl-8 pr-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg text-slate-700 placeholder:text-slate-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all" />
             </div>
           </div>
         </div>
@@ -277,7 +277,7 @@ export default function SubmissionsList({ businessId }) {
                 <th className="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-4 py-3 hidden md:table-cell">Service</th>
                 <th className="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-4 py-3">Status</th>
                 <th className="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-4 py-3 hidden">Assigned</th>
-                <th className="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-4 py-3">Date</th>
+                <th className="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-4 py-3 hidden sm:table-cell">Date</th> {/* [ADDED: mobile-responsive] */}
                 <th className="w-10 px-4 py-3" />
               </tr>
             </thead>
@@ -361,7 +361,7 @@ function SubmissionRow({ sub, staff, expanded, onToggle, onStatusChange, onAssig
         </td>
 
         {/* Date */}
-        <td className="px-4 py-3.5">
+        <td className="px-4 py-3.5 hidden sm:table-cell"> {/* [ADDED: mobile-responsive] */}
           <div className="text-xs text-slate-500">{new Date(sub.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
           <div className="text-[10px] text-slate-400">{new Date(sub.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
         </td>

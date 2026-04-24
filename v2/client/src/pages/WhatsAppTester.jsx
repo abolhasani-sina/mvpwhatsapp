@@ -1000,7 +1000,7 @@ export default function WhatsAppTester({ businessId }) {
   return (
     <div className="flex flex-col items-center h-full px-6 pb-6 pt-3 bg-slate-100">
       {/* Channel Tabs */}
-      <div className="flex gap-1 mb-4 bg-white rounded-xl p-1 shadow-sm border border-slate-200">
+      <div className="flex gap-1 mb-4 bg-white rounded-xl p-1 shadow-sm border border-slate-200 w-full max-w-[375px] mx-auto"> {/* [ADDED: mobile-responsive] */}
         {CHANNEL_TABS.map(ch => (
           <button key={ch.key} onClick={() => { setActiveChannel(ch.key); setPreviewChannel(ch.key); }}
             style={{
@@ -1017,10 +1017,11 @@ export default function WhatsAppTester({ businessId }) {
         ))}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+      <div className="flex items-start justify-center w-full px-2 sm:px-0"> {/* [ADDED: mobile-responsive] */}
       {/* Phone Frame */}
-      <div style={{
-        width: 375, height: 720, borderRadius: 40, overflow: 'hidden',
+      {/* [ADDED: mobile-responsive] */}
+      <div className="w-full max-w-[375px] mx-auto" style={{
+        height: 'calc(100vh - 180px)', maxHeight: 720, minHeight: 500, borderRadius: 40, overflow: 'hidden',
         boxShadow: '0 20px 60px rgba(0,0,0,0.2), 0 0 0 8px #1a1a1a, 0 0 0 10px #333',
         background: '#1a1a1a', display: 'flex', flexDirection: 'column', position: 'relative',
       }}>
