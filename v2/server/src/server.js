@@ -135,6 +135,27 @@ app.get("/api/plans", (_req, res) => {
 });
 
 // ── New API routes ──
+//  Public WhatsApp Cloud API webhook  [ADDED: whatsapp-webhook]
+const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'nabzchat_webhook_2026';
+
+app.get('/api/webhook/whatsapp', (req, res) => {
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+  if (mode === 'subscribe' && token === WHATSAPP_VERIFY_TOKEN) {
+    console.log('WhatsApp webhook verified successfully');
+    res.status(200).send(challenge);
+  } else {
+    res.sendStatus(403);
+  }
+});
+
+app.post('/api/webhook/whatsapp', (req, res) => {
+  const body = req.body;
+  console.log('WhatsApp webhook received:', JSON.stringify(body));
+  res.sendStatus(200);
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/owner', ownerRoutes);
 app.use('/api', routes);
