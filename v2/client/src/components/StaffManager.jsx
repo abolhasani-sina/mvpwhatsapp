@@ -118,7 +118,7 @@ export default function StaffManager({ businessId }) {
           <>
         {/* Add form */}
         <div className="flex flex-col gap-2 mb-4">
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2"> {/* [ADDED: mobile-responsive] */}
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -134,7 +134,7 @@ export default function StaffManager({ businessId }) {
               onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2"> {/* [ADDED: mobile-responsive] */}
             <input
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
@@ -169,7 +169,7 @@ export default function StaffManager({ businessId }) {
               <div key={s.id} className="bg-slate-50 rounded-lg p-3 border border-slate-100">
                 {editingId === s.id ? (
                   <div className="flex flex-col gap-2">
-                    <div className="flex gap-2 items-center">
+                    <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center"> {/* [ADDED: mobile-responsive] */}
                       <input
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
@@ -183,7 +183,7 @@ export default function StaffManager({ businessId }) {
                         placeholder="Role"
                       />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2"> {/* [ADDED: mobile-responsive] */}
                       <input
                         value={editEmail}
                         onChange={(e) => setEditEmail(e.target.value)}

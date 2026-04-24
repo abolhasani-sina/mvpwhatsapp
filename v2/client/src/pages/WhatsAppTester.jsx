@@ -1000,11 +1000,11 @@ export default function WhatsAppTester({ businessId }) {
   return (
     <div className="flex flex-col items-center h-full px-6 pb-6 pt-3 bg-slate-100">
       {/* Channel Tabs */}
-      <div className="flex gap-1 mb-4 bg-white rounded-xl p-1 shadow-sm border border-slate-200 w-full max-w-[375px] mx-auto"> {/* [ADDED: mobile-responsive] */}
+      <div className="flex gap-1 mb-4 bg-white rounded-xl p-1 shadow-sm border border-slate-200 w-full max-w-[375px] mx-auto overflow-hidden"> {/* [ADDED: mobile-responsive] */}
         {CHANNEL_TABS.map(ch => (
           <button key={ch.key} onClick={() => { setActiveChannel(ch.key); setPreviewChannel(ch.key); }}
             style={{
-              padding: '8px 20px', fontSize: 13, fontWeight: activeChannel === ch.key ? 700 : 500,
+              padding: '8px 10px', fontSize: 12, fontWeight: activeChannel === ch.key ? 700 : 500, // [ADDED: mobile-responsive]
               background: activeChannel === ch.key ? ch.color : 'transparent',
               color: activeChannel === ch.key ? '#fff' : undefined,
               border: 'none', borderRadius: 8, cursor: 'pointer',
