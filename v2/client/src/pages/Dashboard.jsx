@@ -144,6 +144,70 @@ export default function Dashboard({ businessId, onNavigate }) {
             </div>
           </div>
 
+          {/* Plan Usage */}
+          {stats.plan && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-slate-700">Plan Usage</h3>
+                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">{stats.plan.name}</span>
+                </div>
+                <button onClick={() => onNavigate?.('settings')} className="text-xs text-indigo-600 hover:underline font-medium">Manage </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Submissions this month */}
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-xs text-slate-500">Submissions this month</span>
+                    <span className="text-xs font-semibold text-slate-700">
+                      {stats.plan.usageSubmissionsThisMonth} / {stats.plan.maxSubmissionsPerMonth ?? ''}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        stats.plan.maxSubmissionsPerMonth &&
+                        stats.plan.usageSubmissionsThisMonth / stats.plan.maxSubmissionsPerMonth > 0.8
+                          ? 'bg-red-500' : 'bg-indigo-500'
+                      }`}
+                      style={{ width: `${stats.plan.maxSubmissionsPerMonth ? Math.min(100, (stats.plan.usageSubmissionsThisMonth / stats.plan.maxSubmissionsPerMonth) * 100) : 0}%` }}
+                    />
+                  </div>
+                </div>
+                {/* Staff */}
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-xs text-slate-500">Staff members</span>
+                    <span className="text-xs font-semibold text-slate-700">
+                      {stats.plan.usageStaff} / {stats.plan.maxStaff ?? ''}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        stats.plan.maxStaff &&
+                        stats.plan.usageStaff / stats.plan.maxStaff > 0.8
+                          ? 'bg-red-500' : 'bg-violet-500'
+                      }`}
+                      style={{ width: `${stats.plan.maxStaff ? Math.min(100, (stats.plan.usageStaff / stats.plan.maxStaff) * 100) : 0}%` }}
+                    />
+                  </div>
+                </div>
+                {/* Channels */}
+                <div>
+                  <div className="mb-1.5">
+                    <span className="text-xs text-slate-500">Channels included</span>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${stats.plan.allowTelegram ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-400 line-through'}`}>Telegram</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${stats.plan.allowWhatsapp ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-400 line-through'}`}>WhatsApp</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${stats.plan.allowInstagram ? 'bg-pink-100 text-pink-700' : 'bg-slate-100 text-slate-400 line-through'}`}>Instagram</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Quick actions */}
           <div>
             <h3 className="text-sm font-semibold text-slate-700 mb-3">Quick Actions</h3>

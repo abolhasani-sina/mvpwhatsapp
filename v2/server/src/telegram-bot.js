@@ -7,6 +7,7 @@ import db from './db.js';
 import { processIncoming } from './bot-engine.js';
 import { decryptField } from './middleware/encryption.js';
 import { enqueueMessage } from './message-queue.js';
+import { notifyChatIdDetector } from './routes.js';
 import { createLogger } from './logger.js';
 import { telegramMessagesReceived, telegramPollingErrors } from './metrics.js';
 
@@ -212,6 +213,7 @@ async function handleUpdate(businessId, token, update) {
   }
 
   if (!chatId) return;
+  notifyChatIdDetector(businessId, chatId, userName);
 
   const input = { text: text || null, callbackData: callbackData || null };
   const responses = processIncoming(businessId, String(chatId), 'telegram', userName, input);

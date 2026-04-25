@@ -783,7 +783,8 @@ function submitAndConfirm(conversation, state, data, businessId) {
     .filter(([k]) => !k.startsWith('_'))
     .map(([k, v]) => `${k}: ${v}`)
     .join('\n');
-  const msg = `📋 New Booking #${subId}\n${biz ? biz.name : 'Business'}\n\n${summary}`;
+  const subNum = db.prepare('SELECT business_submission_number FROM submissions WHERE id = ?').get(subId)?.business_submission_number || subId;
+  const msg = `📋 New Booking #${subNum}\n${biz ? biz.name : 'Business'}\n\n${summary}`;
 
   try {
     sendTelegramNotification(businessId, msg);

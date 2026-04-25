@@ -763,6 +763,16 @@ router.get('/business/:id/analytics', tenantScope, (req, res) => {
      GROUP BY date(created_at) ORDER BY date`
   ).all(businessId);
 
+  const planInfo = db.prepare(`
+    SELECT p.name as plan_name, p.max_staff, p.max_submissions_per_month,
+           p.allow_whatsapp, p.allow_telegram, p.allow_instagram
+    FROM businesses b LEFT JOIN plans p ON p.id = b.plan_id WHERE b.id = ?
+  `).get(businessId);
+  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
+  const monthlySubmissions = db.prepare(
+    "SELECT COUNT(*) as count FROM submissions WHERE business_id = ? AND created_at >= ?"
+  ).get(businessId, monthStart.toISOString().replace('T',' ').slice(0,19))?.count || 0;
+
   res.json({
     data: {
       totalSubmissions: totalSubs,
@@ -772,6 +782,16 @@ router.get('/business/:id/analytics', tenantScope, (req, res) => {
       staffCount,
       recentSubmissions: recent,
       dailyCounts,
+      plan: planInfo ? {
+        name: planInfo.plan_name,
+        maxStaff: planInfo.max_staff,
+        maxSubmissionsPerMonth: planInfo.max_submissions_per_month,
+        allowWhatsapp: planInfo.allow_whatsapp === 1,
+        allowTelegram: planInfo.allow_telegram === 1,
+        allowInstagram: planInfo.allow_instagram === 1,
+        usageStaff: staffCount,
+        usageSubmissionsThisMonth: monthlySubmissions,
+      } : null,
     },
   });
 });
@@ -781,6 +801,18 @@ router.get('/business/:id/analytics', tenantScope, (req, res) => {
 // ──────────────────────────────────────────────
 
 router.post('/business/:id/submissions', tenantScope, (req, res) => {
+  const subPlan = db.prepare(`
+    SELECT p.max_submissions_per_month FROM businesses b
+      LEFT JOIN plans p ON p.id = b.plan_id WHERE b.id = ?
+  `).get(req.params.id);
+  if (subPlan && subPlan.max_submissions_per_month != null) {
+    const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
+    const { count } = db.prepare(
+      "SELECT COUNT(*) AS count FROM submissions WHERE business_id = ? AND created_at >= ?"
+    ).get(req.params.id, monthStart.toISOString().replace('T',' ').slice(0,19));
+    if (count >= subPlan.max_submissions_per_month)
+      return res.status(402).json({ error: `Monthly submission limit reached (max ${subPlan.max_submissions_per_month}). Upgrade plan.`, code: 'PLAN_LIMIT_REACHED' });
+  }
   try {
     const { data, flowId, deliveryMethod, deliveryStaffId, actionButtonId } = req.body;
     const result = db.prepare(
@@ -1016,6 +1048,20 @@ router.put('/business/:id/settings', tenantScope, updateSettingsRules, validate,
         channel: l.key,
       });
     }
+  }
+
+  // Plan channel enforcement
+  const planSettings = db.prepare(`
+    SELECT p.allow_telegram, p.allow_whatsapp, p.allow_instagram FROM businesses b
+      LEFT JOIN plans p ON p.id = b.plan_id WHERE b.id = ?
+  `).get(businessId);
+  if (planSettings) {
+    if (telegramBotToken && !planSettings.allow_telegram)
+      return res.status(402).json({ error: 'Telegram not included in your current plan.', code: 'PLAN_CHANNEL_NOT_ALLOWED' });
+    if ((whatsappPhoneNumberId || whatsappAccessToken) && !planSettings.allow_whatsapp)
+      return res.status(402).json({ error: 'WhatsApp not included in your current plan.', code: 'PLAN_CHANNEL_NOT_ALLOWED' });
+    if (instagramPageId && !planSettings.allow_instagram)
+      return res.status(402).json({ error: 'Instagram not included in your current plan.', code: 'PLAN_CHANNEL_NOT_ALLOWED' });
   }
 
   // Determine new values + first-time-set flags
@@ -1413,6 +1459,12 @@ router.get('/business/:id/media/:mediaId', tenantScope, (req, res) => {
 
 // Start polling for a business
 router.post('/business/:id/telegram-bot/start', tenantScope, (req, res) => {
+  const planCheck = db.prepare(`
+    SELECT p.allow_telegram FROM businesses b
+      LEFT JOIN plans p ON p.id = b.plan_id WHERE b.id = ?
+  `).get(req.params.id);
+  if (planCheck && !planCheck.allow_telegram)
+    return res.status(402).json({ error: 'Telegram not included in your current plan.', code: 'PLAN_CHANNEL_NOT_ALLOWED' });
   const result = startPolling(Number(req.params.id));
   res.json(result);
 });
@@ -1427,6 +1479,68 @@ router.post('/business/:id/telegram-bot/stop', tenantScope, (req, res) => {
 router.get('/business/:id/telegram-bot/status', tenantScope, (req, res) => {
   const result = getPollingStatus(Number(req.params.id));
   res.json(result);
+});
+
+// In-memory store for detected chat IDs
+// key = businessId:sessionKey -> { chatId, name, timestamp }
+const chatIdDetectors = new Map();
+
+// Called by bot engine when a message arrives  captures chat ID for ALL active detectors for this business
+export function notifyChatIdDetector(businessId, chatId, name) {
+  const prefix = String(businessId) + ':';
+  for (const [key] of chatIdDetectors) {
+    if (key.startsWith(prefix)) {
+      chatIdDetectors.set(key, { chatId: String(chatId), name: name || '', timestamp: Date.now() });
+    }
+  }
+}
+
+// Detect Chat ID via SSE  waits for bot engine to capture next message
+router.get('/business/:id/telegram-bot/detect-chat-id', tenantScope, async (req, res) => {
+  const businessId = String(req.params.id);
+  const sessionKey = req.query.session || Math.random().toString(36).slice(2);
+  const mapKey = businessId + ':' + sessionKey;
+
+  // SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  send('status', { message: 'Waiting for you to message your bot on Telegram...' });
+
+  // Register this session
+  chatIdDetectors.set(mapKey, null);
+
+  let attempts = 0;
+  const maxAttempts = 20;
+  let found = false;
+  let closed = false;
+
+  req.on('close', () => { closed = true; chatIdDetectors.delete(mapKey); });
+
+  while (attempts < maxAttempts && !found && !closed) {
+    await new Promise(r => setTimeout(r, 3000));
+    attempts++;
+    if (closed) break;
+
+    const detected = chatIdDetectors.get(mapKey);
+    if (detected && detected.timestamp > Date.now() - 70000) {
+      send('found', { chatId: detected.chatId, name: detected.name });
+      chatIdDetectors.delete(mapKey);
+      found = true;
+    } else {
+      const remaining = maxAttempts - attempts;
+      send('status', { message: `Still waiting... (${remaining * 3}s remaining)` });
+    }
+  }
+
+  if (!found && !closed) {
+    chatIdDetectors.delete(mapKey);
+    send('timeout', { message: 'No message received. Please try again.' });
+  }
+  res.end();
 });
 
 export default router;

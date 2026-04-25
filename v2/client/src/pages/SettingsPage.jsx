@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Lock } from 'lucide-react';
 import {
   fetchSettings, updateSettings, updateBusiness, fetchBusiness,
-  createChannelChangeRequest, fetchChannelChangeRequests,
+  createChannelChangeRequest, fetchChannelChangeRequests, fetchAnalytics,
 } from '../lib/api';
 import { useToast } from '../components/Toast';
 
@@ -25,6 +25,11 @@ export default function SettingsPage({ businessId }) {
   const [showWaToken, setShowWaToken] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [plan, setPlan] = useState(null);
+  const [tgSetupMode, setTgSetupMode] = useState(null); // null | 'new' | 'import'
+  const [detectingChatId, setDetectingChatId] = useState(false);
+  const [detectStatus, setDetectStatus] = useState('');
+  const [detectDone, setDetectDone] = useState(false);
 
   useEffect(() => {
     if (!businessId) return;
@@ -32,7 +37,9 @@ export default function SettingsPage({ businessId }) {
       fetchSettings(businessId),
       fetchBusiness(),
       fetchChannelChangeRequests(businessId).catch(() => []),
-    ]).then(([s, biz, reqs]) => {
+      fetchAnalytics(businessId).catch(() => null),
+    ]).then(([s, biz, reqs, analytics]) => {
+      if (analytics?.plan) setPlan(analytics.plan);
       if (s) {
         setTgToken(s.telegram_bot_token || '');
         setTgChatId(s.telegram_chat_id || '');
@@ -57,6 +64,60 @@ export default function SettingsPage({ businessId }) {
 
   function pendingFor(channel) {
     return requests.find((r) => r.channel === channel && r.status === 'pending');
+  }
+
+  function detectChatId() {
+    setDetectingChatId(true);
+    setDetectStatus('Waiting for you to message your bot...');
+    setDetectDone(false);
+    const evtSource = new EventSource(`/api/business/${businessId}/telegram-bot/detect-chat-id`, {
+      withCredentials: true,
+    });
+    // Pass auth token via URL since EventSource doesn't support headers
+    const token = localStorage.getItem('bd_access_token');
+    const sessionKey = Math.random().toString(36).slice(2);
+    const url = `/api/business/${businessId}/telegram-bot/detect-chat-id?session=${sessionKey}${token ? `&_t=${token}` : ''}`;
+    evtSource.close();
+    // Use fetch with SSE manually
+    const ctrl = new AbortController();
+    fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: ctrl.signal })
+      .then(async res => {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          let event = '', data = '';
+          for (const line of lines) {
+            if (line.startsWith('event:')) event = line.slice(6).trim();
+            if (line.startsWith('data:')) {
+              try {
+                data = JSON.parse(line.slice(5).trim());
+                if (event === 'status') setDetectStatus(data.message);
+                if (event === 'found') {
+                  setTgChatId(String(data.chatId));
+                  setDetectStatus(` Chat ID captured${data.name ? ` for ${data.name}` : ''}!`);
+                  setDetectDone(true);
+                  setDetectingChatId(false);
+                }
+                if (event === 'timeout') {
+                  setDetectStatus(' No message received. Try again.');
+                  setDetectingChatId(false);
+                }
+              } catch {}
+            }
+          }
+        }
+        setDetectingChatId(false);
+      })
+      .catch(() => {
+        setDetectStatus('Connection error. Try again.');
+        setDetectingChatId(false);
+      });
   }
 
   async function handleSave() {
@@ -119,9 +180,17 @@ export default function SettingsPage({ businessId }) {
   return (
     <div className="p-6 max-w-[700px] mx-auto space-y-6">
 
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Settings</h2>
-        <p className="text-sm text-slate-500 mt-1">Configure your business profile and notification channels</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Settings</h2>
+          <p className="text-sm text-slate-500 mt-1">Configure your business profile and notification channels</p>
+        </div>
+        {plan && (
+          <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-2 self-start">
+            <span className="text-xs text-slate-500">Current Plan</span>
+            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-600 text-white">{plan.name}</span>
+          </div>
+        )}
       </div>
 
       {/* Business Profile */}
@@ -152,6 +221,27 @@ export default function SettingsPage({ businessId }) {
         </div>
       </div>
 
+      {/* Channel Plan Status */}
+      {plan && (
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h2 className="text-sm font-semibold text-slate-700 mb-3">Channels on Your Plan</h2>
+          <div className="flex flex-wrap gap-3">
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium ${plan.allowTelegram ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
+              <span>{plan.allowTelegram ? '' : ''}</span> Telegram
+              {!plan.allowTelegram && <span className="text-slate-400 font-normal"> Upgrade required</span>}
+            </div>
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium ${plan.allowWhatsapp ? 'bg-green-50 border-green-200 text-green-700' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
+              <span>{plan.allowWhatsapp ? '' : ''}</span> WhatsApp
+              {!plan.allowWhatsapp && <span className="text-slate-400 font-normal"> Upgrade required</span>}
+            </div>
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium ${plan.allowInstagram ? 'bg-pink-50 border-pink-200 text-pink-700' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
+              <span>{plan.allowInstagram ? '' : ''}</span> Instagram
+              {!plan.allowInstagram && <span className="text-slate-400 font-normal"> Upgrade required</span>}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Business Contact */}
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="text-lg font-semibold text-slate-900 mb-1">Business Contact</h2>
@@ -174,54 +264,147 @@ export default function SettingsPage({ businessId }) {
 
       {/* Telegram */}
       <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-1">Telegram Notifications</h2>
-        <div className="mb-4">
-          <p className="text-[13px] text-slate-400 mb-3">
-            Get notified on Telegram every time a new booking arrives. Follow these steps to connect:
-          </p>
-          <ol className="flex flex-col gap-2">
-            <li className="flex gap-2 text-[13px] text-slate-600">
-              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[11px] font-bold flex items-center justify-center">1</span>
-              <span>Open Telegram and message <strong>@BotFather</strong></span>
-            </li>
-            <li className="flex gap-2 text-[13px] text-slate-600">
-              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[11px] font-bold flex items-center justify-center">2</span>
-              <span>Type <strong>/newbot</strong> and follow the steps  you'll get a token</span>
-            </li>
-            <li className="flex gap-2 text-[13px] text-slate-600">
-              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[11px] font-bold flex items-center justify-center">3</span>
-              <span>Copy the token and paste it in the field below</span>
-            </li>
-          </ol>
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-blue-500"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-2.036 9.586c-.152.667-.546.833-1.107.517l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.697l-2.95-.924c-.64-.203-.654-.64.136-.948l11.527-4.445c.534-.194 1.001.13.37.868z"/></svg>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Telegram Bot</h2>
+            <p className="text-[12px] text-slate-400">Receive customer bookings directly on Telegram</p>
+          </div>
+          {locks.telegram && <span className="ml-auto px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700">Connected</span>}
         </div>
-        <div className="flex flex-col gap-3">
-          <ChannelField
-            label="Bot Token"
-            value={tgToken}
-            onChange={setTgToken}
-            placeholder="123456:ABC-DEF..."
-            mono
-            locked={locks.telegram}
-            pending={pendingFor('telegram')}
-            onRequestChange={() => openRequest('telegram', tgToken)}
-          />
-          <label className="flex flex-col gap-1 text-[13px] font-medium text-slate-500">
-            Default Chat ID
-            <input
-              value={tgChatId}
-              onChange={(e) => setTgChatId(e.target.value)}
-              placeholder="-100123456789"
-              className="py-2 px-3 rounded-lg border border-slate-200 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+
+        {/* If already has token  show current setup */}
+        {locks.telegram ? (
+          <div className="mt-4 flex flex-col gap-3">
+            <ChannelField
+              label="Bot Token"
+              value={tgToken}
+              onChange={setTgToken}
+              placeholder="123456:ABC-DEF..."
+              mono
+              locked={locks.telegram}
+              pending={pendingFor('telegram')}
+              onRequestChange={() => openRequest('telegram', tgToken)}
             />
-            <p className="text-[11px] text-slate-400 mt-1">
-              Don't know your Chat ID? Message <strong>@userinfobot</strong> on Telegram and it will reply with your ID.
-            </p>
-          </label>
-        </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[13px] font-medium text-slate-500">Your Chat ID</label>
+              <div className="flex gap-2">
+                <input
+                  value={tgChatId}
+                  onChange={(e) => setTgChatId(e.target.value)}
+                  placeholder="e.g. 6430624353"
+                  className="flex-1 py-2 px-3 rounded-lg border border-slate-200 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                <button
+                  onClick={detectChatId}
+                  disabled={detectingChatId}
+                  className="px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 transition-colors disabled:opacity-50 whitespace-nowrap"
+                >
+                  {detectingChatId ? ' Waiting...' : ' Auto-detect'}
+                </button>
+              </div>
+              {detectStatus && (
+                <div className={`mt-1 text-[12px] px-3 py-2 rounded-lg ${detectDone ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-600'}`}>
+                  {detectingChatId && !detectDone && (
+                    <span> Open Telegram  message your bot  Chat ID will appear here automatically</span>
+                  )}
+                  {detectStatus}
+                </div>
+              )}
+              <p className="text-[11px] text-slate-400 mt-1">This is where booking notifications will be sent.</p>
+            </div>
+          </div>
+        ) : (
+          /* No token yet  show setup options */
+          <div className="mt-4">
+            {!tgSetupMode ? (
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => setTgSetupMode('new')}
+                  className="flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-blue-200 hover:border-blue-400 hover:bg-blue-50 transition-all text-center group"
+                >
+                  <span className="text-2xl"></span>
+                  <span className="text-sm font-semibold text-slate-700 group-hover:text-blue-700">Create New Bot</span>
+                  <span className="text-[11px] text-slate-400">I don't have a Telegram bot yet</span>
+                </button>
+                <button
+                  onClick={() => setTgSetupMode('import')}
+                  className="flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 transition-all text-center group"
+                >
+                  <span className="text-2xl"></span>
+                  <span className="text-sm font-semibold text-slate-700 group-hover:text-indigo-700">Import Existing Bot</span>
+                  <span className="text-[11px] text-slate-400">I already have a bot token</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                <button onClick={() => setTgSetupMode(null)} className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 w-fit">
+                   Back
+                </button>
+                {tgSetupMode === 'new' && (
+                  <div className="bg-blue-50 rounded-xl p-4 flex flex-col gap-3">
+                    <p className="text-sm font-semibold text-blue-800">Create your Telegram bot in 3 steps:</p>
+                    <ol className="flex flex-col gap-2">
+                      <li className="flex gap-3 items-start">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white text-[11px] font-bold flex items-center justify-center mt-0.5">1</span>
+                        <div>
+                          <p className="text-[13px] text-slate-700 font-medium">Open BotFather on Telegram, then type <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-mono">/newbot</code></p>
+                          <a href="tg://resolve?domain=BotFather&text=/newbot" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-lg transition-colors">Open Telegram  @BotFather</a>
+                        </div>
+                      </li>
+                      <li className="flex gap-3 items-start">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white text-[11px] font-bold flex items-center justify-center mt-0.5">2</span>
+                        <p className="text-[13px] text-slate-700">Follow BotFather's steps  give your bot a name and username</p>
+                      </li>
+                      <li className="flex gap-3 items-start">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white text-[11px] font-bold flex items-center justify-center mt-0.5">3</span>
+                        <p className="text-[13px] text-slate-700">Copy the token BotFather gives you and paste it below</p>
+                      </li>
+                    </ol>
+                  </div>
+                )}
+                {tgSetupMode === 'import' && (
+                  <div className="bg-indigo-50 rounded-xl p-4 flex flex-col gap-3">
+                    <p className="text-sm font-semibold text-indigo-800">Get your existing bot token in 3 steps:</p>
+                    <ol className="flex flex-col gap-2">
+                      <li className="flex gap-3 items-start">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-500 text-white text-[11px] font-bold flex items-center justify-center mt-0.5">1</span>
+                        <div>
+                          <p className="text-[13px] text-slate-700 font-medium">Open BotFather and view your bots</p>
+                          <a href="tg://resolve?domain=BotFather&text=/mybots" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-1 px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-semibold rounded-lg transition-colors">Open Telegram  Select Your Bot</a>
+                        </div>
+                      </li>
+                      <li className="flex gap-3 items-start">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-500 text-white text-[11px] font-bold flex items-center justify-center mt-0.5">2</span>
+                        <p className="text-[13px] text-slate-700">Select your bot from the list, then tap <strong>API Token</strong></p>
+                      </li>
+                      <li className="flex gap-3 items-start">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-500 text-white text-[11px] font-bold flex items-center justify-center mt-0.5">3</span>
+                        <p className="text-[13px] text-slate-700">Copy the token and paste it below</p>
+                      </li>
+                    </ol>
+                  </div>
+                )}
+                <ChannelField
+                  label="Paste Your Bot Token"
+                  value={tgToken}
+                  onChange={setTgToken}
+                  placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+                  mono
+                  locked={locks.telegram}
+                  pending={pendingFor('telegram')}
+                  onRequestChange={() => openRequest('telegram', tgToken)}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* WhatsApp Cloud API */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
+      {/* WhatsApp Cloud API - only show if plan allows WhatsApp */}
+      {plan?.allowWhatsapp && <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h2 className="text-lg font-semibold text-slate-900 mb-1">WhatsApp Cloud API</h2>
         <p className="text-[13px] text-slate-400 mb-4">
           Connect your WhatsApp Business number via Meta Cloud API. You need a verified Meta Business account and a WhatsApp Business Account (WABA).
@@ -266,7 +449,7 @@ export default function SettingsPage({ businessId }) {
             <p className="text-[11px] text-slate-400 mt-1">Found in Meta Developer App  WhatsApp  API Setup</p>
           </label>
         </div>
-      </div>
+      </div>}
 
       {/* Save */}
       <div className="flex items-center gap-3">
