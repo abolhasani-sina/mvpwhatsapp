@@ -263,7 +263,20 @@ export function getActivePollers() {
   return Array.from(activePollers.keys());
 }
 
+
+async function deleteWebhookIfExists(token) {
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/deleteWebhook?drop_pending_updates=true`, { method: 'POST' });
+    const j = await r.json();
+    log.info({ ok: j.ok }, 'deleteWebhook result');
+    await new Promise(res => setTimeout(res, 1000));
+  } catch (err) {
+    log.warn({ err }, 'deleteWebhook failed');
+  }
+}
+
 async function pollLoop(businessId, token, signal) {
+  await deleteWebhookIfExists(token);
   let offset = 0;
 
   while (!signal.aborted) {

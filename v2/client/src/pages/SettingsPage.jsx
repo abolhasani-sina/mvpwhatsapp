@@ -135,6 +135,11 @@ export default function SettingsPage({ businessId }) {
   }
 
   async function handleSave() {
+    // Validate token if not locked
+    if (!locks.telegram && tgToken && tgToken.trim().length < 20) {
+      addToast('Please enter a valid bot token', 'error');
+      return;
+    }
     setSaving(true);
     try {
       await Promise.all([
@@ -356,6 +361,7 @@ export default function SettingsPage({ businessId }) {
                       href={`tg://resolve?domain=${botInfo.username}&text=/start`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => { if (!detectingChatId) detectChatId(); }}
                       className="flex items-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-semibold text-blue-700 transition-colors w-fit"
                     >
                        Open @{botInfo.username} on Telegram  send /start
@@ -373,14 +379,7 @@ export default function SettingsPage({ businessId }) {
                       {detectingChatId && ' '}{detectStatus}
                     </div>
                   )}
-                  {!detectingChatId && !detectDone && !tgChatId && (
-                    <button
-                      onClick={detectChatId}
-                      className="text-xs text-indigo-600 hover:underline w-fit"
-                    >
-                      Start listening for message
-                    </button>
-                  )}
+
                 </div>
               ) : (
                 <div className="py-2 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm font-mono text-slate-500">
