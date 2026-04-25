@@ -30,6 +30,8 @@ export default function SettingsPage({ businessId }) {
   const [detectingChatId, setDetectingChatId] = useState(false);
   const [detectStatus, setDetectStatus] = useState('');
   const [detectDone, setDetectDone] = useState(false);
+  const [botInfo, setBotInfo] = useState(null); // { username, firstName }
+  const [chatIdLocked, setChatIdLocked] = useState(false);
 
   useEffect(() => {
     if (!businessId) return;
@@ -52,6 +54,7 @@ export default function SettingsPage({ businessId }) {
           whatsapp: s.whatsapp_locked === 1,
           instagram: s.instagram_locked === 1,
         });
+        setChatIdLocked(s.telegram_chat_id_locked === 1);
       }
       if (biz) {
         setBizName(biz.name || '');
@@ -59,6 +62,17 @@ export default function SettingsPage({ businessId }) {
       }
       setRequests(reqs || []);
       setLoading(false);
+      // Auto-start chat ID detection if token locked but chat ID not set
+      if (s?.telegram_locked === 1 && !s?.telegram_chat_id && !s?.telegram_chat_id_locked) {
+        setTimeout(() => detectChatId(), 500);
+      }
+    }).then(() => {
+      // Fetch bot info if token exists
+      if (businessId) {
+        fetch(`/api/business/${businessId}/telegram-bot/info`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('bd_access_token')}` }
+        }).then(r => r.json()).then(d => { if (d.username) setBotInfo(d); }).catch(() => {});
+      }
     });
   }, [businessId]);
 
@@ -100,7 +114,7 @@ export default function SettingsPage({ businessId }) {
                 if (event === 'status') setDetectStatus(data.message);
                 if (event === 'found') {
                   setTgChatId(String(data.chatId));
-                  setDetectStatus(` Chat ID captured${data.name ? ` for ${data.name}` : ''}!`);
+                  setDetectStatus(` Chat ID captured${data.name ? ` for ${data.name}` : ''}! Click Save Settings to confirm.`);
                   setDetectDone(true);
                   setDetectingChatId(false);
                 }
@@ -129,6 +143,16 @@ export default function SettingsPage({ businessId }) {
         updateBusiness(businessId, { name: bizName, phone: bizPhone }),
       ]);
       addToast('Settings saved successfully', 'success');
+      // Refresh settings to get lock states and bot info
+      const [newS, newReqs] = await Promise.all([fetchSettings(businessId), fetchChannelChangeRequests(businessId).catch(() => [])]);
+      if (newS) {
+        setLocks({ telegram: newS.telegram_locked === 1, whatsapp: newS.whatsapp_locked === 1, instagram: newS.instagram_locked === 1 });
+        setChatIdLocked(newS.telegram_chat_id_locked === 1);
+        setTgChatId(newS.telegram_chat_id || '');
+      }
+      setRequests(newReqs || []);
+      // Refresh bot info
+      fetch(`/api/business/${businessId}/telegram-bot/info`, { headers: { Authorization: `Bearer ${localStorage.getItem('bd_access_token')}` } }).then(r => r.json()).then(d => { if (d.username) setBotInfo(d); }).catch(() => {});
     } catch (err) {
       if (err.code === 'CHANNEL_LOCKED') {
         addToast(`${err.channel} is locked — submit a change request.`, 'error');
@@ -278,42 +302,92 @@ export default function SettingsPage({ businessId }) {
         {/* If already has token  show current setup */}
         {locks.telegram ? (
           <div className="mt-4 flex flex-col gap-3">
-            <ChannelField
-              label="Bot Token"
-              value={tgToken}
-              onChange={setTgToken}
-              placeholder="123456:ABC-DEF..."
-              mono
-              locked={locks.telegram}
-              pending={pendingFor('telegram')}
-              onRequestChange={() => openRequest('telegram', tgToken)}
-            />
-            <div className="flex flex-col gap-1">
-              <label className="text-[13px] font-medium text-slate-500">Your Chat ID</label>
-              <div className="flex gap-2">
-                <input
-                  value={tgChatId}
-                  onChange={(e) => setTgChatId(e.target.value)}
-                  placeholder="e.g. 6430624353"
-                  className="flex-1 py-2 px-3 rounded-lg border border-slate-200 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-                <button
-                  onClick={detectChatId}
-                  disabled={detectingChatId}
-                  className="px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 transition-colors disabled:opacity-50 whitespace-nowrap"
+            {/* Bot username display */}
+            {botInfo && (
+              <div className="flex items-center gap-3 bg-blue-50 rounded-xl px-4 py-3 border border-blue-100">
+                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {botInfo.firstName?.[0] || 'B'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-slate-800">{botInfo.firstName}</div>
+                  <div className="text-xs text-blue-600 font-mono">@{botInfo.username}</div>
+                </div>
+                <a
+                  href={`tg://resolve?domain=${botInfo.username}&text=/start`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-lg transition-colors whitespace-nowrap"
                 >
-                  {detectingChatId ? ' Waiting...' : ' Auto-detect'}
-                </button>
+                  Open Bot
+                </a>
               </div>
-              {detectStatus && (
-                <div className={`mt-1 text-[12px] px-3 py-2 rounded-lg ${detectDone ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-600'}`}>
-                  {detectingChatId && !detectDone && (
-                    <span> Open Telegram  message your bot  Chat ID will appear here automatically</span>
+            )}
+            {/* Masked token */}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <label className="text-[13px] font-medium text-slate-500">Bot Token</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200"> Locked</span>
+                  {!pendingFor('telegram') && (
+                    <button onClick={() => openRequest('telegram', tgToken)} className="text-[11px] text-indigo-600 hover:underline">Request change</button>
                   )}
-                  {detectStatus}
+                </div>
+              </div>
+              <div className="py-2 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm font-mono text-slate-500">
+                {tgToken ? tgToken.slice(0, 8) + ':' + tgToken.split(':')[1]?.slice(0, 4) + '' : ''}
+              </div>
+            </div>
+            {/* Chat ID */}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <label className="text-[13px] font-medium text-slate-500">Your Chat ID</label>
+                {chatIdLocked && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200"> Locked</span>
+                    <button onClick={() => openRequest('telegram_chat_id', tgChatId)} className="text-[11px] text-indigo-600 hover:underline">Request change</button>
+                  </div>
+                )}
+              </div>
+              {!chatIdLocked ? (
+                <div className="flex flex-col gap-2">
+                  {botInfo && (
+                    
+                      <a
+                      href={`tg://resolve?domain=${botInfo.username}&text=/start`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-semibold text-blue-700 transition-colors w-fit"
+                    >
+                       Open @{botInfo.username} on Telegram  send /start
+                    </a>
+                  )}
+                  <input
+                    value={tgChatId}
+                    onChange={(e) => setTgChatId(e.target.value)}
+                    placeholder="Will be detected automatically..."
+                    readOnly={detectingChatId}
+                    className="w-full py-2 px-3 rounded-lg border border-slate-200 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  {detectStatus && (
+                    <div className={`text-[12px] px-3 py-2 rounded-lg ${detectDone ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-600'}`}>
+                      {detectingChatId && ' '}{detectStatus}
+                    </div>
+                  )}
+                  {!detectingChatId && !detectDone && !tgChatId && (
+                    <button
+                      onClick={detectChatId}
+                      className="text-xs text-indigo-600 hover:underline w-fit"
+                    >
+                      Start listening for message
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="py-2 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm font-mono text-slate-500">
+                  {tgChatId ? tgChatId.slice(0, 4) + '' + tgChatId.slice(-4) : ''}
                 </div>
               )}
-              <p className="text-[11px] text-slate-400 mt-1">This is where booking notifications will be sent.</p>
+              <p className="text-[11px] text-slate-400 mt-1">Booking notifications will be sent here.</p>
             </div>
           </div>
         ) : (

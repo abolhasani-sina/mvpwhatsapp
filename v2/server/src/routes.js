@@ -1078,6 +1078,10 @@ router.put('/business/:id/settings', tenantScope, updateSettingsRules, validate,
 
   const telegramLocked = lockNow(currentTelegramToken, newTelegramToken, existing && existing.telegram_locked === 1);
   const telegramSetAt  = stampNow(currentTelegramToken, newTelegramToken, existing && existing.telegram_set_at);
+  // Lock chat ID if it's being set for the first time or already locked
+  const currentChatId = existing ? (existing.telegram_chat_id || '') : '';
+  const newChatId = telegramChatId !== undefined ? (telegramChatId || '') : currentChatId;
+  const chatIdLocked = (existing && existing.telegram_chat_id_locked === 1) || (!currentChatId && newChatId ? 1 : 0);
   const whatsappLocked = lockNow(currentWhatsapp, newWhatsapp, existing && existing.whatsapp_locked === 1);
   const whatsappSetAt  = stampNow(currentWhatsapp, newWhatsapp, existing && existing.whatsapp_set_at);
   const instagramLocked = lockNow(currentInstagram, newInstagram, existing && existing.instagram_locked === 1);
@@ -1090,15 +1094,15 @@ router.put('/business/:id/settings', tenantScope, updateSettingsRules, validate,
       UPDATE settings SET
         telegram_bot_token = ?, telegram_chat_id = ?, business_email = ?,
         whatsapp_number = ?, instagram_page_id = ?,
-        telegram_set_at = ?, telegram_locked = ?,
+        telegram_set_at = ?, telegram_locked = ?, telegram_chat_id_locked = ?,
         whatsapp_set_at = ?, whatsapp_locked = ?,
         instagram_set_at = ?, instagram_locked = ?,
         whatsapp_phone_number_id = ?, whatsapp_access_token = ?, whatsapp_waba_id = ?
       WHERE business_id = ?
     `).run(
-      String(encryptedToken || ''), String(telegramChatId || ''), String(businessEmail || ''),
+      String(encryptedToken || ''), String(newChatId || ''), String(businessEmail || ''),
       String(newWhatsapp || ''), String(newInstagram || ''),
-      telegramSetAt || null, Number(telegramLocked || 0),
+      telegramSetAt || null, Number(telegramLocked || 0), Number(chatIdLocked || 0),
       whatsappSetAt || null, Number(whatsappLocked || 0),
       instagramSetAt || null, Number(instagramLocked || 0),
       String(whatsappPhoneNumberId || ''), String(whatsappAccessToken || ''), String(whatsappWabaId || ''),
@@ -1494,6 +1498,23 @@ export function notifyChatIdDetector(businessId, chatId, name) {
     }
   }
 }
+
+// Get bot info (username) from Telegram
+router.get('/business/:id/telegram-bot/info', tenantScope, async (req, res) => {
+  const businessId = req.params.id;
+  const settings = db.prepare('SELECT telegram_bot_token FROM settings WHERE business_id = ?').get(businessId);
+  if (!settings?.telegram_bot_token) return res.status(400).json({ error: 'No token' });
+  const { decryptField } = await import('./middleware/encryption.js');
+  const token = decryptField(settings.telegram_bot_token);
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+    const json = await r.json();
+    if (!json.ok) return res.status(400).json({ error: 'Invalid token' });
+    res.json({ username: json.result.username, firstName: json.result.first_name });
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch bot info' });
+  }
+});
 
 // Detect Chat ID via SSE  waits for bot engine to capture next message
 router.get('/business/:id/telegram-bot/detect-chat-id', tenantScope, async (req, res) => {
