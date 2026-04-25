@@ -43,7 +43,13 @@ export async function processMessageQueue() {
   for (const item of pending) {
     try {
       const message = JSON.parse(item.message_json);
-      await sendTelegramMessage(item.business_id, item.chat_id, message);
+      if (item.channel === 'whatsapp') {
+        await sendWhatsAppMessage(item.business_id, item.chat_id, message);
+      } else if (item.channel === 'telegram') {
+        await sendTelegramMessage(item.business_id, item.chat_id, message);
+      } else {
+        log.warn({ messageId: item.id, channel: item.channel }, 'unsupported channel, skipping');
+      }
 
       // Mark as sent
       db.prepare(
