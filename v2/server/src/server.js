@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import crypto from 'crypto';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -137,7 +138,8 @@ app.get("/api/plans", (_req, res) => {
 
 // ── New API routes ──
 //  Public WhatsApp Cloud API webhook  [ADDED: whatsapp-webhook]
-const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'nabzchat_webhook_2026';
+const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
+if (!WHATSAPP_VERIFY_TOKEN) throw new Error('WHATSAPP_VERIFY_TOKEN is required in .env');
 
 app.get('/api/webhook/whatsapp', (req, res) => {
   const mode = req.query['hub.mode'];
@@ -151,9 +153,13 @@ app.get('/api/webhook/whatsapp', (req, res) => {
   }
 });
 
-app.post('/api/webhook/whatsapp', async (req, res) => {
-  res.sendStatus(200); // Respond immediately to Meta
-  await handleWhatsAppWebhook(req.body); // Process async
+app.post('/api/webhook/whatsapp', (req, res) => {
+  const sig = req.headers['x-hub-signature-256'];
+  if (!sig) return res.sendStatus(403);
+  const hmac = 'sha256=' + crypto.createHmac('sha256', process.env.WHATSAPP_APP_SECRET || '').update(JSON.stringify(req.body)).digest('hex');
+  if (sig !== hmac) return res.sendStatus(403);
+  res.sendStatus(200);
+  handleWhatsAppWebhook(req.body);
 }); // [ADDED: whatsapp-webhook]
 
 app.use('/api/auth', authRoutes);
