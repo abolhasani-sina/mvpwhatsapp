@@ -15,12 +15,52 @@ import OwnerPanel from './pages/OwnerPanel';
 import AdminLayout from './components/AdminLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import Landing1 from './pages/Landing1';
+import VerifyEmail from './pages/VerifyEmail';
+
+const API = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:4000/api' : '/api');
+
+function VerifyBanner() {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function resend() {
+    setSending(true);
+    try {
+      const { authFetch } = await import('./lib/auth');
+      await authFetch(`${API}/auth/resend-verification`, { method: 'POST' });
+      setSent(true);
+    } catch {}
+    setSending(false);
+  }
+
+  return (
+    <div style={{
+      background: '#fef3c7', borderBottom: '1px solid #fcd34d',
+      padding: '10px 20px', display: 'flex', alignItems: 'center',
+      justifyContent: 'space-between', gap: 12, fontSize: 14,
+    }}>
+      <span> Please verify your email address to access all features.</span>
+      {sent
+        ? <span style={{color:'#059669',fontWeight:600}}> Email sent!</span>
+        : <button onClick={resend} disabled={sending} style={{
+            background:'#f59e0b',color:'#fff',border:'none',borderRadius:6,
+            padding:'6px 16px',cursor:'pointer',fontWeight:600,
+          }}>{sending ? 'Sending...' : 'Resend email'}</button>
+      }
+    </div>
+  );
+}
 
 function AppRoutes() {
   const { user, loading, logout } = useAuth();
-  const publicPages = ['landing', 'landing1', 'login', 'register'];
+  const publicPages = ['landing', 'landing1', 'login', 'register', 'verify-email'];
   const getInitialPage = () => {
     if (typeof window !== 'undefined') {
+      // Check if this is a verify-email link
+      if (window.location.pathname === '/verify-email' || 
+          new URLSearchParams(window.location.search).get('token')) {
+        return 'verify-email';
+      }
       const qp = new URLSearchParams(window.location.search).get('page');
       if (qp && publicPages.includes(qp)) return qp;
       const saved = sessionStorage.getItem('nabz_page');
@@ -81,6 +121,7 @@ function AppRoutes() {
   if (page === 'landing' || page === 'landing1') return <Landing1 onNavigate={navigate} />;
   if (page === 'login') return <Login onNavigate={navigate} />;
   if (page === 'register') return <Register onNavigate={navigate} />;
+  if (page === 'verify-email') return <VerifyEmail onNavigate={navigate} />;
 
   // Protected — redirect if not logged in
   if (!user) return <Landing1 onNavigate={navigate} />;
@@ -90,9 +131,13 @@ function AppRoutes() {
     return <OwnerPanel onLogout={handleLogout} />;
   }
 
+  // Email verification banner
+  const showVerifyBanner = user && !user.email_verified;
+
   // Admin pages wrapped in layout
   return (
     <AdminLayout currentView={page} onViewChange={navigate} onLogout={handleLogout}>
+      {showVerifyBanner && <VerifyBanner />}
       {page === 'dashboard' && <Dashboard businessId={businessId} onNavigate={navigate} />}
       {page === 'builder' && <BuilderPage businessId={businessId} setBusinessId={setBusinessId} />}
       {page === 'submissions' && <SubmissionsList businessId={businessId} />}

@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import db from './db.js';
 import { generateTokens, refreshAccessToken, revokeTokens, authenticate } from './middleware/auth.js';
 import { registerRules, loginRules, validate } from './middleware/validators.js';
+import { initiateEmailVerification, verifyEmailToken } from './email-verify.js';
 
 const router = Router();
 const BCRYPT_ROUNDS = 12;
@@ -27,10 +28,15 @@ router.post('/register', registerRules, validate, (req, res) => {
   ).run(emailTrimmed, passwordHash, (name || emailTrimmed.split('@')[0]).trim());
 
   const userId = Number(result.lastInsertRowid);
+
+  // Send verification email (non-blocking)
+  initiateEmailVerification(userId, emailTrimmed, (name || emailTrimmed.split('@')[0]).trim())
+    .catch(err => console.error('Failed to send verification email:', err));
+
   const tokens = generateTokens(userId, res);
 
   res.status(201).json({
-    user: { id: userId, email: emailTrimmed, name: (name || emailTrimmed.split('@')[0]).trim(), role: 'user' },
+    user: { id: userId, email: emailTrimmed, name: (name || emailTrimmed.split('@')[0]).trim(), role: 'user', email_verified: 0 },
     accessToken: tokens.accessToken,
   });
 
@@ -72,7 +78,7 @@ router.post('/login', loginRules, validate, (req, res) => {
   db.prepare('UPDATE users SET failed_attempts = 0, locked_until = NULL WHERE id = ?').run(user.id);
   const tokens = generateTokens(user.id, res);
   res.json({
-    user: { id: user.id, email: user.email, name: user.name, role: user.role || 'user' },
+    user: { id: user.id, email: user.email, name: user.name, role: user.role || 'user', email_verified: user.email_verified || 0 },
     accessToken: tokens.accessToken,
   });
 });
@@ -88,7 +94,7 @@ router.post('/logout', authenticate, (req, res) => {
 
 // ── Get Current User ──
 router.get('/me', authenticate, (req, res) => {
-  const user = db.prepare('SELECT id, email, name, role, created_at FROM users WHERE id = ?').get(req.userId);
+  const user = db.prepare('SELECT id, email, name, role, email_verified, created_at FROM users WHERE id = ?').get(req.userId);
   if (!user) {
     return res.status(404).json({ error: 'User not found' });
   }
