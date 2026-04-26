@@ -449,7 +449,6 @@ export default function BuilderPage({ businessId, setBusinessId }) {
           channel={channel}
         />
       </div>
-    </div>
     {showChangeTemplate && (
       <ChangeTemplateModal
         businessId={businessId}
@@ -466,5 +465,6 @@ export default function BuilderPage({ businessId, setBusinessId }) {
         }}
       />
     )}
+    </div>
   );
 }
