@@ -84,7 +84,7 @@ export default function Onboarding({ onComplete }) {
                       ? 'border-indigo-500 bg-indigo-50 shadow-sm shadow-indigo-100'
                       : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'}`}
                 >
-                  <span className="text-2xl leading-none">{t.emoji}</span>
+                  <span style={{fontSize:'22px',lineHeight:1}}>{t.emoji}</span>
                   <span className={`text-xs font-medium leading-tight ${selectedKey === t.key ? 'text-indigo-700' : 'text-slate-600'}`}>{t.name}</span>
                 </button>
               ))}
@@ -137,7 +137,6 @@ export default function Onboarding({ onComplete }) {
 
         {step === 3 && (
           <>
-            <StepIndicator step={3} />
             <div className="text-center mb-6">
               <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle2 className="w-7 h-7 text-emerald-600" />
