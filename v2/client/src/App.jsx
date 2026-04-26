@@ -67,15 +67,19 @@ function UnverifiedPage({ onLogout }) {
       const token = localStorage.getItem('bd_access_token');
       const res = await fetch(`${API}/auth/resend-verification`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
       const data = await res.json();
-      if (res.ok) setSent(true);
-      else setError(data.error || 'Failed to send email');
-    } catch {
-      setError('Network error. Please try again.');
+      if (res.ok) {
+        setSent(true);
+      } else {
+        setError(data.error || 'Failed to send email');
+      }
+    } catch (err) {
+      setError('Network error: ' + err.message);
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   }
 
   return (
