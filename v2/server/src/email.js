@@ -44,3 +44,30 @@ export async function testSmtp() {
   await transporter.verify();
   log.info('SMTP connection verified');
 }
+
+export async function sendPasswordResetEmail(email, name, token) {
+  const url = `${process.env.APP_URL}/reset-password?token=${token}`;
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
+    to: email,
+    subject: 'Reset your NabzChat password',
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px;background:#f9fafb;border-radius:12px;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <h1 style="color:#6c3fff;font-size:28px;margin:0;">NabzChat</h1>
+        </div>
+        <div style="background:#fff;border-radius:8px;padding:32px;">
+          <h2 style="color:#111;margin-top:0;">Reset your password</h2>
+          <p style="color:#555;">Hi ${name},</p>
+          <p style="color:#555;">We received a request to reset your password. Click the button below to choose a new one.</p>
+          <div style="text-align:center;margin:32px 0;">
+            <a href="${url}" style="background:#6c3fff;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;">Reset Password</a>
+          </div>
+          <p style="color:#999;font-size:13px;">This link expires in 1 hour. If you did not request a password reset, you can safely ignore this email.</p>
+          <p style="color:#999;font-size:12px;word-break:break-all;">Or copy this link: ${url}</p>
+        </div>
+      </div>
+    `,
+  });
+  log.info({ email }, 'password reset email sent');
+}

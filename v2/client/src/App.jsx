@@ -16,6 +16,8 @@ import AdminLayout from './components/AdminLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import Landing1 from './pages/Landing1';
 import VerifyEmail from './pages/VerifyEmail';
+import ForgotPassword from './pages/ForgotPassword.jsx';
+import ResetPassword from './pages/ResetPassword.jsx';
 
 const API = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:4000/api' : '/api');
 
@@ -179,6 +181,8 @@ function AppRoutes() {
   if (page === 'login') return <Login onNavigate={navigate} />;
   if (page === 'register') return <Register onNavigate={navigate} />;
   if (page === 'verify-email') return <VerifyEmail onNavigate={navigate} />;
+  if (page === 'forgot-password') return <ForgotPassword onNavigate={navigate} />;
+  if (page === 'reset-password') return <ResetPassword onNavigate={navigate} />;
 
   // Protected — redirect if not logged in
   if (!user) return <Landing1 onNavigate={navigate} />;

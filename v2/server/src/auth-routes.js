@@ -5,6 +5,8 @@ import db from './db.js';
 import { generateTokens, refreshAccessToken, revokeTokens, authenticate } from './middleware/auth.js';
 import { registerRules, loginRules, validate } from './middleware/validators.js';
 import { initiateEmailVerification, verifyEmailToken } from './email-verify.js';
+import { sendPasswordResetEmail } from './email.js';
+import crypto from 'crypto';
 
 const router = Router();
 const BCRYPT_ROUNDS = 12;
@@ -106,6 +108,42 @@ router.post('/resend-verification', authenticate, async (req, res) => {
   res.json({ success: true });
   initiateEmailVerification(user.id, user.email, user.name)
     .catch(err => console.error('Resend verification failed:', err));
+});
+
+// ── Forgot Password ──
+router.post('/forgot-password', async (req, res) => {
+  const email = (req.body.email || '').trim().toLowerCase();
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+  res.json({ success: true, message: 'If that email exists, a reset link has been sent.' });
+  try {
+    const user = db.prepare('SELECT id, name FROM users WHERE email = ?').get(email);
+    if (!user) return;
+    db.prepare('DELETE FROM password_resets WHERE user_id = ? AND used_at IS NULL').run(user.id);
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    db.prepare('INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (?, ?, ?)').run(user.id, tokenHash, expiresAt);
+    await sendPasswordResetEmail(email, user.name, rawToken);
+  } catch (err) {
+    console.error('forgot-password error:', err);
+  }
+});
+
+// ── Reset Password ──
+router.post('/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ error: 'Token and password are required' });
+  if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const record = db.prepare(
+    "SELECT pr.*, u.id as uid FROM password_resets pr JOIN users u ON u.id = pr.user_id WHERE pr.token_hash = ? AND pr.used_at IS NULL AND pr.expires_at > datetime('now')"
+  ).get(tokenHash);
+  if (!record) return res.status(400).json({ error: 'Reset link is invalid or has expired.' });
+  db.prepare("UPDATE password_resets SET used_at = datetime('now') WHERE id = ?").run(record.id);
+  const passwordHash = bcrypt.hashSync(password, BCRYPT_ROUNDS);
+  db.prepare('UPDATE users SET password = ?, failed_attempts = 0, locked_until = NULL WHERE id = ?').run(passwordHash, record.uid);
+  db.prepare('DELETE FROM refresh_tokens WHERE user_id = ?').run(record.uid);
+  res.json({ success: true, message: 'Password reset successfully. Please log in.' });
 });
 
 // ── Refresh Token ──

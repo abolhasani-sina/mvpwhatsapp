@@ -119,6 +119,9 @@ export default function Login({ onNavigate }) {
                 </button>
               </div>
               {fieldErrors.password && <p className="text-xs text-red-500 mt-1">{fieldErrors.password}</p>}
+              <div className="flex justify-end mt-1">
+                <button type="button" onClick={() => onNavigate('forgot-password')} className="text-xs text-indigo-600 hover:underline">Forgot password?</button>
+              </div>
             </div>
 
             {error && (
