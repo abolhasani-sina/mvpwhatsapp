@@ -99,7 +99,7 @@ router.post('/resend-verification', authenticate, async (req, res) => {
   if (!user) return res.status(404).json({ error: 'User not found' });
   if (user.email_verified) return res.status(400).json({ error: 'Email already verified' });
   const recent = db.prepare(
-    'SELECT created_at FROM email_verifications WHERE user_id = ? AND created_at > datetime('now', '-2 minutes')'
+    `SELECT created_at FROM email_verifications WHERE user_id = ? AND created_at > datetime('now', '-2 minutes')`
   ).get(user.id);
   if (recent) return res.status(429).json({ error: 'Please wait 2 minutes before requesting another email' });
   // Respond immediately, send email in background
