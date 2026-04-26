@@ -54,7 +54,21 @@ export default function Onboarding({ onComplete }) {
     setLoading(true);
     try {
       const templateData = JSON.parse(JSON.stringify(tplDef.load()));
-      const biz = await createBusiness(selectedKey, businessName.trim(), templateData);
+      // Replace hardcoded template business name with user's business name
+      const templateNames = [
+        'Glow Studio', 'CarePoint Medical Center', 'Bella Tavola', 'Skyline Realty',
+        'DriveEasy Rentals', 'IronCore Fitness', 'The Grand Meridian', 'Paws & Whiskers',
+        'TutorSpark', 'AutoFix Pro', 'LensArt Studio', 'LexPro Legal', 'SparkClean',
+        'EventCraft', 'SkyWay Travel',
+      ];
+      const userBizName = businessName.trim();
+      for (const tName of templateNames) {
+        if (templateData.welcomeMessage && templateData.welcomeMessage.includes(tName)) {
+          templateData.welcomeMessage = templateData.welcomeMessage.replace(tName, userBizName);
+          break;
+        }
+      }
+      const biz = await createBusiness(selectedKey, userBizName, templateData);
       setBizId(biz.id);
       setStep(3);
     } catch (err) {
