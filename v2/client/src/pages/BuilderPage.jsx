@@ -452,6 +452,7 @@ export default function BuilderPage({ businessId, setBusinessId }) {
     {showChangeTemplate && (
       <ChangeTemplateModal
         businessId={businessId}
+        businessName={businessName}
         onClose={() => setShowChangeTemplate(false)}
         onApplied={async (templateKey, templateName) => {
           const data = await loadBuilder(businessId);

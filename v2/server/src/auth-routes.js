@@ -166,7 +166,8 @@ router.post('/request-template-code', authenticate, async (req, res) => {
   // Send email in background
   res.json({ success: true });
   sendTemplateChangeCode(user.email, user.name, code)
-    .catch(err => console.error('Failed to send template change code:', err));
+    .then(() => console.log('Template change code sent to', user.email))
+    .catch(err => console.error('Failed to send template change code:', err.message, err.stack));
 });
 
 // ── Verify Template Change Code ──

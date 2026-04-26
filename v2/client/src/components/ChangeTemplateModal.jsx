@@ -10,7 +10,7 @@ function authFetch(url, opts = {}) {
   return fetch(url, { ...opts, headers: { ...opts.headers, Authorization: `Bearer ${token}` } });
 }
 
-export default function ChangeTemplateModal({ businessId, onClose, onApplied }) {
+export default function ChangeTemplateModal({ businessId, businessName, onClose, onApplied }) {
   const [stage, setStage] = useState(1); // 1=warning+pw, 2=code, 3=pick template, 4=confirm
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
@@ -65,6 +65,17 @@ export default function ChangeTemplateModal({ businessId, onClose, onApplied }) 
     setLoading(true);
     try {
       const templateData = JSON.parse(JSON.stringify(selectedTpl.load()));
+      const templateNames = ['Glow Studio','CarePoint Medical Center','Bella Tavola','Skyline Realty',
+        'DriveEasy Rentals','IronCore Fitness','The Grand Meridian','Paws & Whiskers',
+        'TutorSpark','AutoFix Pro','LensArt Studio','LexPro Legal','SparkClean','EventCraft','SkyWay Travel'];
+      if (businessName) {
+        for (const tName of templateNames) {
+          if (templateData.welcomeMessage && templateData.welcomeMessage.includes(tName)) {
+            templateData.welcomeMessage = templateData.welcomeMessage.replace(tName, businessName);
+            break;
+          }
+        }
+      }
       await applyTemplate(businessId, selectedKey, templateData);
       onApplied(selectedKey, selectedTpl.name);
       onClose();
@@ -139,6 +150,7 @@ export default function ChangeTemplateModal({ businessId, onClose, onApplied }) 
                 </div>
                 <p style={{ fontSize: 14, color: '#374151', margin: 0 }}>For your security, we sent a <strong>6-digit code</strong> to your email address.</p>
                 <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 0' }}>Code expires in 10 minutes.</p>
+              <div style={{ background: '#fefce8', border: '1px solid #fde047', borderRadius: 8, padding: '8px 12px', marginTop: 10, fontSize: 12, color: '#854d0e' }}> Don't see it? Check your <strong>spam or junk folder</strong>.</div>
               </div>
               <input
                 type="text"
