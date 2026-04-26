@@ -112,7 +112,7 @@ function UnverifiedPage({ onLogout }) {
 
 function AppRoutes() {
   const { user, loading, logout } = useAuth();
-  const publicPages = ['landing', 'landing1', 'login', 'register', 'verify-email'];
+  const publicPages = ['landing', 'landing1', 'login', 'register', 'verify-email', 'forgot-password', 'reset-password'];
   const getInitialPage = () => {
     if (typeof window !== 'undefined') {
       // Check if this is a verify-email link
