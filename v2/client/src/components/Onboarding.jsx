@@ -42,6 +42,7 @@ export default function Onboarding({ onComplete }) {
   const [selectedKey, setSelectedKey] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [bizId, setBizId] = useState(null);
   const [error, setError] = useState('');
 
   const selected = FEATURED.find(t => t.key === selectedKey);
@@ -54,8 +55,8 @@ export default function Onboarding({ onComplete }) {
     try {
       const templateData = JSON.parse(JSON.stringify(tplDef.load()));
       const biz = await createBusiness(selectedKey, businessName.trim(), templateData);
+      setBizId(biz.id);
       setStep(3);
-      onComplete(biz.id);
     } catch (err) {
       setError(err.message || 'Failed to create bot');
     } finally {
@@ -160,13 +161,13 @@ export default function Onboarding({ onComplete }) {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={() => onComplete('settings')}
+                onClick={() => { onComplete(bizId); setTimeout(() => onComplete('settings'), 50); }}
                 className="py-3 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white font-semibold rounded-xl transition-all shadow-md shadow-indigo-500/25 text-sm"
               >
                 Connect channel
               </button>
               <button
-                onClick={() => onComplete('builder')}
+                onClick={() => { onComplete(bizId); setTimeout(() => onComplete('builder'), 50); }}
                 className="py-3 border border-indigo-500 text-indigo-600 font-semibold rounded-xl hover:bg-indigo-50 transition-all text-sm"
               >
                 Customize bot

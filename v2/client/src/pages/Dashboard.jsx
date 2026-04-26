@@ -4,7 +4,7 @@ import { fetchAnalytics } from '../lib/api';
 import Onboarding from '../components/Onboarding';
 import { SkeletonCard } from '../components/Skeleton';
 
-export default function Dashboard({ businessId, onNavigate }) {
+export default function Dashboard({ businessId, setBusinessId, onNavigate }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -22,10 +22,10 @@ export default function Dashboard({ businessId, onNavigate }) {
   // ── Onboarding state ──
   if (!businessId) {
     return (
-      <Onboarding onComplete={(target) => {
-        if (target === 'settings') onNavigate?.('settings');
-        else if (target === 'builder') onNavigate?.('builder');
-        else window.location.reload();
+      <Onboarding onComplete={(bizIdOrTarget) => {
+        if (bizIdOrTarget === 'settings') onNavigate?.('settings');
+        else if (bizIdOrTarget === 'builder') onNavigate?.('builder');
+        else if (typeof bizIdOrTarget === 'number') setBusinessId(bizIdOrTarget);
       }} />
     );
   }
