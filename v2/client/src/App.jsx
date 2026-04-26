@@ -26,8 +26,11 @@ function VerifyBanner() {
   async function resend() {
     setSending(true);
     try {
-      const { authFetch } = await import('./lib/auth');
-      await authFetch(`${API}/auth/resend-verification`, { method: 'POST' });
+      const token = localStorage.getItem('bd_access_token');
+      await fetch(`${API}/auth/resend-verification`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setSent(true);
     } catch {}
     setSending(false);
@@ -61,8 +64,11 @@ function UnverifiedPage({ onLogout }) {
     setSending(true);
     setError('');
     try {
-      const { authFetch } = await import('./lib/auth');
-      const res = await authFetch(`${API}/auth/resend-verification`, { method: 'POST' });
+      const token = localStorage.getItem('bd_access_token');
+      const res = await fetch(`${API}/auth/resend-verification`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       if (res.ok) setSent(true);
       else setError(data.error || 'Failed to send email');
