@@ -374,6 +374,22 @@ export default function BuilderPage({ businessId, setBusinessId }) {
   })();
 
   return (
+    {showChangeTemplate && (
+      <ChangeTemplateModal
+        businessId={businessId}
+        onClose={() => setShowChangeTemplate(false)}
+        onApplied={async (templateKey, templateName) => {
+          const data = await loadBuilder(businessId);
+          setWelcomeMessage(data.welcomeMessage);
+          setButtons(data.buttons);
+          syncNextId(data.buttons);
+          if (data.flow) setFlowId(data.flow.id);
+          setSelectedButtonId(null); setPath([]); setViewingInfoId(null);
+          setErrorMessage(''); setSaveStatus(null);
+          setShowChangeTemplate(false);
+        }}
+      />
+    )}
     <div style={{ minHeight: '100%', position: 'relative' }} className="bg-slate-100">
       {/* Submission toast */}
       {submissionToast && (
