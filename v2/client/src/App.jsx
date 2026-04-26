@@ -178,13 +178,15 @@ function AppRoutes() {
     return <OwnerPanel onLogout={handleLogout} />;
   }
 
-  // Email verification banner
-  const showVerifyBanner = user && !user.email_verified;
+  // Block unverified users
+  if (!user.email_verified) {
+    return <UnverifiedPage onLogout={handleLogout} />;
+  }
+
 
   // Admin pages wrapped in layout
   return (
     <AdminLayout currentView={page} onViewChange={navigate} onLogout={handleLogout}>
-      {showVerifyBanner && <VerifyBanner />}
       {page === 'dashboard' && <Dashboard businessId={businessId} onNavigate={navigate} />}
       {page === 'builder' && <BuilderPage businessId={businessId} setBusinessId={setBusinessId} />}
       {page === 'submissions' && <SubmissionsList businessId={businessId} />}
