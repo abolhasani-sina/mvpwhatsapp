@@ -26,13 +26,13 @@ export async function initiateEmailVerification(userId, email, name) {
 export function verifyEmailToken(token) {
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
   const record = db.prepare(
-    'SELECT * FROM email_verifications WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime("now")'
+    `SELECT * FROM email_verifications WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')`
   ).get(tokenHash);
 
   if (!record) return { success: false, error: 'Invalid or expired verification link' };
 
   // Mark token as used
-  db.prepare('UPDATE email_verifications SET used_at = datetime("now") WHERE id = ?').run(record.id);
+  db.prepare(`UPDATE email_verifications SET used_at = datetime('now') WHERE id = ?`).run(record.id);
   // Mark user as verified
   db.prepare('UPDATE users SET email_verified = 1 WHERE id = ?').run(record.user_id);
 
