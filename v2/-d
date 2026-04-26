@@ -1,0 +1,1 @@
+{"error":"Validation failed","violations":[{"field":"email","message":"Invalid email format"},{"field":"password","message":"Password is required"}]}
