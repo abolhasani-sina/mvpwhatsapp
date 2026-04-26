@@ -119,7 +119,8 @@ function AppRoutes() {
       const search = window.location.search;
       const hasToken = new URLSearchParams(search).get('token');
       if (pathname === '/reset-password' && hasToken) return 'reset-password';
-      if (pathname === '/verify-email' || (hasToken && pathname !== '/reset-password')) return 'verify-email';
+      if (pathname === '/verify-email' && hasToken) return 'verify-email';
+      if (hasToken) { window.history.replaceState({}, '', window.location.pathname); }
       // Clear stale token from URL if user is logged in
       if (hasToken) {
         const cleanUrl = new URL(window.location.href);

@@ -4,21 +4,21 @@ import { TEMPLATES } from '../lib/templates';
 import { createBusiness } from '../lib/api';
 
 const FEATURED = [
-  { key: 'beauty_salon',    emoji: '', name: 'Beauty salon' },
-  { key: 'restaurant',      emoji: '', name: 'Restaurant' },
-  { key: 'medical_clinic',  emoji: '', name: 'Clinic' },
-  { key: 'fitness_gym',     emoji: '', name: 'Gym' },
-  { key: 'real_estate',     emoji: '', name: 'Real estate' },
-  { key: 'car_rental',      emoji: '', name: 'Car rental' },
-  { key: 'hotel',           emoji: '', name: 'Hotel' },
-  { key: 'pet_care',        emoji: '', name: 'Pet care' },
-  { key: 'education',       emoji: '', name: 'Education' },
-  { key: 'auto_repair',     emoji: '', name: 'Auto repair' },
-  { key: 'photography',     emoji: '', name: 'Photography' },
-  { key: 'cleaning',        emoji: '', name: 'Cleaning' },
-  { key: 'event_planning',  emoji: '', name: 'Events' },
-  { key: 'travel_agency',   emoji: '', name: 'Travel' },
-  { key: 'law_firm',        emoji: '', name: 'Law firm' },
+  { key: 'beauty_salon',   icon: '💇', name: 'Beauty salon' },
+  { key: 'restaurant',     icon: '🍽', name: 'Restaurant' },
+  { key: 'medical_clinic', icon: '🏥', name: 'Clinic' },
+  { key: 'fitness_gym',    icon: '💪', name: 'Gym' },
+  { key: 'real_estate',    icon: '🏠', name: 'Real estate' },
+  { key: 'car_rental',     icon: '🚗', name: 'Car rental' },
+  { key: 'hotel',          icon: '🏨', name: 'Hotel' },
+  { key: 'pet_care',       icon: '🐾', name: 'Pet care' },
+  { key: 'education',      icon: '📚', name: 'Education' },
+  { key: 'auto_repair',    icon: '🔧', name: 'Auto repair' },
+  { key: 'photography',    icon: '📷', name: 'Photography' },
+  { key: 'cleaning',       icon: '🧹', name: 'Cleaning' },
+  { key: 'event_planning', icon: '🎉', name: 'Events' },
+  { key: 'travel_agency',  icon: '✈️',  name: 'Travel' },
+  { key: 'law_firm',       icon: '⚖️',  name: 'Law firm' },
 ];
 
 function StepIndicator({ step }) {
@@ -84,7 +84,7 @@ export default function Onboarding({ onComplete }) {
                       ? 'border-indigo-500 bg-indigo-50 shadow-sm shadow-indigo-100'
                       : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'}`}
                 >
-                  <span style={{fontSize:'22px',lineHeight:1,fontFamily:'Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif'}}>{t.emoji}</span>
+                  <span style={{fontSize:'22px',lineHeight:1,fontFamily:'Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif'}}>{t.icon}</span>
                   <span className={`text-xs font-medium leading-tight ${selectedKey === t.key ? 'text-indigo-700' : 'text-slate-600'}`}>{t.name}</span>
                 </button>
               ))}
