@@ -1102,7 +1102,7 @@ function TemplateCard({ tpl, onLoadTemplate }) {
   );
 }
 
-export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedButton, onBehaviorChange, onBack, errorMessage, onAddChild, path, parentButton, visibleButtons, onAddButton, onSelectButton, onUpdateButton, genId, allButtons, templates, onLoadTemplate, businessId, flowId, onGoBack, channel }) {
+export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedButton, onBehaviorChange, onBack, errorMessage, onAddChild, path, parentButton, visibleButtons, onAddButton, onSelectButton, onUpdateButton, genId, allButtons, templates, onLoadTemplate, onChangeTemplate, businessId, flowId, onGoBack, channel }) {
   const [openSections, setOpenSections] = useState({ behavior: true, flow: false });
   const [staff, setStaff] = useState([]);
   const [showTemplates, setShowTemplates] = useState(false);
