@@ -1017,17 +1017,6 @@ export default function WhatsAppTester({ businessId }) {
         ))}
       </div>
 
-      {/* Preview Mode Banner */}
-      <div style={{
-        width: '100%', maxWidth: 375, margin: '0 auto 12px auto',
-        background: '#fef9c3', border: '1px solid #fde047', borderRadius: 10,
-        padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8,
-        fontSize: 13, color: '#854d0e', fontWeight: 500,
-      }}>
-        <span></span>
-        <span>Preview Mode  No real messages sent on any channel</span>
-      </div>
-
       <div className="flex items-start justify-center w-full px-2 sm:px-0"> {/* [ADDED: mobile-responsive] */}
       {/* Phone Frame */}
       {/* [ADDED: mobile-responsive] */}

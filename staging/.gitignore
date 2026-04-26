@@ -1,0 +1,2 @@
+server/*.backup*
+server/db-backups/
