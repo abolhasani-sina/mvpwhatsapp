@@ -7,35 +7,28 @@ const AuthContext = createContext(null);
 function getTokens() {
   return {
     accessToken: localStorage.getItem('bd_access_token'),
-    refreshToken: localStorage.getItem('bd_refresh_token'),
   };
 }
 
-function setTokens(accessToken, refreshToken) {
+function setTokens(accessToken) {
   localStorage.setItem('bd_access_token', accessToken);
-  localStorage.setItem('bd_refresh_token', refreshToken);
 }
 
 function clearTokens() {
   localStorage.removeItem('bd_access_token');
-  localStorage.removeItem('bd_refresh_token');
   localStorage.removeItem('bd_user');
 }
 
 // Refresh the access token using the refresh token
 async function refreshAccessToken() {
-  const { refreshToken } = getTokens();
-  if (!refreshToken) return null;
-
   try {
     const res = await fetch(`${API}/auth/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      credentials: 'include',
     });
     if (!res.ok) return null;
     const data = await res.json();
-    setTokens(data.accessToken, data.refreshToken);
+    setTokens(data.accessToken);
     return data.accessToken;
   } catch {
     return null;
@@ -121,7 +114,7 @@ export function AuthProvider({ children }) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Login failed');
 
-    setTokens(data.accessToken, data.refreshToken);
+    setTokens(data.accessToken);
     localStorage.setItem('bd_user', JSON.stringify(data.user));
     setUser(data.user);
     return data.user;
@@ -136,7 +129,7 @@ export function AuthProvider({ children }) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Registration failed');
 
-    setTokens(data.accessToken, data.refreshToken);
+    setTokens(data.accessToken);
     localStorage.setItem('bd_user', JSON.stringify(data.user));
     setUser(data.user);
     return data.user;

@@ -8,16 +8,24 @@ const JWT_EXPIRY = process.env.JWT_EXPIRY || '15m';
 const JWT_REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '7d';
 
 // Generate access + refresh token pair
-export function generateTokens(userId) {
+export function generateTokens(userId, res) {
   const accessToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
   const refreshToken = jwt.sign({ userId }, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRY });
-
   // Store refresh token in DB
   db.prepare(
     'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, datetime(\'now\', ?))'
   ).run(userId, refreshToken, JWT_REFRESH_EXPIRY.replace('d', ' days').replace('h', ' hours'));
-
-  return { accessToken, refreshToken };
+  // Set refresh token as httpOnly cookie
+  if (res) {
+    res.cookie('rt', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/api/auth/refresh',
+    });
+  }
+  return { accessToken };
 }
 
 // Verify access token — attaches req.userId
@@ -60,7 +68,7 @@ export function requireOwner(req, res, next) {
 
 // Refresh token handler
 export function refreshAccessToken(req, res) {
-  const { refreshToken } = req.body;
+  const refreshToken = req.cookies?.rt;
   if (!refreshToken) {
     return res.status(400).json({ error: 'Refresh token required' });
   }
@@ -88,8 +96,11 @@ export function refreshAccessToken(req, res) {
 }
 
 // Revoke all refresh tokens for a user (logout)
-export function revokeTokens(userId) {
+export function revokeTokens(userId, res) {
   db.prepare('DELETE FROM refresh_tokens WHERE user_id = ?').run(userId);
+  if (res) {
+    res.clearCookie('rt', { path: '/api/auth/refresh' });
+  }
 }
 
 // Cleanup expired refresh tokens (call periodically)
