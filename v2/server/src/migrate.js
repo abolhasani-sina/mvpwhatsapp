@@ -8,7 +8,13 @@ export function migrate() {
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       name TEXT DEFAULT '',
-      created_at TEXT DEFAULT (datetime('now'))
+      created_at TEXT DEFAULT (datetime('now')),
+      role TEXT NOT NULL DEFAULT 'user',
+      suspended INTEGER NOT NULL DEFAULT 0,
+      failed_attempts INTEGER NOT NULL DEFAULT 0,
+      locked_until TEXT,
+      email_verified INTEGER NOT NULL DEFAULT 0,
+      consent_given_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS refresh_tokens (
@@ -549,3 +555,18 @@ export function migrate() {
     }
   }
 }
+
+//  Incremental migrations for existing DBs 
+const alterations = [
+  "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'",
+  "ALTER TABLE users ADD COLUMN suspended INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE users ADD COLUMN failed_attempts INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE users ADD COLUMN locked_until TEXT",
+  "ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE users ADD COLUMN consent_given_at TEXT",
+  "ALTER TABLE settings ADD COLUMN telegram_chat_id_locked INTEGER NOT NULL DEFAULT 0",
+];
+for (const sql of alterations) {
+  try { db.prepare(sql).run(); } catch (e) { /* column already exists */ }
+}
+

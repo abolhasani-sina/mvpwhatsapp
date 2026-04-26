@@ -25,9 +25,10 @@ router.post('/register', registerRules, validate, (req, res) => {
 
   const passwordHash = bcrypt.hashSync(password, BCRYPT_ROUNDS);
 
+  const consentAt = new Date().toISOString();
   const result = db.prepare(
-    'INSERT INTO users (email, password, name) VALUES (?, ?, ?)'
-  ).run(emailTrimmed, passwordHash, (name || emailTrimmed.split('@')[0]).trim());
+    'INSERT INTO users (email, password, name, consent_given_at) VALUES (?, ?, ?, ?)'
+  ).run(emailTrimmed, passwordHash, (name || emailTrimmed.split('@')[0]).trim(), consentAt);
 
   const userId = Number(result.lastInsertRowid);
 
