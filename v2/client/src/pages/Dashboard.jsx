@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Inbox, Users, Bot, TrendingUp, ArrowRight, Clock, CheckCircle2, Sparkles } from 'lucide-react';
 import { fetchAnalytics } from '../lib/api';
+import Onboarding from '../components/Onboarding';
 import { SkeletonCard } from '../components/Skeleton';
 
 export default function Dashboard({ businessId, onNavigate }) {
@@ -21,27 +22,11 @@ export default function Dashboard({ businessId, onNavigate }) {
   // ── Onboarding state ──
   if (!businessId) {
     return (
-      <div className="p-6 max-w-3xl mx-auto">
-        <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-950 rounded-2xl p-12 text-center shadow-xl">
-          <div className="absolute inset-0 bd-grid-bg opacity-20" />
-          <div className="absolute top-0 right-0 w-[250px] h-[250px] bg-indigo-500/15 rounded-full blur-[80px]" />
-          <div className="relative">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-500/30">
-              <Sparkles className="w-8 h-8 text-white" />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Welcome to NabzChat</h2>
-            <p className="text-slate-400 mb-8 max-w-md mx-auto">
-              Build your smart bot in minutes. Pick a template, customize it, and start receiving customer requests on WhatsApp, Telegram & Instagram.
-            </p>
-            <button
-              onClick={() => onNavigate?.('builder')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl font-semibold transition-all shadow-md shadow-indigo-500/25"
-            >
-              <Bot className="w-5 h-5" /> Create Your Bot <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
+      <Onboarding onComplete={(target) => {
+        if (target === 'settings') onNavigate?.('settings');
+        else if (target === 'builder') onNavigate?.('builder');
+        else window.location.reload();
+      }} />
     );
   }
 
