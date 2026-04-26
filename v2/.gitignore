@@ -1,2 +1,4 @@
 server/*.backup*
 server/db-backups/
+staging/
+staging/
