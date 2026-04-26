@@ -442,7 +442,7 @@ export default function BuilderPage({ businessId, setBusinessId }) {
           allButtons={buttons}
           templates={TEMPLATES}
           onLoadTemplate={handleLoadTemplate}
-          onChangeTemplate={() => setShowChangeTemplate(true)}
+          onChangeTemplate={() => { console.log('CHANGE TEMPLATE CLICKED', showChangeTemplate); setShowChangeTemplate(true); console.log('SET TO TRUE'); }}
           businessId={businessId}
           flowId={flowId}
           onGoBack={handleGoBack}
