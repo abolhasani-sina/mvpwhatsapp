@@ -119,7 +119,13 @@ function AppRoutes() {
       const search = window.location.search;
       const hasToken = new URLSearchParams(search).get('token');
       if (pathname === '/reset-password' && hasToken) return 'reset-password';
-      if (pathname === '/verify-email' || hasToken) return 'verify-email';
+      if (pathname === '/verify-email' || (hasToken && pathname !== '/reset-password')) return 'verify-email';
+      // Clear stale token from URL if user is logged in
+      if (hasToken) {
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('token');
+        window.history.replaceState({}, '', cleanUrl.toString());
+      }
       const qp = new URLSearchParams(search).get('page');
       if (qp && publicPages.includes(qp)) return qp;
       const saved = sessionStorage.getItem('nabz_page');
@@ -162,6 +168,7 @@ function AppRoutes() {
         url.searchParams.set('page', target);
       } else {
         url.searchParams.delete('page');
+        url.searchParams.delete('token');
       }
       window.history.replaceState({}, '', url.toString());
     }
