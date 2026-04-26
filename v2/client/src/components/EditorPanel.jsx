@@ -1024,6 +1024,7 @@ function ButtonDelivery({ deliveryMethod, deliveryStaffId, staff, onChange }) {
 }
 
 // ── Template preview card ──
+// TemplateCard removed  template change now via ChangeTemplateModal
 function TemplateCard({ tpl, onLoadTemplate }) {
   const [expanded, setExpanded] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -1382,36 +1383,15 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
       {/* Template selector — collapsible when buttons already exist */}
       {templates && templates.length > 0 && (
         <>
-          {hasButtons ? (
+          {hasButtons && (
             <div style={{ marginTop: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
               <button
-                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#64748b', padding: 0 }}
-                onClick={() => setShowTemplates(!showTemplates)}
+                onClick={() => onChangeTemplate && onChangeTemplate()}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#b91c1c', width: '100%' }}
               >
-                <span>🚀</span> Templates {showTemplates ? '▾' : '▸'}
-                <span style={{ fontSize: '11px', fontWeight: 400, color: '#94a3b8' }}>— replace current setup</span>
+                ⚠️ Change Bot Template
+                <span style={{ fontSize: 11, color: '#f87171', marginLeft: 'auto' }}>Destructive action</span>
               </button>
-              {showTemplates && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
-                  <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 4px', lineHeight: '1.5' }}>⚠️ Applying a template will replace your current buttons and welcome message.</p>
-                  {templates.map((tpl) => (
-                    <TemplateCard key={tpl.key} tpl={tpl} onLoadTemplate={onLoadTemplate} />
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div style={{ marginTop: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <span style={{ fontSize: '16px' }}>🚀</span>
-                <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Quick start with a template</h3>
-              </div>
-              <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 12px', lineHeight: '1.5' }}>Pick a pre-built business template to get started instantly. You can customize everything after.</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {templates.map((tpl) => (
-                  <TemplateCard key={tpl.key} tpl={tpl} onLoadTemplate={onLoadTemplate} />
-                ))}
-              </div>
             </div>
           )}
         </>

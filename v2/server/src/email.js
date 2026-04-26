@@ -71,3 +71,28 @@ export async function sendPasswordResetEmail(email, name, token) {
   });
   log.info({ email }, 'password reset email sent');
 }
+
+export async function sendTemplateChangeCode(email, name, code) {
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
+    to: email,
+    subject: 'Your NabzChat security code',
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px;background:#f9fafb;border-radius:12px;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <h1 style="color:#6c3fff;font-size:28px;margin:0;">NabzChat</h1>
+        </div>
+        <div style="background:#fff;border-radius:8px;padding:32px;">
+          <h2 style="color:#111;margin-top:0;">Security verification code</h2>
+          <p style="color:#555;">Hi ${name},</p>
+          <p style="color:#555;">Someone requested to change the bot template for your account. Use this code to confirm:</p>
+          <div style="text-align:center;margin:32px 0;">
+            <div style="font-size:42px;font-weight:700;letter-spacing:12px;color:#6c3fff;">${code}</div>
+          </div>
+          <p style="color:#999;font-size:13px;">This code expires in 10 minutes. If you did not request this, ignore this email and your bot will not be changed.</p>
+        </div>
+      </div>
+    `,
+  });
+  log.info({ email }, 'template change code sent');
+}

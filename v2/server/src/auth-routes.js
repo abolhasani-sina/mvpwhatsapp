@@ -5,7 +5,7 @@ import db from './db.js';
 import { generateTokens, refreshAccessToken, revokeTokens, authenticate } from './middleware/auth.js';
 import { registerRules, loginRules, validate } from './middleware/validators.js';
 import { initiateEmailVerification, verifyEmailToken } from './email-verify.js';
-import { sendPasswordResetEmail } from './email.js';
+import { sendPasswordResetEmail, sendTemplateChangeCode } from './email.js';
 import crypto from 'crypto';
 
 const router = Router();
@@ -145,6 +145,42 @@ router.post('/reset-password', async (req, res) => {
   db.prepare('UPDATE users SET password = ?, failed_attempts = 0, locked_until = NULL WHERE id = ?').run(passwordHash, record.uid);
   db.prepare('DELETE FROM refresh_tokens WHERE user_id = ?').run(record.uid);
   res.json({ success: true, message: 'Password reset successfully. Please log in.' });
+});
+
+// ── Request Template Change Code ──
+router.post('/request-template-code', authenticate, async (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: 'Password is required' });
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  // Verify password
+  const valid = bcrypt.compareSync(password, user.password);
+  if (!valid) return res.status(401).json({ error: 'Incorrect password' });
+  // Generate 6-digit code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const codeHash = crypto.createHash('sha256').update(code).digest('hex');
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  // Invalidate old codes
+  db.prepare('DELETE FROM template_change_codes WHERE user_id = ? AND used_at IS NULL').run(user.id);
+  db.prepare('INSERT INTO template_change_codes (user_id, code_hash, expires_at) VALUES (?, ?, ?)').run(user.id, codeHash, expiresAt);
+  // Send email in background
+  res.json({ success: true });
+  sendTemplateChangeCode(user.email, user.name, code)
+    .catch(err => console.error('Failed to send template change code:', err));
+});
+
+// ── Verify Template Change Code ──
+router.post('/verify-template-code', authenticate, (req, res) => {
+  const { code } = req.body;
+  if (!code) return res.status(400).json({ error: 'Code is required' });
+  const codeHash = crypto.createHash('sha256').update(code.trim()).digest('hex');
+  const record = db.prepare(
+    "SELECT * FROM template_change_codes WHERE user_id = ? AND code_hash = ? AND used_at IS NULL AND expires_at > datetime('now')"
+  ).get(req.userId, codeHash);
+  if (!record) return res.status(400).json({ error: 'Invalid or expired code' });
+  // Mark used
+  db.prepare("UPDATE template_change_codes SET used_at = datetime('now') WHERE id = ?").run(record.id);
+  res.json({ success: true });
 });
 
 // ── Refresh Token ──

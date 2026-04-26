@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import PhoneMockup from '../components/PhoneMockup';
 import EditorPanel from '../components/EditorPanel';
 import { TEMPLATES } from '../lib/templates';
+import ChangeTemplateModal from '../components/ChangeTemplateModal';
 import { fetchBusiness, createBusiness, applyTemplate, loadBuilder, saveBuilder, submitForm, fetchStaff } from '../lib/api';
 
 // ── Helpers to work with nested button tree ──
@@ -91,6 +92,7 @@ export default function BuilderPage({ businessId, setBusinessId }) {
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showChangeTemplate, setShowChangeTemplate] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [flowId, setFlowId] = useState(null);
   const [submissionToast, setSubmissionToast] = useState(null);
@@ -330,6 +332,17 @@ export default function BuilderPage({ businessId, setBusinessId }) {
     }
   }
 
+  async function handleTemplateApplied(templateKey, templateName) {
+    // Reload builder after template change
+    const data = await loadBuilder(businessId);
+    setWelcomeMessage(data.welcomeMessage);
+    setButtons(data.buttons);
+    syncNextId(data.buttons);
+    if (data.flow) setFlowId(data.flow.id);
+    setSelectedButtonId(null); setPath([]); setViewingInfoId(null);
+    setErrorMessage(''); setSaveStatus(null);
+  }
+
   async function handleSave() {
     if (!businessId) { setErrorMessage('No business loaded. Pick a template first.'); setSaveStatus('error'); return; }
     if (!welcomeMessage || !welcomeMessage.trim()) { setErrorMessage('Welcome message is required.'); setSaveStatus('error'); return; }
@@ -429,6 +442,7 @@ export default function BuilderPage({ businessId, setBusinessId }) {
           allButtons={buttons}
           templates={TEMPLATES}
           onLoadTemplate={handleLoadTemplate}
+          onChangeTemplate={() => setShowChangeTemplate(true)}
           businessId={businessId}
           flowId={flowId}
           onGoBack={handleGoBack}
