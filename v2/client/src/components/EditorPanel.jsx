@@ -1380,22 +1380,16 @@ export default function EditorPanel({ welcomeMessage, onWelcomeChange, selectedB
         </div>
       )}
 
-      {/* Template selector — collapsible when buttons already exist */}
-      {templates && templates.length > 0 && (
-        <>
-          {hasButtons && (
-            <div style={{ marginTop: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
-              <button
-                onClick={() => onChangeTemplate && onChangeTemplate()}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#b91c1c', width: '100%' }}
-              >
-                ⚠️ Change Bot Template
-                <span style={{ fontSize: 11, color: '#f87171', marginLeft: 'auto' }}>Destructive action</span>
-              </button>
-            </div>
-          )}
-        </>
-      )}
+      {/* Template selector */}
+      <div style={{ marginTop: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+        <button
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); console.log('CTB CLICKED', typeof onChangeTemplate); if (onChangeTemplate) onChangeTemplate(); }}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#b91c1c', width: '100%' }}
+        >
+          ⚠️ Change Bot Template
+          <span style={{ fontSize: 11, color: '#f87171', marginLeft: 'auto' }}>Destructive action</span>
+        </button>
+      </div>
     </div>
     </div>
   );
