@@ -115,12 +115,12 @@ function AppRoutes() {
   const publicPages = ['landing', 'landing1', 'login', 'register', 'verify-email', 'forgot-password', 'reset-password'];
   const getInitialPage = () => {
     if (typeof window !== 'undefined') {
-      // Check if this is a verify-email link
-      if (window.location.pathname === '/verify-email' || 
-          new URLSearchParams(window.location.search).get('token')) {
-        return 'verify-email';
-      }
-      const qp = new URLSearchParams(window.location.search).get('page');
+      const pathname = window.location.pathname;
+      const search = window.location.search;
+      const hasToken = new URLSearchParams(search).get('token');
+      if (pathname === '/reset-password' && hasToken) return 'reset-password';
+      if (pathname === '/verify-email' || hasToken) return 'verify-email';
+      const qp = new URLSearchParams(search).get('page');
       if (qp && publicPages.includes(qp)) return qp;
       const saved = sessionStorage.getItem('nabz_page');
       const isLoggedIn = !!localStorage.getItem('bd_user');
