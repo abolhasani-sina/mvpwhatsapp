@@ -84,7 +84,7 @@ export default function Onboarding({ onComplete }) {
                       ? 'border-indigo-500 bg-indigo-50 shadow-sm shadow-indigo-100'
                       : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'}`}
                 >
-                  <span style={{fontSize:'22px',lineHeight:1}}>{t.emoji}</span>
+                  <span style={{fontSize:'22px',lineHeight:1,fontFamily:'Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif'}}>{t.emoji}</span>
                   <span className={`text-xs font-medium leading-tight ${selectedKey === t.key ? 'text-indigo-700' : 'text-slate-600'}`}>{t.name}</span>
                 </button>
               ))}
