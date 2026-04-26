@@ -102,8 +102,10 @@ router.post('/resend-verification', authenticate, async (req, res) => {
     'SELECT created_at FROM email_verifications WHERE user_id = ? AND created_at > datetime("now", "-2 minutes")'
   ).get(user.id);
   if (recent) return res.status(429).json({ error: 'Please wait 2 minutes before requesting another email' });
-  await initiateEmailVerification(user.id, user.email, user.name);
+  // Respond immediately, send email in background
   res.json({ success: true });
+  initiateEmailVerification(user.id, user.email, user.name)
+    .catch(err => console.error('Resend verification failed:', err));
 });
 
 // ── Refresh Token ──
