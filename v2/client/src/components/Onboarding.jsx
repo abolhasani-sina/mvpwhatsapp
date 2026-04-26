@@ -19,6 +19,7 @@ const FEATURED = [
   { key: 'event_planning', icon: '🎉', name: 'Events' },
   { key: 'travel_agency',  icon: '✈️',  name: 'Travel' },
   { key: 'law_firm',       icon: '⚖️',  name: 'Law firm' },
+  { key: 'custom', icon: '✨', name: 'Other / Custom' },
 ];
 
 function StepIndicator({ step }) {
@@ -47,13 +48,16 @@ export default function Onboarding({ onComplete }) {
 
   const selected = FEATURED.find(t => t.key === selectedKey);
   const tplDef = TEMPLATES.find(t => t.key === selectedKey);
+  const isCustom = selectedKey === 'custom';
 
   async function handleCreate() {
     if (!businessName.trim()) return setError('Please enter a business name');
     setError('');
     setLoading(true);
     try {
-      const templateData = JSON.parse(JSON.stringify(tplDef.load()));
+      const templateData = isCustom
+        ? { welcomeMessage: `Welcome to ${businessName.trim()}! How can we help you today?`, buttons: [] }
+        : JSON.parse(JSON.stringify(tplDef.load()));
       // Replace hardcoded template business name with user's business name
       const templateNames = [
         'Glow Studio', 'CarePoint Medical Center', 'Bella Tavola', 'Skyline Realty',
@@ -62,10 +66,12 @@ export default function Onboarding({ onComplete }) {
         'EventCraft', 'SkyWay Travel',
       ];
       const userBizName = businessName.trim();
-      for (const tName of templateNames) {
-        if (templateData.welcomeMessage && templateData.welcomeMessage.includes(tName)) {
-          templateData.welcomeMessage = templateData.welcomeMessage.replace(tName, userBizName);
-          break;
+      if (!isCustom) {
+        for (const tName of templateNames) {
+          if (templateData.welcomeMessage && templateData.welcomeMessage.includes(tName)) {
+            templateData.welcomeMessage = templateData.welcomeMessage.replace(tName, userBizName);
+            break;
+          }
         }
       }
       const biz = await createBusiness(selectedKey, userBizName, templateData);
