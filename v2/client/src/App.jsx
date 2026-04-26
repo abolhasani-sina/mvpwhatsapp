@@ -51,6 +51,53 @@ function VerifyBanner() {
   );
 }
 
+
+function UnverifiedPage({ onLogout }) {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+
+  async function resend() {
+    setSending(true);
+    setError('');
+    try {
+      const { authFetch } = await import('./lib/auth');
+      const res = await authFetch(`${API}/auth/resend-verification`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) setSent(true);
+      else setError(data.error || 'Failed to send email');
+    } catch {
+      setError('Network error. Please try again.');
+    }
+    setSending(false);
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
+      <div style={{ background: '#fff', borderRadius: 16, padding: 48, maxWidth: 440, width: '100%', textAlign: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+        <h1 style={{ color: '#6c3fff', marginBottom: 24 }}>NabzChat</h1>
+        <div style={{ fontSize: 48, marginBottom: 16 }}></div>
+        <h2 style={{ color: '#111', marginBottom: 8 }}>Check your email</h2>
+        <p style={{ color: '#666', marginBottom: 24 }}>We sent a verification link to your email address. Please click it to activate your account.</p>
+        {sent
+          ? <p style={{ color: '#059669', fontWeight: 600 }}> Email sent! Check your inbox.</p>
+          : <>
+              {error && <p style={{ color: '#dc2626', marginBottom: 12 }}>{error}</p>}
+              <button onClick={resend} disabled={sending} style={{
+                background: '#6c3fff', color: '#fff', border: 'none', borderRadius: 8,
+                padding: '12px 32px', cursor: 'pointer', fontWeight: 600, fontSize: 16, marginBottom: 16, width: '100%',
+              }}>{sending ? 'Sending...' : 'Resend verification email'}</button>
+            </>
+        }
+        <button onClick={onLogout} style={{
+          background: 'transparent', color: '#999', border: '1px solid #e2e8f0', borderRadius: 8,
+          padding: '10px 24px', cursor: 'pointer', fontSize: 14, width: '100%',
+        }}>Log out</button>
+      </div>
+    </div>
+  );
+}
+
 function AppRoutes() {
   const { user, loading, logout } = useAuth();
   const publicPages = ['landing', 'landing1', 'login', 'register', 'verify-email'];

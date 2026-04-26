@@ -208,6 +208,14 @@ app.use('/api/auth', authRoutes);
 app.use('/api/owner', ownerRoutes);
 app.use('/api', routes);
 
+// Cleanup unverified accounts older than 7 days (runs daily)
+setInterval(() => {
+  const result = db.prepare(
+    "DELETE FROM users WHERE email_verified = 0 AND created_at < datetime('now', '-7 days') AND role = 'user'"
+  ).run();
+  if (result.changes > 0) log.info({ deleted: result.changes }, 'cleaned up unverified accounts');
+}, 24 * 60 * 60 * 1000);
+
 // Cleanup expired refresh tokens every hour
 setInterval(cleanupExpiredTokens, 60 * 60 * 1000);
 

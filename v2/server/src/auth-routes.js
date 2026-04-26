@@ -83,6 +83,29 @@ router.post('/login', loginRules, validate, (req, res) => {
   });
 });
 
+
+//  Verify Email 
+router.get('/verify-email', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).json({ error: 'Token required' });
+  const result = verifyEmailToken(token);
+  if (!result.success) return res.status(400).json({ error: result.error });
+  res.json({ success: true, message: 'Email verified successfully' });
+});
+
+//  Resend Verification Email 
+router.post('/resend-verification', authenticate, async (req, res) => {
+  const user = db.prepare('SELECT id, email, name, email_verified FROM users WHERE id = ?').get(req.userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (user.email_verified) return res.status(400).json({ error: 'Email already verified' });
+  const recent = db.prepare(
+    'SELECT created_at FROM email_verifications WHERE user_id = ? AND created_at > datetime("now", "-2 minutes")'
+  ).get(user.id);
+  if (recent) return res.status(429).json({ error: 'Please wait 2 minutes before requesting another email' });
+  await initiateEmailVerification(user.id, user.email, user.name);
+  res.json({ success: true });
+});
+
 // ── Refresh Token ──
 router.post('/refresh', refreshAccessToken);
 
