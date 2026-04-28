@@ -110,6 +110,12 @@ export async function handleWhatsAppWebhook(body) {
 
     const messages = value.messages;
     if (!messages || messages.length === 0) return;
+    // Ignore messages older than 5 minutes (Meta webhook retries)
+    const firstMsg = messages[0];
+    if (firstMsg?.timestamp) {
+      const msgAge = Date.now() / 1000 - parseInt(firstMsg.timestamp);
+      if (msgAge > 300) { log.info({ msgAge: Math.round(msgAge) }, 'Ignoring old webhook retry'); return; }
+    }
 
     const wabaId = value.metadata?.phone_number_id;
     if (!wabaId) return;
