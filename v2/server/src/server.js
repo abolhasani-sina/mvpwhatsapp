@@ -219,10 +219,21 @@ app.use('/api', routes);
 
 // Cleanup unverified accounts older than 7 days (runs daily)
 setInterval(() => {
-  const result = db.prepare(
-    "DELETE FROM users WHERE email_verified = 0 AND created_at < datetime('now', '-7 days') AND role = 'user'"
-  ).run();
-  if (result.changes > 0) log.info({ deleted: result.changes }, 'cleaned up unverified accounts');
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').substring(0, 19);
+    const oldUsers = db.prepare(
+      "SELECT id FROM users WHERE email_verified = 0 AND created_at < ? AND role = 'user'"
+    ).all(sevenDaysAgo);
+    for (const u of oldUsers) {
+      db.prepare('DELETE FROM email_verifications WHERE user_id = ?').run(u.id);
+      db.prepare('DELETE FROM refresh_tokens WHERE user_id = ?').run(u.id);
+      db.prepare('DELETE FROM businesses WHERE user_id = ?').run(u.id);
+      db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
+    }
+    if (oldUsers.length > 0) log.info({ deleted: oldUsers.length }, 'cleaned up unverified accounts');
+  } catch (e) {
+    log.error({ error: e.message }, 'cleanup error');
+  }
 }, 24 * 60 * 60 * 1000);
 
 // Cleanup expired refresh tokens every hour
