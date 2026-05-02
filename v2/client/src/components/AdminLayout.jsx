@@ -63,9 +63,9 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
   useEffect(() => {
     if (!notifOpen) return;
     fetchNotifs();
-    const t = setTimeout(markAllRead, 2000);
+    const t = setTimeout(() => { markAllRead(); setUnreadCount(0); }, 3000);
     return () => clearTimeout(t);
-  }, [notifOpen, fetchNotifs, markAllRead]);
+  }, [notifOpen]);
 
   useEffect(() => {
     function handleClick(e) {
@@ -186,20 +186,35 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
                 )}
               </button>
               {notifOpen && (
-                <div className="absolute right-0 top-10 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-slate-800">Notifications</span>
-                    {unreadCount > 0 && <span className="text-xs text-indigo-500 cursor-pointer" onClick={markAllRead}>Mark all read</span>}
+                <div className="absolute right-0 top-11 w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden" style={{boxShadow:"0 20px 60px rgba(0,0,0,0.15)"}}>
+                  <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-violet-50">
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-4 h-4 text-indigo-500" />
+                      <span className="text-sm font-bold text-slate-800">Notifications</span>
+                      {unreadCount > 0 && <span className="px-2 py-0.5 bg-indigo-500 text-white text-[10px] font-bold rounded-full">{unreadCount} new</span>}
+                    </div>
+                    {unreadCount > 0 && <button className="text-xs text-indigo-500 hover:text-indigo-700 font-medium" onClick={markAllRead}>Mark all read</button>}
                   </div>
-                  <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
                     {notifs.length === 0 && (
-                      <div className="px-4 py-6 text-center text-sm text-slate-400">No notifications yet</div>
+                      <div className="flex flex-col items-center justify-center py-10 gap-2">
+                        <Bell className="w-8 h-8 text-slate-200" />
+                        <p className="text-sm text-slate-400">No notifications yet</p>
+                      </div>
                     )}
                     {notifs.map(n => (
-                      <div key={n.id} className={"px-4 py-3 hover:bg-slate-50 transition-all " + (!n.read_at ? "bg-indigo-50/50" : "")}>
-                        <p className="text-sm font-medium text-slate-800">{n.title}</p>
-                        {n.body && <p className="text-xs text-slate-500 mt-0.5 truncate">{n.body}</p>}
-                        <p className="text-[11px] text-slate-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                      <div key={n.id} className={"flex gap-3 px-5 py-3.5 hover:bg-slate-50 transition-all cursor-pointer " + (!n.read_at ? "bg-indigo-50/40 border-l-2 border-indigo-400" : "")}>
+                        <div className={"w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5 " + (!n.read_at ? "bg-indigo-100" : "bg-slate-100")}>
+                          <Inbox className={"w-4 h-4 " + (!n.read_at ? "text-indigo-500" : "text-slate-400")} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={"text-sm " + (!n.read_at ? "font-semibold text-slate-900" : "font-medium text-slate-700")}>{n.title}</p>
+                          {n.body && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.body.split("\n")[0]}</p>}
+                          <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                            <span>{new Date(n.created_at).toLocaleString("en-GB", {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</span>
+                            {!n.read_at && <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full inline-block"></span>}
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>
