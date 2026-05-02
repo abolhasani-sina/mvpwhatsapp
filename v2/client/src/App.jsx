@@ -208,7 +208,7 @@ function AppRoutes() {
 
   // Admin pages wrapped in layout
   return (
-    <AdminLayout currentView={page} onViewChange={navigate} onLogout={handleLogout}>
+    <AdminLayout currentView={page} onViewChange={navigate} onLogout={handleLogout} businessId={businessId}>
       {page === 'dashboard' && <Dashboard businessId={businessId} setBusinessId={setBusinessId} onNavigate={navigate} />}
       {page === 'builder' && <BuilderPage businessId={businessId} setBusinessId={setBusinessId} />}
       {page === 'submissions' && <SubmissionsList businessId={businessId} />}

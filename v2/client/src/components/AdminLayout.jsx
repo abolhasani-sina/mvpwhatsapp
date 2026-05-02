@@ -17,7 +17,7 @@ const NAV_ITEMS = [
   { key: 'settings', label: 'Settings', icon: Settings },
 ];
 
-export default function AdminLayout({ children, currentView, onViewChange, onLogout }) {
+export default function AdminLayout({ children, currentView, onViewChange, onLogout, businessId }) {
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -26,17 +26,7 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
   const [notifs, setNotifs] = useState([]);
   const notifRef = useRef(null);
 
-  const [businessId, setBusinessId] = useState(null);
-
-  useEffect(() => {
-    if (!user) return;
-    apiFetch('/api/businesses')
-      .then(res => {
-        const biz = res.data?.[0];
-        if (biz) setBusinessId(biz.id);
-      })
-      .catch(() => {});
-  }, [user]);
+  // businessId passed as prop from App.jsx
 
   const fetchUnread = useCallback(async () => {
     if (!businessId) return;
