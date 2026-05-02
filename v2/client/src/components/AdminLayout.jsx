@@ -26,7 +26,17 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
   const [notifs, setNotifs] = useState([]);
   const notifRef = useRef(null);
 
-  const businessId = user?.businessId || user?.business_id;
+  const [businessId, setBusinessId] = useState(null);
+
+  useEffect(() => {
+    if (!user) return;
+    apiFetch('/api/businesses')
+      .then(res => {
+        const biz = res.data?.[0];
+        if (biz) setBusinessId(biz.id);
+      })
+      .catch(() => {});
+  }, [user]);
 
   const fetchUnread = useCallback(async () => {
     if (!businessId) return;
