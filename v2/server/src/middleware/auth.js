@@ -12,10 +12,10 @@ export function generateTokens(userId, res) {
   const accessToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
   const refreshToken = jwt.sign({ userId }, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRY });
   // Store refresh token in DB
-  db.prepare(
-    'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)'
   const _expiryMs = JWT_REFRESH_EXPIRY.endsWith('d') ? parseInt(JWT_REFRESH_EXPIRY) * 24 * 60 * 60 * 1000 : parseInt(JWT_REFRESH_EXPIRY) * 60 * 60 * 1000;
   const _expiresAt = new Date(Date.now() + _expiryMs).toISOString().replace('T', ' ').substring(0, 19);
+  db.prepare(
+    'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)'
   ).run(userId, refreshToken, _expiresAt);
   // Set refresh token as httpOnly cookie
   if (res) {
