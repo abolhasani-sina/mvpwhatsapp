@@ -1,12 +1,8 @@
 import { MessageSquare, LayoutDashboard, Bot, Inbox, Users, Settings, LogOut, ChevronLeft, ChevronRight, Smartphone, Menu, X, Bell } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useAuth } from '../lib/auth';
+import { useAuth, authFetch } from '../lib/auth';
 
-async function apiFetch(path, opts = {}) {
-  const res = await fetch(path, { credentials: 'include', ...opts });
-  if (!res.ok) throw new Error('API error');
-  return res.json();
-}
+
 
 const NAV_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -31,7 +27,7 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
   const fetchUnread = useCallback(async () => {
     if (!businessId) return;
     try {
-      const res = await apiFetch('/api/businesses/' + businessId + '/notifications/unread-count');
+      const res = await authFetch('/api/businesses/' + businessId + '/notifications/unread-count');
       setUnreadCount(res.data?.count || 0);
     } catch {}
   }, [businessId]);
@@ -39,7 +35,7 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
   const fetchNotifs = useCallback(async () => {
     if (!businessId) return;
     try {
-      const res = await apiFetch('/api/businesses/' + businessId + '/notifications');
+      const res = await authFetch('/api/businesses/' + businessId + '/notifications');
       setNotifs(res.data || []);
     } catch {}
   }, [businessId]);
@@ -47,7 +43,7 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
   const markAllRead = useCallback(async () => {
     if (!businessId) return;
     try {
-      await apiFetch('/api/businesses/' + businessId + '/notifications/read-all', { method: 'POST' });
+      await authFetch('/api/businesses/' + businessId + '/notifications/read-all', { method: 'POST' });
       setUnreadCount(0);
       setNotifs(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })));
     } catch {}
