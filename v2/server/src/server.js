@@ -111,7 +111,12 @@ const submissionLimiter = rateLimit({
 });
 app.post('/api/business/:id/submissions', submissionLimiter);
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(cookieParser());
 
 // Run migrations on startup
@@ -198,10 +203,11 @@ app.get('/api/webhook/whatsapp', (req, res) => {
 app.post('/api/webhook/whatsapp', webhookLimiter, (req, res) => {
   const sig = req.headers['x-hub-signature-256'];
   if (!sig) return res.sendStatus(403);
+  const rawBody = req.rawBody || JSON.stringify(req.body);
   const secret1 = process.env.WHATSAPP_APP_SECRET || '';
   const secret2 = '1635a3230f7c6df212641951bc5a3b8f';
-  const hmac1 = 'sha256=' + crypto.createHmac('sha256', secret1).update(JSON.stringify(req.body)).digest('hex');
-  const hmac2 = 'sha256=' + crypto.createHmac('sha256', secret2).update(JSON.stringify(req.body)).digest('hex');
+  const hmac1 = 'sha256=' + crypto.createHmac('sha256', secret1).update(rawBody).digest('hex');
+  const hmac2 = 'sha256=' + crypto.createHmac('sha256', secret2).update(rawBody).digest('hex');
   if (sig !== hmac1 && sig !== hmac2) return res.sendStatus(403);
   res.sendStatus(200);
   handleWhatsAppWebhook(req.body);
