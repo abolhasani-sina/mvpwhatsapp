@@ -96,3 +96,21 @@ export async function sendTemplateChangeCode(email, name, code) {
   });
   log.info({ email }, 'template change code sent');
 }
+
+export async function sendSubmissionNotification(email, businessName, submissionId, summary) {
+  const rows = summary.split('\n').map(line => {
+    const idx = line.indexOf(':');
+    if (idx === -1) return '<tr><td>' + line + '</td></tr>';
+    const label = line.substring(0, idx).trim();
+    const value = line.substring(idx + 1).trim();
+    return '<tr><td>' + label + '</td><td>' + value + '</td></tr>';
+  }).join('');
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
+    to: email,
+    subject: 'New Booking #' + submissionId + ' - ' + businessName,
+    html: '<div style="font-family:Arial,sans-serif;padding:32px;"><h2>New Booking #' + submissionId + '</h2><p>From: <strong>' + businessName + '</strong></p><table>' + rows + '</table><br><a href="' + process.env.APP_URL + '/submissions">View Submission</a></div>',
+  });
+  log.info({ email, submissionId }, 'submission notification email sent');
+}
+

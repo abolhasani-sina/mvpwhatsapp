@@ -791,6 +791,15 @@ function submitAndConfirm(conversation, state, data, businessId) {
   } catch {
     botLog('warn', 'telegram_notify_failed', { businessId, submissionId: subId });
   }
+  // Insert in-app notification
+  try {
+    const notifTitle = "New Booking #" + subNum;
+    const notifBody = (biz ? biz.name : "Business") + "  " + summary.substring(0, 120);
+    const nowTs = new Date().toISOString().replace("T", " ").substring(0, 19);
+    db.prepare('INSERT INTO notifications (business_id, type, title, body, submission_id, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(businessId, 'submission', notifTitle, notifBody, subId, nowTs);
+  } catch (e) {
+    botLog('warn', 'notif_insert_failed', { businessId, submissionId: subId });
+  }
 
   // [ADDED: configurable-confirmation] Look up this action button's confirmation
   // overrides (title/message/buttons). better-sqlite3 is synchronous, so no await.

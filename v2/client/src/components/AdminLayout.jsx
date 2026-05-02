@@ -1,6 +1,12 @@
-import { MessageSquare, LayoutDashboard, Bot, Inbox, Users, Settings, LogOut, ChevronLeft, ChevronRight, Smartphone, Menu, X } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { MessageSquare, LayoutDashboard, Bot, Inbox, Users, Settings, LogOut, ChevronLeft, ChevronRight, Smartphone, Menu, X, Bell } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../lib/auth';
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(path, { credentials: 'include', ...opts });
+  if (!res.ok) throw new Error('API error');
+  return res.json();
+}
 
 const NAV_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -15,8 +21,59 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifs, setNotifs] = useState([]);
+  const notifRef = useRef(null);
+
+  const businessId = user?.businessId || user?.business_id;
+
+  const fetchUnread = useCallback(async () => {
+    if (!businessId) return;
+    try {
+      const res = await apiFetch('/api/businesses/' + businessId + '/notifications/unread-count');
+      setUnreadCount(res.data?.count || 0);
+    } catch {}
+  }, [businessId]);
+
+  const fetchNotifs = useCallback(async () => {
+    if (!businessId) return;
+    try {
+      const res = await apiFetch('/api/businesses/' + businessId + '/notifications');
+      setNotifs(res.data || []);
+    } catch {}
+  }, [businessId]);
+
+  const markAllRead = useCallback(async () => {
+    if (!businessId) return;
+    try {
+      await apiFetch('/api/businesses/' + businessId + '/notifications/read-all', { method: 'POST' });
+      setUnreadCount(0);
+      setNotifs(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })));
+    } catch {}
+  }, [businessId]);
 
   useEffect(() => { setMobileOpen(false); }, [currentView]);
+
+  useEffect(() => {
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, [fetchUnread]);
+
+  useEffect(() => {
+    if (!notifOpen) return;
+    fetchNotifs();
+    markAllRead();
+  }, [notifOpen, fetchNotifs, markAllRead]);
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   function handleNav(key) {
     onViewChange(key);
@@ -116,6 +173,39 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
             </h1>
           </div>
           <div className="flex items-center gap-3">
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={() => setNotifOpen(o => !o)}
+                className="relative w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+              {notifOpen && (
+                <div className="absolute right-0 top-10 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                    <span className="text-sm font-semibold text-slate-800">Notifications</span>
+                    {unreadCount > 0 && <span className="text-xs text-indigo-500 cursor-pointer" onClick={markAllRead}>Mark all read</span>}
+                  </div>
+                  <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                    {notifs.length === 0 && (
+                      <div className="px-4 py-6 text-center text-sm text-slate-400">No notifications yet</div>
+                    )}
+                    {notifs.map(n => (
+                      <div key={n.id} className={"px-4 py-3 hover:bg-slate-50 transition-all " + (!n.read_at ? "bg-indigo-50/50" : "")}>
+                        <p className="text-sm font-medium text-slate-800">{n.title}</p>
+                        {n.body && <p className="text-xs text-slate-500 mt-0.5 truncate">{n.body}</p>}
+                        <p className="text-[11px] text-slate-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
               <span className="text-xs font-bold text-white">
                 {(user?.name || 'U')[0].toUpperCase()}

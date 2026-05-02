@@ -559,6 +559,21 @@ export function migrate() {
   }
 }
 
+//  Notifications table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      type TEXT NOT NULL DEFAULT 'submission',
+      title TEXT NOT NULL,
+      body TEXT,
+      submission_id INTEGER,
+      read_at TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    );
+  `);
+
 //  Incremental migrations for existing DBs 
 const alterations = [
   "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'",

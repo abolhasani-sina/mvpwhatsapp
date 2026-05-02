@@ -4,6 +4,7 @@
 import { Router } from 'express';
 import db from './db.js';
 import { sendTelegramNotification, sendTelegramToChat } from './telegram.js';
+import { sendSubmissionNotification } from './email.js';
 import { seedBusiness } from './seed.js';
 import * as whatsappRenderer from './renderers/whatsapp.js';
 import * as telegramRenderer from './renderers/telegram.js';
@@ -867,7 +868,7 @@ router.post('/business/:id/submissions', tenantScope, (req, res) => {
           log.warn({ staffId: staffMember.id, staffName: staffMember.name }, 'staff has no telegram_chat_id — falling back to owner');
         }
         if (deliveryMethod === 'email' && staffMember.email) {
-          log.info({ email: staffMember.email, submissionId: subId }, 'email notification sent');
+          sendSubmissionNotification(staffMember.email, biz ? biz.name : 'Business', subId, summary).catch(e => log.error({ err: e }, 'email notify failed'));
           staffDelivered = true;
         }
       }
@@ -889,7 +890,7 @@ router.post('/business/:id/submissions', tenantScope, (req, res) => {
           staffDelivered = true;
         }
         if (dest.channel === 'email' && dest.email) {
-          log.info({ email: dest.email, submissionId: subId }, 'email notification queued');
+          sendSubmissionNotification(dest.email, biz ? biz.name : 'Business', subId, summary).catch(e => log.error({ err: e }, 'email notify failed'));
           staffDelivered = true;
         }
       }
@@ -1565,6 +1566,33 @@ router.get('/business/:id/telegram-bot/detect-chat-id', tenantScope, async (req,
     send('timeout', { message: 'No message received. Please try again.' });
   }
   res.end();
+});
+
+//  Notifications 
+
+// GET /api/businesses/:id/notifications  last 30 notifications
+router.get('/businesses/:id/notifications', authenticate, tenantScope, (req, res) => {
+  const notifs = db.prepare(
+    'SELECT * FROM notifications WHERE business_id = ? ORDER BY created_at DESC LIMIT 30'
+  ).all(req.params.id);
+  res.json({ data: notifs });
+});
+
+// GET /api/businesses/:id/notifications/unread-count
+router.get('/businesses/:id/notifications/unread-count', authenticate, tenantScope, (req, res) => {
+  const row = db.prepare(
+    'SELECT COUNT(*) as count FROM notifications WHERE business_id = ? AND read_at IS NULL'
+  ).get(req.params.id);
+  res.json({ data: { count: row.count } });
+});
+
+// POST /api/businesses/:id/notifications/read-all
+router.post('/businesses/:id/notifications/read-all', authenticate, tenantScope, (req, res) => {
+  const now = new Date().toISOString().replace("T", " ").substring(0, 19);
+  db.prepare(
+    'UPDATE notifications SET read_at = ? WHERE business_id = ? AND read_at IS NULL'
+  ).run(now, req.params.id);
+  res.json({ data: { ok: true } });
 });
 
 export default router;
