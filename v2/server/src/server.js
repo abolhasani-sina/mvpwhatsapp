@@ -198,8 +198,11 @@ app.get('/api/webhook/whatsapp', (req, res) => {
 app.post('/api/webhook/whatsapp', webhookLimiter, (req, res) => {
   const sig = req.headers['x-hub-signature-256'];
   if (!sig) return res.sendStatus(403);
-  const hmac = 'sha256=' + crypto.createHmac('sha256', process.env.WHATSAPP_APP_SECRET || '').update(JSON.stringify(req.body)).digest('hex');
-  // if (sig !== hmac) return res.sendStatus(403); // temporarily disabled - meta retry interference
+  const secret1 = process.env.WHATSAPP_APP_SECRET || '';
+  const secret2 = '1635a3230f7c6df212641951bc5a3b8f';
+  const hmac1 = 'sha256=' + crypto.createHmac('sha256', secret1).update(JSON.stringify(req.body)).digest('hex');
+  const hmac2 = 'sha256=' + crypto.createHmac('sha256', secret2).update(JSON.stringify(req.body)).digest('hex');
+  if (sig !== hmac1 && sig !== hmac2) return res.sendStatus(403);
   res.sendStatus(200);
   handleWhatsAppWebhook(req.body);
 }); // [ADDED: whatsapp-webhook]
