@@ -28,7 +28,8 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
     if (!businessId) return;
     try {
       const res = await authFetch('/api/businesses/' + businessId + '/notifications/unread-count');
-      setUnreadCount(res.data?.count || 0);
+      const json = await res.json();
+      setUnreadCount(json.data?.count || 0);
     } catch {}
   }, [businessId]);
 
@@ -36,14 +37,16 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
     if (!businessId) return;
     try {
       const res = await authFetch('/api/businesses/' + businessId + '/notifications');
-      setNotifs(res.data || []);
+      const json = await res.json();
+      setNotifs(json.data || []);
     } catch {}
   }, [businessId]);
 
   const markAllRead = useCallback(async () => {
     if (!businessId) return;
     try {
-      await authFetch('/api/businesses/' + businessId + '/notifications/read-all', { method: 'POST' });
+      const res = await authFetch('/api/businesses/' + businessId + '/notifications/read-all', { method: 'POST' });
+      await res.json();
       setUnreadCount(0);
       setNotifs(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })));
     } catch {}
@@ -53,14 +56,15 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
 
   useEffect(() => {
     fetchUnread();
-    const interval = setInterval(fetchUnread, 30000);
+    const interval = setInterval(fetchUnread, 10000);
     return () => clearInterval(interval);
   }, [fetchUnread]);
 
   useEffect(() => {
     if (!notifOpen) return;
     fetchNotifs();
-    markAllRead();
+    const t = setTimeout(markAllRead, 2000);
+    return () => clearTimeout(t);
   }, [notifOpen, fetchNotifs, markAllRead]);
 
   useEffect(() => {
