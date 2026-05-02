@@ -1,6 +1,7 @@
 //  WhatsApp Cloud API Message Handler 
 // [ADDED: whatsapp-webhook]
 import db from './db.js';
+import { decryptField } from './middleware/encryption.js';
 import { processIncoming } from './bot-engine.js';
 import { createLogger } from './logger.js';
 
@@ -90,6 +91,9 @@ function buildListPayload(base, body, buttonLabel, sections) {
 //  Get WhatsApp credentials for a business 
 function getWACredentials(businessId) {
   const settings = db.prepare('SELECT whatsapp_phone_number_id, whatsapp_access_token FROM settings WHERE business_id = ?').get(businessId);
+  if (settings?.whatsapp_access_token) {
+    try { settings.whatsapp_access_token = decryptField(settings.whatsapp_access_token); } catch(e) {}
+  }
   return settings || null;
 }
 
@@ -131,7 +135,8 @@ export async function handleWhatsAppWebhook(body) {
       return;
     }
 
-    const { business_id: businessId, whatsapp_access_token: accessToken, whatsapp_phone_number_id: phoneNumberId } = businessSettings;
+    let { business_id: businessId, whatsapp_access_token: accessToken, whatsapp_phone_number_id: phoneNumberId } = businessSettings;
+    try { accessToken = decryptField(accessToken); } catch(e) {}
 
     for (const msg of messages) {
       const from = msg.from; // customer's phone number

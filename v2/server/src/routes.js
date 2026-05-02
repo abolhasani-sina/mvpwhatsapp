@@ -1015,6 +1015,9 @@ router.get('/business/:id/settings', tenantScope, (req, res) => {
   if (settings) {
     // Decrypt sensitive fields before returning
     settings.telegram_bot_token = decryptField(settings.telegram_bot_token);
+    if (settings.whatsapp_access_token) {
+      try { settings.whatsapp_access_token = decryptField(settings.whatsapp_access_token); } catch(e) {}
+    }
   }
   res.json({ data: settings || { telegram_bot_token: '', telegram_chat_id: '', business_email: '', whatsapp_number: '', whatsapp_phone_number_id: '', whatsapp_access_token: '', whatsapp_waba_id: '' } });
 });
@@ -1105,7 +1108,7 @@ router.put('/business/:id/settings', tenantScope, updateSettingsRules, validate,
       telegramSetAt || null, Number(telegramLocked || 0), Number(chatIdLocked || 0),
       whatsappSetAt || null, Number(whatsappLocked || 0),
       instagramSetAt || null, Number(instagramLocked || 0),
-      String(whatsappPhoneNumberId || ''), String(whatsappAccessToken || ''), String(whatsappWabaId || ''),
+      String(whatsappPhoneNumberId || ''), String(whatsappAccessToken ? encryptField(whatsappAccessToken) : (existing?.whatsapp_access_token || '')), String(whatsappWabaId || ''),
       String(businessId)
     );
   } else {
