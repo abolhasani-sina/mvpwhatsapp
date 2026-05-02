@@ -20,6 +20,7 @@ import { errorHandler, setupProcessErrorHandlers } from './middleware/errorHandl
 import db from './db.js';
 import { handleWebhook, cleanupTelegramUpdates, startPolling } from './telegram-bot.js';
 import { handleWhatsAppWebhook } from './whatsapp-bot.js'; // [ADDED: whatsapp-webhook]
+import { handleInstagramWebhook } from './instagram-bot.js'; // [ADDED: instagram-webhook]
 import cookieParser from 'cookie-parser';
 import { cleanupDedupRecords, cleanupStaleSessions } from './bot-engine.js';
 import { processMessageQueue } from './message-queue.js';
@@ -212,6 +213,33 @@ app.post('/api/webhook/whatsapp', webhookLimiter, (req, res) => {
   res.sendStatus(200);
   handleWhatsAppWebhook(req.body);
 }); // [ADDED: whatsapp-webhook]
+
+//  Public Instagram webhook [ADDED: instagram-webhook] 
+const INSTAGRAM_VERIFY_TOKEN = process.env.INSTAGRAM_VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN;
+
+app.get('/api/webhook/instagram', (req, res) => {
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+  if (mode === 'subscribe' && token === INSTAGRAM_VERIFY_TOKEN) {
+    console.log('Instagram webhook verified successfully');
+    res.status(200).send(challenge);
+  } else {
+    res.sendStatus(403);
+  }
+});
+
+app.post('/api/webhook/instagram', webhookLimiter, (req, res) => {
+  const sig = req.headers['x-hub-signature-256'];
+  if (sig) {
+    const rawBody = req.rawBody || JSON.stringify(req.body);
+    const secret = process.env.WHATSAPP_APP_SECRET || '';
+    const hmac = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+    if (sig !== hmac) return res.sendStatus(403);
+  }
+  res.sendStatus(200);
+  handleInstagramWebhook(req.body);
+}); // [ADDED: instagram-webhook]
 
 app.use('/api/auth', authRoutes);
 app.use('/api/owner', ownerRoutes);

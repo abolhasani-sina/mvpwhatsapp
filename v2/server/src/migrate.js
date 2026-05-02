@@ -492,6 +492,9 @@ export function migrate() {
   if (!settChannelCols.includes('instagram_locked')) {
     db.exec("ALTER TABLE settings ADD COLUMN instagram_locked INTEGER NOT NULL DEFAULT 0");
   }
+  if (!settChannelCols.includes('instagram_access_token')) {
+    db.exec("ALTER TABLE settings ADD COLUMN instagram_access_token TEXT DEFAULT ''");
+  }
 
   // Backfill: existing populated channel values get marked as set+locked
   db.exec(`
