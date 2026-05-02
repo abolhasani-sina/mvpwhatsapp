@@ -13,8 +13,10 @@ export function generateTokens(userId, res) {
   const refreshToken = jwt.sign({ userId }, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRY });
   // Store refresh token in DB
   db.prepare(
-    'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, datetime(\'now\', ?))'
-  ).run(userId, refreshToken, JWT_REFRESH_EXPIRY.replace('d', ' days').replace('h', ' hours'));
+    'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)'
+  const _expiryMs = JWT_REFRESH_EXPIRY.endsWith('d') ? parseInt(JWT_REFRESH_EXPIRY) * 24 * 60 * 60 * 1000 : parseInt(JWT_REFRESH_EXPIRY) * 60 * 60 * 1000;
+  const _expiresAt = new Date(Date.now() + _expiryMs).toISOString().replace('T', ' ').substring(0, 19);
+  ).run(userId, refreshToken, _expiresAt);
   // Set refresh token as httpOnly cookie
   if (res) {
     res.cookie('rt', refreshToken, {
@@ -78,8 +80,8 @@ export function refreshAccessToken(req, res) {
 
     // Check token exists in DB (not revoked)
     const stored = db.prepare(
-      'SELECT id FROM refresh_tokens WHERE token = ? AND user_id = ? AND expires_at > datetime(\'now\')'
-    ).get(refreshToken, payload.userId);
+      'SELECT id FROM refresh_tokens WHERE token = ? AND user_id = ? AND expires_at > ?'
+    ).get(refreshToken, payload.userId, new Date().toISOString().replace('T', ' ').substring(0, 19));
 
     if (!stored) {
       return res.status(401).json({ error: 'Refresh token revoked or expired' });
@@ -105,5 +107,5 @@ export function revokeTokens(userId, res) {
 
 // Cleanup expired refresh tokens (call periodically)
 export function cleanupExpiredTokens() {
-  db.prepare('DELETE FROM refresh_tokens WHERE expires_at < datetime(\'now\')').run();
+  db.prepare('DELETE FROM refresh_tokens WHERE expires_at < ?').run(new Date().toISOString().replace('T', ' ').substring(0, 19));
 }
