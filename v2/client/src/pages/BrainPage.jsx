@@ -260,6 +260,8 @@ function StepServices({ brain, setBrain }) {
         <button onClick={addCategory} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 600 }}>
           + Add Category
         </button>
+      </div>
+    </div>
 
   )
 }
