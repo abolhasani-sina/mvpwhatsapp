@@ -163,8 +163,7 @@ function saveMessage(businessId, customerPhone, role, content) {
 
 // Detect handover trigger words
 function needsHandover(text) {
-  const triggers = ['refund', 'complaint', 'terrible', 'awful', 'wrong', 'urgent', 'emergency',
-    ', 'شكو', 'عاجل', 'خطأ', 'س'];
+  const triggers = ['refund', 'complaint', 'terrible', 'awful', 'wrong order', 'urgent', 'emergency'];
   const lower = text.toLowerCase();
   return triggers.some(t => lower.includes(t));
 }
