@@ -178,7 +178,7 @@ function StepServices({ brain, setBrain }) {
       const svcs = b.services.map((cat, i) => i === ci ? {
         ...cat,
         subcategories: (cat.subcategories || []).map((sub, j) => j === si
-          ? { ...sub, items: [...sub.items, { name: item.name, price_from: item.price_from || '', price_to: item.price_to || '', duration: item.duration || '' }] }
+          ? { ...sub, items: [...sub.items, { name: item.name, price_from: item.price_from || '', price_to: item.price_to || '', duration: item.duration || '', description: item.description || '' }] }
           : sub)
       } : cat)
       return { ...b, services: svcs }
@@ -204,7 +204,7 @@ function StepServices({ brain, setBrain }) {
 
   return (
     <div>
-      <Guide text="Ask the owner: What categories do you offer? e.g. Hair, Nails, Lashes. For each category add subcategories (e.g. Women Hair, Men Hair) then list each service with price and duration." />
+      <Guide text="Ask the owner: What categories do you offer? e.g. Hair, Nails, Lashes. For each category add subcategories then list each service. Description field is important - write what the service includes in simple words the AI can use." />
       {brain.services.map((cat, ci) => (
         <div key={ci} style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 10, padding: 16, marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -218,11 +218,14 @@ function StepServices({ brain, setBrain }) {
                 <button onClick={() => removeSubcategory(ci, si)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16 }}>×</button>
               </div>
               {sub.items.map((item, ii) => (
-                <div key={ii} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#faf5ff', borderRadius: 6, padding: '6px 10px', marginBottom: 4, fontSize: 13 }}>
-                  <span style={{ flex: 2 }}>{item.name}</span>
-                  <span style={{ color: '#7c3aed', flex: 1 }}>AED {item.price_from}{item.price_to ? '-' + item.price_to : ''}</span>
-                  <span style={{ color: '#9ca3af', flex: 1 }}>{item.duration}</span>
-                  <button onClick={() => removeItem(ci, si, ii)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>×</button>
+                <div key={ii} style={{ background: '#faf5ff', borderRadius: 6, padding: '6px 10px', marginBottom: 4, fontSize: 13 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ flex: 2, fontWeight: 500 }}>{item.name}</span>
+                    <span style={{ color: '#7c3aed', flex: 1 }}>AED {item.price_from}{item.price_to ? '-' + item.price_to : ''}</span>
+                    <span style={{ color: '#9ca3af', flex: 1 }}>{item.duration}</span>
+                    <button onClick={() => removeItem(ci, si, ii)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>×</button>
+                  </div>
+                  {item.description && <div style={{ color: '#6b7280', fontSize: 12, marginTop: 2 }}>{item.description}</div>}
                 </div>
               ))}
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: 6, marginTop: 6 }}>
@@ -236,6 +239,10 @@ function StepServices({ brain, setBrain }) {
                 <Input placeholder="e.g. 45 min" value={(newItem[ci+'-'+si] || {}).duration || ''}
                   onChange={e => setNewItem(n => ({ ...n, [ci+'-'+si]: { ...n[ci+'-'+si], duration: e.target.value } }))} />
                 <button onClick={() => addItem(ci, si)} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontWeight: 600 }}>+</button>
+              </div>
+              <div style={{ marginTop: 4 }}>
+                <Input placeholder="Description (optional) e.g. Nail shaping, cuticle care, regular polish - lasts 1 week" value={(newItem[ci+'-'+si] || {}).description || ''}
+                  onChange={e => setNewItem(n => ({ ...n, [ci+'-'+si]: { ...n[ci+'-'+si], description: e.target.value } }))} />
               </div>
             </div>
           ))}
