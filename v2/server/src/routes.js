@@ -1598,7 +1598,9 @@ router.post('/businesses/:id/notifications/read-all', authenticate, tenantScope,
 
 //  Business Brain 
 router.get('/business-brain', authenticate, (req, res) => {
-  const businessId = req.user.business_id;
+  const biz = db.prepare('SELECT id FROM businesses WHERE user_id = ?').get(req.userId);
+  if (!biz) return res.status(404).json({ error: 'Business not found' });
+  const businessId = biz.id;
   const row = db.prepare('SELECT * FROM business_brain WHERE business_id = ?').get(businessId);
   if (!row) return res.json({ exists: false });
   const brain = {
@@ -1637,7 +1639,9 @@ router.get('/business-brain', authenticate, (req, res) => {
 });
 
 router.post('/business-brain', authenticate, (req, res) => {
-  const businessId = req.user.business_id;
+  const biz = db.prepare('SELECT id FROM businesses WHERE user_id = ?').get(req.userId);
+  if (!biz) return res.status(404).json({ error: 'Business not found' });
+  const businessId = biz.id;
   const b = req.body;
   const existing = db.prepare('SELECT id FROM business_brain WHERE business_id = ?').get(businessId);
   if (existing) {
