@@ -1595,4 +1595,101 @@ router.post('/businesses/:id/notifications/read-all', authenticate, tenantScope,
   res.json({ data: { ok: true } });
 });
 
+
+//  Business Brain 
+router.get('/business-brain', authenticate, (req, res) => {
+  const businessId = req.user.business_id;
+  const row = db.prepare('SELECT * FROM business_brain WHERE business_id = ?').get(businessId);
+  if (!row) return res.json({ exists: false });
+  const brain = {
+    exists: true,
+    salon_name_en: row.salon_name_en,
+    salon_name_ar: row.salon_name_ar,
+    salon_type: row.salon_type,
+    area: row.area,
+    address: row.address,
+    google_maps_link: row.google_maps_link,
+    instagram: row.instagram,
+    languages: row.languages,
+    services: JSON.parse(row.services || '[]'),
+    packages: JSON.parse(row.packages || '[]'),
+    hours: JSON.parse(row.hours || '{}'),
+    ramadan_hours: row.ramadan_hours,
+    ramadan_enabled: !!row.ramadan_enabled,
+    holiday_closed: !!row.holiday_closed,
+    always_closed_days: row.always_closed_days,
+    booking_type: row.booking_type,
+    booking_window: row.booking_window,
+    deposit_required: !!row.deposit_required,
+    deposit_amount: row.deposit_amount,
+    cancellation_notice: row.cancellation_notice,
+    noshow_policy: row.noshow_policy,
+    staff_request: !!row.staff_request,
+    faqs: JSON.parse(row.faqs || '[]'),
+    scenarios: JSON.parse(row.scenarios || '[]'),
+    ai_name: row.ai_name,
+    ai_tone: row.ai_tone,
+    handover_number: row.handover_number,
+    never_discuss: row.never_discuss,
+    is_active: !!row.is_active,
+  };
+  res.json(brain);
+});
+
+router.post('/business-brain', authenticate, (req, res) => {
+  const businessId = req.user.business_id;
+  const b = req.body;
+  const existing = db.prepare('SELECT id FROM business_brain WHERE business_id = ?').get(businessId);
+  if (existing) {
+    db.prepare(`
+      UPDATE business_brain SET
+        salon_name_en = ?, salon_name_ar = ?, salon_type = ?, area = ?, address = ?,
+        google_maps_link = ?, instagram = ?, languages = ?,
+        services = ?, packages = ?,
+        hours = ?, ramadan_hours = ?, ramadan_enabled = ?, holiday_closed = ?, always_closed_days = ?,
+        booking_type = ?, booking_window = ?, deposit_required = ?, deposit_amount = ?,
+        cancellation_notice = ?, noshow_policy = ?, staff_request = ?,
+        faqs = ?, scenarios = ?,
+        ai_name = ?, ai_tone = ?, handover_number = ?, never_discuss = ?,
+        is_active = ?, updated_at = datetime('now')
+      WHERE business_id = ?
+    `).run(
+      b.salon_name_en, b.salon_name_ar, b.salon_type, b.area, b.address,
+      b.google_maps_link, b.instagram, b.languages,
+      JSON.stringify(b.services || []), JSON.stringify(b.packages || []),
+      JSON.stringify(b.hours || {}), b.ramadan_hours, b.ramadan_enabled ? 1 : 0,
+      b.holiday_closed ? 1 : 0, b.always_closed_days,
+      b.booking_type, b.booking_window, b.deposit_required ? 1 : 0, b.deposit_amount,
+      b.cancellation_notice, b.noshow_policy, b.staff_request ? 1 : 0,
+      JSON.stringify(b.faqs || []), JSON.stringify(b.scenarios || []),
+      b.ai_name, b.ai_tone, b.handover_number, b.never_discuss,
+      b.is_active ? 1 : 0, businessId
+    );
+  } else {
+    db.prepare(`
+      INSERT INTO business_brain (
+        business_id, salon_name_en, salon_name_ar, salon_type, area, address,
+        google_maps_link, instagram, languages,
+        services, packages,
+        hours, ramadan_hours, ramadan_enabled, holiday_closed, always_closed_days,
+        booking_type, booking_window, deposit_required, deposit_amount,
+        cancellation_notice, noshow_policy, staff_request,
+        faqs, scenarios,
+        ai_name, ai_tone, handover_number, never_discuss, is_active
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).run(
+      businessId, b.salon_name_en, b.salon_name_ar, b.salon_type, b.area, b.address,
+      b.google_maps_link, b.instagram, b.languages,
+      JSON.stringify(b.services || []), JSON.stringify(b.packages || []),
+      JSON.stringify(b.hours || {}), b.ramadan_hours, b.ramadan_enabled ? 1 : 0,
+      b.holiday_closed ? 1 : 0, b.always_closed_days,
+      b.booking_type, b.booking_window, b.deposit_required ? 1 : 0, b.deposit_amount,
+      b.cancellation_notice, b.noshow_policy, b.staff_request ? 1 : 0,
+      JSON.stringify(b.faqs || []), JSON.stringify(b.scenarios || []),
+      b.ai_name, b.ai_tone, b.handover_number, b.never_discuss, b.is_active ? 1 : 0
+    );
+  }
+  res.json({ success: true });
+});
+
 export default router;

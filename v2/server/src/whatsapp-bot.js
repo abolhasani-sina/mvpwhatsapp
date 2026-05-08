@@ -3,6 +3,7 @@
 import db from './db.js';
 import { decryptField } from './middleware/encryption.js';
 import { processIncoming } from './bot-engine.js';
+import { handleAISecretary, isAISecretaryActive, getBusinessBrain } from './ai-secretary.js';
 import { createLogger } from './logger.js';
 
 const log = createLogger('whatsapp-bot');
@@ -164,14 +165,27 @@ export async function handleWhatsAppWebhook(body) {
 
       log.info({ businessId, from, input }, 'WhatsApp message received');
 
-      // Process through bot engine
-      const responses = processIncoming(businessId, from, 'whatsapp', userName, input);
-
-      // Send responses back
-      for (const response of responses) {
-        await sendWhatsAppMessage(phoneNumberId, accessToken, from, response);
-        // Small delay between messages
-        if (responses.length > 1) await new Promise(r => setTimeout(r, 300));
+      // Route to AI Secretary or Menu Bot
+      if (isAISecretaryActive(businessId)) {
+        const brain = getBusinessBrain(businessId);
+        if (brain) {
+          const textInput = input.text || input.callbackData || '';
+          const aiResponse = await handleAISecretary(businessId, from, userName, textInput, brain);
+          await sendWhatsAppMessage(phoneNumberId, accessToken, from, aiResponse);
+        } else {
+          const responses = processIncoming(businessId, from, 'whatsapp', userName, input);
+          for (const response of responses) {
+            await sendWhatsAppMessage(phoneNumberId, accessToken, from, response);
+            if (responses.length > 1) await new Promise(r => setTimeout(r, 300));
+          }
+        }
+      } else {
+        // Process through menu bot engine
+        const responses = processIncoming(businessId, from, 'whatsapp', userName, input);
+        for (const response of responses) {
+          await sendWhatsAppMessage(phoneNumberId, accessToken, from, response);
+          if (responses.length > 1) await new Promise(r => setTimeout(r, 300));
+        }
       }
     }
   } catch (err) {

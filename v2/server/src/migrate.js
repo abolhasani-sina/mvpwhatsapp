@@ -586,5 +586,55 @@ const alterations = [
 ];
 for (const sql of alterations) {
   try { db.prepare(sql).run(); } catch (e) { /* column already exists */ }
-}
 
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS business_brain (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL UNIQUE,
+      salon_name_en TEXT,
+      salon_name_ar TEXT,
+      salon_type TEXT,
+      area TEXT,
+      address TEXT,
+      google_maps_link TEXT,
+      instagram TEXT,
+      languages TEXT DEFAULT 'arabic_english',
+      services TEXT DEFAULT '[]',
+      packages TEXT DEFAULT '[]',
+      hours TEXT DEFAULT '{}',
+      ramadan_hours TEXT,
+      ramadan_enabled INTEGER DEFAULT 0,
+      holiday_closed INTEGER DEFAULT 0,
+      always_closed_days TEXT,
+      booking_type TEXT DEFAULT 'both',
+      booking_window TEXT DEFAULT '1_week',
+      deposit_required INTEGER DEFAULT 0,
+      deposit_amount TEXT,
+      cancellation_notice TEXT DEFAULT 'none',
+      noshow_policy TEXT DEFAULT 'nothing',
+      staff_request INTEGER DEFAULT 1,
+      faqs TEXT DEFAULT '[]',
+      scenarios TEXT DEFAULT '[]',
+      ai_name TEXT,
+      ai_tone TEXT DEFAULT 'friendly',
+      handover_number TEXT,
+      never_discuss TEXT,
+      is_active INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (business_id) REFERENCES businesses(id)
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS ai_conversations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      customer_phone TEXT NOT NULL,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  `).run();
+
+}
