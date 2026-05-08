@@ -113,6 +113,7 @@ Need 4 things: specific service, preferred date, name, phone. Be smart:
 - If customer says "first available", "any time", "ASAP", "whenever" - accept it as date and move on.
 - Once you have all 4 pieces of info, you MUST do BOTH in the same response:
   (a) Call the save_booking tool
+  NOTE: First name only. Never ask for last name.
   (b) Write a short warm confirmation message in the EXACT SAME LANGUAGE the customer was using.
   NEVER call the tool silently. NEVER use English if customer used another language.
   Persian customer needs Persian confirmation. Arabic needs Arabic. English needs English.
@@ -280,29 +281,14 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
           input.customer_name || customerName,
           input.customer_phone || customerPhone
         );
-        // If Claude gave no text, do a follow-up turn to get confirmation in customer language
-        let finalReply = textReply.trim();
-        if (!finalReply) {
-          const followUp = await fetch(ANTHROPIC_API, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-            body: JSON.stringify({
-              model: "claude-sonnet-4-5",
-              max_tokens: 200,
-              temperature: 0.3,
-              system: "You are a salon receptionist. Write ONE short warm booking confirmation message in the EXACT same language the customer used throughout the conversation. Just the confirmation, nothing else.",
-              messages: [
-                ...messages,
-                { role: "assistant", content: json.content },
-                { role: "user", content: [{ type: "tool_result", tool_use_id: toolUse.id, content: "Booking saved successfully." }] }
-              ],
-            }),
-          });
-          const followJson = await followUp.json();
-          finalReply = followJson.content && followJson.content[0] && followJson.content[0].text
-            ? followJson.content[0].text.trim()
-            : "\u2728";
-        }
+        // Generate confirmation in customer language
+        const hasPersian = /[\u0600-\u06FF]/.test(incomingText) && /[\u067E\u0686\u06CC\u06A9\u06AF]/.test(incomingText + (history.map(h=>h.content).join("")));
+        const hasArabic = /[\u0600-\u06FF]/.test(incomingText) && !hasPersian;
+        const custName = (toolUse.input && toolUse.input.customer_name) || "";
+        let finalReply;
+        if (hasPersian) finalReply = "\u0645\u0645\u0646\u0648\u0646 " + custName + " \u062C\u0627\u0646! \u0631\u0632\u0631\u0648\u062A \u062B\u0628\u062A \u0634\u062F\u060C \u062A\u06CC\u0645 \u0645\u0627 \u0628\u0647 \u0632\u0648\u062F\u06CC \u062A\u0645\u0627\u0633 \u0645\u06CC\u06AF\u06CC\u0631\u0647 \u2728";
+        else if (hasArabic) finalReply = "\u062A\u0645\u0627\u0645 " + custName + "! \u062D\u062C\u0632\u0643 \u0633\u062C\u0644\u062A\u060C \u0627\u0644\u0641\u0631\u064A\u0642 \u0647\u064A\u062A\u0648\u0627\u0635\u0644 \u0645\u0639\u0627\u0643 \u0642\u0631\u064A\u0628 \u2728";
+        else finalReply = textReply.trim() || ("All set " + custName + "! Got your booking, our team will reach out shortly \u2728");
         saveMessage(businessId, customerPhone, "assistant", finalReply);
         clearHistory(businessId, customerPhone);
         log.info({ businessId, customerPhone, refNum }, "Booking via tool use");
