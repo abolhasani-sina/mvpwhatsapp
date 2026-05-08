@@ -140,87 +140,119 @@ function StepBasicInfo({ brain, set }) {
 /* ─── Step 2: Services ─── */
 function StepServices({ brain, setBrain }) {
   const [catName, setCatName] = useState('')
+  const [subName, setSubName] = useState({})
   const [newItem, setNewItem] = useState({})
 
   const addCategory = () => {
     if (!catName.trim()) return
-    setBrain(b => ({ ...b, services: [...b.services, { category: catName.trim(), items: [] }] }))
+    setBrain(b => ({ ...b, services: [...b.services, { category: catName.trim(), subcategories: [] }] }))
     setCatName('')
   }
 
-  const addItem = (catIdx) => {
-    const item = newItem[catIdx] || {}
+  const addSubcategory = (ci) => {
+    const name = (subName[ci] || '').trim()
+    if (!name) return
+    setBrain(b => {
+      const svcs = b.services.map((cat, i) => i === ci
+        ? { ...cat, subcategories: [...(cat.subcategories || []), { name, items: [] }] }
+        : cat)
+      return { ...b, services: svcs }
+    })
+    setSubName(s => ({ ...s, [ci]: '' }))
+  }
+
+  const removeSubcategory = (ci, si) => {
+    setBrain(b => {
+      const svcs = b.services.map((cat, i) => i === ci
+        ? { ...cat, subcategories: (cat.subcategories || []).filter((_, j) => j !== si) }
+        : cat)
+      return { ...b, services: svcs }
+    })
+  }
+
+  const addItem = (ci, si) => {
+    const key = ci + '-' + si
+    const item = newItem[key] || {}
     if (!item.name) return
     setBrain(b => {
-      const svcs = b.services.map((cat, i) => i === catIdx
-        ? { ...cat, items: [...cat.items, { name: item.name, price_from: item.price_from || '', price_to: item.price_to || '', duration: item.duration || '' }] }
-        : cat)
+      const svcs = b.services.map((cat, i) => i === ci ? {
+        ...cat,
+        subcategories: (cat.subcategories || []).map((sub, j) => j === si
+          ? { ...sub, items: [...sub.items, { name: item.name, price_from: item.price_from || '', price_to: item.price_to || '', duration: item.duration || '' }] }
+          : sub)
+      } : cat)
       return { ...b, services: svcs }
     })
-    setNewItem(n => ({ ...n, [catIdx]: {} }))
+    setNewItem(n => ({ ...n, [key]: {} }))
   }
 
-  const removeItem = (catIdx, itemIdx) => {
+  const removeItem = (ci, si, ii) => {
     setBrain(b => {
-      const svcs = b.services.map((cat, i) => i === catIdx
-        ? { ...cat, items: cat.items.filter((_, j) => j !== itemIdx) }
-        : cat)
+      const svcs = b.services.map((cat, i) => i === ci ? {
+        ...cat,
+        subcategories: (cat.subcategories || []).map((sub, j) => j === si
+          ? { ...sub, items: sub.items.filter((_, k) => k !== ii) }
+          : sub)
+      } : cat)
       return { ...b, services: svcs }
     })
   }
 
-  const removeCategory = (catIdx) => {
-    setBrain(b => ({ ...b, services: b.services.filter((_, i) => i !== catIdx) }))
+  const removeCategory = (ci) => {
+    setBrain(b => ({ ...b, services: b.services.filter((_, i) => i !== ci) }))
   }
 
   return (
     <div>
-      <Guide text="Ask the owner: Walk me through everything you offer. What categories? E.g. Nails, Hair, Lashes... Then for each — what services, what price range, how long does it take?" />
+      <Guide text="Ask the owner: What categories do you offer? e.g. Hair, Nails, Lashes. For each category add subcategories (e.g. Women Hair, Men Hair) then list each service with price and duration." />
       {brain.services.map((cat, ci) => (
         <div key={ci} style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 10, padding: 16, marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h4 style={{ margin: 0, fontSize: 15, color: '#7c3aed' }}>📂 {cat.category}</h4>
             <button onClick={() => removeCategory(ci)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 18 }}>×</button>
           </div>
-          {cat.items.map((item, ii) => (
-            <div key={ii} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', borderRadius: 6, padding: '8px 12px', marginBottom: 6, fontSize: 13 }}>
-              <span style={{ flex: 2 }}>{item.name}</span>
-              <span style={{ color: '#7c3aed', flex: 1 }}>AED {item.price_from}{item.price_to ? `–${item.price_to}` : ''}</span>
-              <span style={{ color: '#9ca3af', flex: 1 }}>{item.duration}</span>
-              <button onClick={() => removeItem(ci, ii)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>×</button>
+          {(cat.subcategories || []).map((sub, si) => (
+            <div key={si} style={{ background: 'white', border: '1px solid #e9d5ff', borderRadius: 8, padding: 12, marginBottom: 10, marginLeft: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontWeight: 600, color: '#6d28d9', fontSize: 13 }}>📁 {sub.name}</span>
+                <button onClick={() => removeSubcategory(ci, si)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16 }}>×</button>
+              </div>
+              {sub.items.map((item, ii) => (
+                <div key={ii} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#faf5ff', borderRadius: 6, padding: '6px 10px', marginBottom: 4, fontSize: 13 }}>
+                  <span style={{ flex: 2 }}>{item.name}</span>
+                  <span style={{ color: '#7c3aed', flex: 1 }}>AED {item.price_from}{item.price_to ? '-' + item.price_to : ''}</span>
+                  <span style={{ color: '#9ca3af', flex: 1 }}>{item.duration}</span>
+                  <button onClick={() => removeItem(ci, si, ii)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>×</button>
+                </div>
+              ))}
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: 6, marginTop: 6 }}>
+                <Input placeholder="Service name" value={(newItem[ci+'-'+si] || {}).name || ''}
+                  onChange={e => setNewItem(n => ({ ...n, [ci+'-'+si]: { ...n[ci+'-'+si], name: e.target.value } }))}
+                  onKeyDown={e => e.key === 'Enter' && addItem(ci, si)} />
+                <Input placeholder="From AED" type="number" value={(newItem[ci+'-'+si] || {}).price_from || ''}
+                  onChange={e => setNewItem(n => ({ ...n, [ci+'-'+si]: { ...n[ci+'-'+si], price_from: e.target.value } }))} />
+                <Input placeholder="To AED" type="number" value={(newItem[ci+'-'+si] || {}).price_to || ''}
+                  onChange={e => setNewItem(n => ({ ...n, [ci+'-'+si]: { ...n[ci+'-'+si], price_to: e.target.value } }))} />
+                <Input placeholder="e.g. 45 min" value={(newItem[ci+'-'+si] || {}).duration || ''}
+                  onChange={e => setNewItem(n => ({ ...n, [ci+'-'+si]: { ...n[ci+'-'+si], duration: e.target.value } }))} />
+                <button onClick={() => addItem(ci, si)} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontWeight: 600 }}>+</button>
+              </div>
             </div>
           ))}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: 6, marginTop: 8 }}>
-            <Input
-              placeholder="Service name"
-              value={(newItem[ci] || {}).name || ''}
-              onChange={e => setNewItem(n => ({ ...n, [ci]: { ...n[ci], name: e.target.value } }))}
-              onKeyDown={e => e.key === 'Enter' && addItem(ci)}
-            />
-            <Input
-              placeholder="From AED"
-              type="number"
-              value={(newItem[ci] || {}).price_from || ''}
-              onChange={e => setNewItem(n => ({ ...n, [ci]: { ...n[ci], price_from: e.target.value } }))}
-            />
-            <Input
-              placeholder="To AED"
-              type="number"
-              value={(newItem[ci] || {}).price_to || ''}
-              onChange={e => setNewItem(n => ({ ...n, [ci]: { ...n[ci], price_to: e.target.value } }))}
-            />
-            <Input
-              placeholder="e.g. 45 min"
-              value={(newItem[ci] || {}).duration || ''}
-              onChange={e => setNewItem(n => ({ ...n, [ci]: { ...n[ci], duration: e.target.value } }))}
-            />
-            <button onClick={() => addItem(ci)} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontWeight: 600 }}>+</button>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, marginLeft: 12 }}>
+            <Input placeholder="New subcategory (e.g. Women Hair, Men Hair...)"
+              value={subName[ci] || ''}
+              onChange={e => setSubName(s => ({ ...s, [ci]: e.target.value }))}
+              onKeyDown={e => e.key === 'Enter' && addSubcategory(ci)} />
+            <button onClick={() => addSubcategory(ci)} style={{ background: '#6d28d9', color: 'white', border: 'none', borderRadius: 6, padding: '8px 14px', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 600 }}>
+              + Subcategory
+            </button>
           </div>
         </div>
       ))}
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         <Input
-          placeholder="New category (e.g. Nails, Hair, Lashes, Facials...)"
+          placeholder="New category (e.g. Hair, Nails, Lashes, Facials...)"
           value={catName}
           onChange={e => setCatName(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && addCategory()}
@@ -228,8 +260,7 @@ function StepServices({ brain, setBrain }) {
         <button onClick={addCategory} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 600 }}>
           + Add Category
         </button>
-      </div>
-    </div>
+
   )
 }
 
@@ -522,7 +553,7 @@ function StepReview({ brain, set, onSave, saving, saved, error }) {
   const hasHours    = brain.hours && Object.values(brain.hours).some(h => !h.closed)
   const hasAI       = brain.ai_name && brain.handover_number
 
-  const totalItems = brain.services.reduce((n, c) => n + c.items.length, 0)
+  const totalItems = brain.services.reduce((n, c) => n + (c.subcategories || []).reduce((m, s) => m + (s.items || []).length, 0), 0)
 
   const checks = [
     { ok: hasBasic,    label: 'Basic salon info filled in' },
