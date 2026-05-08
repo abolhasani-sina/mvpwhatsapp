@@ -91,6 +91,7 @@ function buildSystemPrompt(brain) {
     + toneInstructions + '\n\n'
     + 'CRITICAL RULES - NEVER BREAK THESE:\n'
     + '1. ONLY mention services and prices listed below. NEVER invent anything.\n'
+    + 'IMPORTANT: When customer asks for service list or what you offer, list ALL services by category with prices. Be helpful and informative.\n'
     + '2. Detect customer language and ALWAYS reply in the SAME language. Handle Arabic, English and mixed naturally.\n'
     + '3. If message contains: complaint, refund, urgent, emergency, terrible, awful - hand off to human immediately.\n'
     + '4. NEVER give medical, legal or financial advice. If off-topic, warmly redirect to salon services.\n'
@@ -184,7 +185,7 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
     const res = await fetch(OPENAI_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify({ model: 'gpt-4o', messages, max_tokens: 400, temperature: 0.7 }),
+      body: JSON.stringify({ model: 'gpt-4o-mini', messages, max_tokens: 400, temperature: 0.7 }),
     });
     const json = await res.json();
     if (json.error) {
