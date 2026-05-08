@@ -38,6 +38,7 @@ const emptyBrain = () => ({
   noshow_policy: 'nothing', staff_request: true,
   faqs: [], scenarios: [],
   ai_name: '', ai_tone: 'friendly', handover_number: '', never_discuss: '',
+  msg_confirmed: '', msg_completed: '', msg_cancelled: '',
   is_active: false,
 })
 
@@ -551,6 +552,15 @@ function StepAI({ brain, set }) {
           style={{ minHeight: 80 }}
         />
       </Field>
+      <Field label="Booking Confirmed Message" hint="Sent when you mark booking as In Progress. Use {name}, {service}, {date} as placeholders.">
+        <Textarea value={brain.msg_confirmed || ''} onChange={e => set('msg_confirmed', e.target.value)} placeholder="Hi {name}! Your booking is confirmed. Service: {service}, Date: {date}." style={{ minHeight: 70 }} />
+      </Field>
+      <Field label="Booking Completed Message" hint="Sent when you mark booking as Completed. Use {name}, {service} as placeholders.">
+        <Textarea value={brain.msg_completed || ''} onChange={e => set('msg_completed', e.target.value)} placeholder="Thank you {name}! We hope you enjoyed your {service}. See you again soon." style={{ minHeight: 70 }} />
+      </Field>
+      <Field label="Booking Cancelled Message" hint="Sent when you cancel a booking. Use {name}, {service}, {date} as placeholders.">
+        <Textarea value={brain.msg_cancelled || ''} onChange={e => set('msg_cancelled', e.target.value)} placeholder="Hi {name}, we need to cancel your booking for {service} on {date}. Please message us to reschedule." style={{ minHeight: 70 }} />
+      </Field>
     </div>
   )
 }
@@ -675,6 +685,9 @@ export default function BrainPage({ businessId }) {
       const payload = {
         ...brain,
         services:         JSON.stringify(brain.services),
+        msg_confirmed:    brain.msg_confirmed || '',
+        msg_completed:    brain.msg_completed || '',
+        msg_cancelled:    brain.msg_cancelled || '',
         packages:         JSON.stringify(brain.packages),
         hours:            JSON.stringify(brain.hours),
         faqs:             JSON.stringify(brain.faqs),

@@ -930,9 +930,61 @@ router.get('/business/:id/submissions', tenantScope, (req, res) => {
   });
 });
 
-router.put('/submissions/:id/status', tenantScopeResource('submissions'), updateStatusRules, validate, (req, res) => {
+router.put('/submissions/:id/status', tenantScopeResource('submissions'), updateStatusRules, validate, async (req, res) => {
   const { status } = req.body;
   db.prepare('UPDATE submissions SET status = ? WHERE id = ?').run(status, req.params.id);
+
+  // Send WhatsApp notification to customer when booking is confirmed or completed
+  try {
+    const sub = db.prepare('SELECT * FROM submissions WHERE id = ?').get(req.params.id);
+    if (sub && sub.data) {
+      const data = JSON.parse(sub.data);
+      const waNumber = data['WhatsApp Number'];
+      const customerName = data['Customer Name'] || 'there';
+      const service = data['Service'] || 'your service';
+      const date = data['Preferred Date'] || 'your appointment';
+
+      if (waNumber && data['_source'] === 'ai_secretary') {
+        const settings = db.prepare('SELECT whatsapp_phone_number_id, whatsapp_access_token FROM settings WHERE business_id = ?').get(sub.business_id);
+        if (settings && settings.whatsapp_phone_number_id && settings.whatsapp_access_token) {
+          let accessToken = settings.whatsapp_access_token;
+          try { const { decryptField } = await import('./middleware/encryption.js'); accessToken = decryptField(accessToken); } catch(e) {}
+
+          // Get custom messages from brain
+          const brain = db.prepare('SELECT msg_confirmed, msg_completed, msg_cancelled FROM business_brain WHERE business_id = ?').get(sub.business_id);
+          const rp = (t, n, s, d) => (t || '').replace(/{name}/g, n).replace(/{service}/g, s).replace(/{date}/g, d);
+
+          let msg = null;
+          if (status === 'in_progress') {
+            msg = rp((brain && brain.msg_confirmed) || 'Hi {name}, your booking is confirmed. Service: {service}, Date: {date}. We look forward to seeing you.', customerName, service, date);
+          } else if (status === 'done' || status === 'completed') {
+            msg = rp((brain && brain.msg_completed) || 'Thank you {name}! We hope you enjoyed your {service}. See you again soon.', customerName, service, date);
+          } else if (status === 'cancelled') {
+            msg = rp((brain && brain.msg_cancelled) || 'Hi {name}, we need to cancel your booking for {service} on {date}. Please message us to reschedule.', customerName, service, date);
+          }
+          if (msg) {
+            fetch('https://graph.facebook.com/v18.0/' + settings.whatsapp_phone_number_id + '/messages', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + accessToken },
+              body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: waNumber,
+                type: 'text',
+                text: { body: msg, preview_url: false }
+              })
+            }).then(r => r.json()).then(j => {
+              if (j.error) log.error({ error: j.error }, 'WhatsApp status notify failed');
+              else log.info({ subId: req.params.id, status, waNumber }, 'WhatsApp status notification sent');
+            }).catch(e => log.error({ err: e }, 'WhatsApp status notify error'));
+          }
+        }
+      }
+    }
+  } catch(e) {
+    log.error({ err: e }, 'Status notification error');
+  }
+
   res.json({ success: true });
 });
 
@@ -1634,6 +1686,9 @@ router.get('/business-brain', authenticate, (req, res) => {
     handover_number: row.handover_number,
     never_discuss: row.never_discuss,
     is_active: !!row.is_active,
+    msg_confirmed: row.msg_confirmed || '',
+    msg_completed: row.msg_completed || '',
+    msg_cancelled: row.msg_cancelled || '',
   };
   res.json(brain);
 });
@@ -1655,7 +1710,7 @@ router.post('/business-brain', authenticate, (req, res) => {
         cancellation_notice = ?, noshow_policy = ?, staff_request = ?,
         faqs = ?, scenarios = ?,
         ai_name = ?, ai_tone = ?, handover_number = ?, never_discuss = ?,
-        is_active = ?, updated_at = datetime('now')
+        is_active = ?, msg_confirmed = ?, msg_completed = ?, msg_cancelled = ?, updated_at = datetime('now')
       WHERE business_id = ?
     `).run(
       b.salon_name_en, b.salon_name_ar, b.salon_type, b.area, b.address,
@@ -1667,7 +1722,7 @@ router.post('/business-brain', authenticate, (req, res) => {
       b.cancellation_notice, b.noshow_policy, b.staff_request ? 1 : 0,
       JSON.stringify(b.faqs || []), JSON.stringify(b.scenarios || []),
       b.ai_name, b.ai_tone, b.handover_number, b.never_discuss,
-      b.is_active ? 1 : 0, businessId
+      b.is_active ? 1 : 0, b.msg_confirmed || '', b.msg_completed || '', b.msg_cancelled || '', businessId
     );
   } else {
     db.prepare(`
@@ -1679,7 +1734,7 @@ router.post('/business-brain', authenticate, (req, res) => {
         booking_type, booking_window, deposit_required, deposit_amount,
         cancellation_notice, noshow_policy, staff_request,
         faqs, scenarios,
-        ai_name, ai_tone, handover_number, never_discuss, is_active
+        ai_name, ai_tone, handover_number, never_discuss, is_active, msg_confirmed, msg_completed, msg_cancelled
       ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).run(
       businessId, b.salon_name_en, b.salon_name_ar, b.salon_type, b.area, b.address,
@@ -1690,7 +1745,7 @@ router.post('/business-brain', authenticate, (req, res) => {
       b.booking_type, b.booking_window, b.deposit_required ? 1 : 0, b.deposit_amount,
       b.cancellation_notice, b.noshow_policy, b.staff_request ? 1 : 0,
       JSON.stringify(b.faqs || []), JSON.stringify(b.scenarios || []),
-      b.ai_name, b.ai_tone, b.handover_number, b.never_discuss, b.is_active ? 1 : 0
+      b.ai_name, b.ai_tone, b.handover_number, b.never_discuss, b.is_active ? 1 : 0, b.msg_confirmed || '', b.msg_completed || '', b.msg_cancelled || ''
     );
   }
   res.json({ success: true });
