@@ -290,7 +290,7 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
         else if (hasArabic) finalReply = "\u062A\u0645\u0627\u0645 " + custName + "! \u062D\u062C\u0632\u0643 \u0633\u062C\u0644\u062A\u060C \u0627\u0644\u0641\u0631\u064A\u0642 \u0647\u064A\u062A\u0648\u0627\u0635\u0644 \u0645\u0639\u0627\u0643 \u0642\u0631\u064A\u0628 \u2728";
         else finalReply = textReply.trim() || ("All set " + custName + "! Got your booking, our team will reach out shortly \u2728");
         saveMessage(businessId, customerPhone, "assistant", finalReply);
-        clearHistory(businessId, customerPhone);
+        // keep history for corrections
         log.info({ businessId, customerPhone, refNum }, "Booking via tool use");
         return { type: "text", body: finalReply };
       }
