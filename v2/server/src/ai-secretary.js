@@ -3,7 +3,7 @@ import { createLogger } from './logger.js';
 import { sendTelegramNotification } from './telegram.js';
 
 const log = createLogger('ai-secretary');
-const OPENAI_API = 'https://api.openai.com/v1/chat/completions';
+const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
 
 function buildSystemPrompt(brain) {
   const name = brain.ai_name || 'Assistant';
@@ -91,7 +91,10 @@ function buildSystemPrompt(brain) {
     + toneInstructions + '\n\n'
     + 'CRITICAL RULES - NEVER BREAK THESE:\n'
     + '1. ONLY mention services and prices listed below. NEVER invent anything.\n'
-    + 'IMPORTANT: When customer asks for service list or what you offer, list ALL services by category with prices. Be helpful and informative.\n'
+    + '2. NEVER mention prices unless the customer directly asks about price or cost.\n'
+    + '3. NEVER mention service duration unless the customer directly asks how long it takes. If asked, give approximate time from the services data.\n'
+    + 'IMPORTANT: When customer asks for service list, list ONLY services from the SERVICES OFFERED section below. Use EXACT names and prices from the list. NEVER use dollar signs - always use AED. NEVER mention services not in the list.\n'
+    + 'SUBCATEGORIES: When customer asks about a category that has subcategories (e.g. Hair), ask which subcategory they want (e.g. Women Hair or Men Hair?) before listing services.\n'
     + '2. Detect customer language and ALWAYS reply in the SAME language. Handle Arabic, English and mixed naturally.\n'
     + '3. If message contains: complaint, refund, urgent, emergency, terrible, awful - hand off to human immediately.\n'
     + '4. NEVER give medical, legal or financial advice. If off-topic, warmly redirect to salon services.\n'
@@ -104,7 +107,7 @@ function buildSystemPrompt(brain) {
     + '6. NEVER confirm actual availability. Always say subject to confirmation by the team.\n'
     + '7. When introducing yourself: Hi! I am ' + name + ', the AI receptionist for ' + salonName + '. How can I help you today?\n'
     + neverBlock + '\n\n'
-    + 'HANDOVER: Let me connect you with our team. Reach us on WhatsApp: ' + (handoverNumber || 'our business number') + '\n'
+    + 'HANDOVER: If you need to hand off say exactly: I am sorry to hear that. Let me connect you with our team right away, someone will be with you shortly.\n'
     + servicesBlock + packagesBlock + hoursBlock + bookingBlock + faqsBlock + scenariosBlock
     + '\n\nRemember: You represent ' + salonName + '. Be helpful, accurate, never make up information.';
 }
@@ -131,14 +134,15 @@ function clearHistory(businessId, customerPhone) {
 
 function needsHandover(text) {
   const lower = text.toLowerCase();
-  return ['refund','complaint','terrible','awful','wrong order','urgent','emergency'].some(t => lower.includes(t));
+  const triggers = ['refund','complaint','terrible','awful','wrong order','urgent','emergency','i hate','connect me to owner','speak to owner','talk to owner','need help','speak to someone','talk to someone','speak to manager','talk to manager','human please','real person'];
+  return triggers.some(t => lower.includes(t));
 }
 
 function saveBookingSubmission(businessId, customerPhone, service, date, name, phone) {
   try {
-    const biz = db.prepare('SELECT name, business_submission_counter FROM businesses WHERE id = ?').get(businessId);
-    const counter = ((biz && biz.business_submission_counter) ? biz.business_submission_counter : 0) + 1;
-    db.prepare('UPDATE businesses SET business_submission_counter = ? WHERE id = ?').run(counter, businessId);
+    const biz = db.prepare('SELECT name FROM businesses WHERE id = ?').get(businessId);
+    const countRow = db.prepare('SELECT COUNT(*) as cnt FROM submissions WHERE business_id = ?').get(businessId);
+    const counter = (countRow ? countRow.cnt : 0) + 1;
     const data = {
       'Service': service,
       'Preferred Date': date,
@@ -166,33 +170,35 @@ function saveBookingSubmission(businessId, customerPhone, service, date, name, p
 }
 
 export async function handleAISecretary(businessId, customerPhone, customerName, incomingText, brain) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    log.error('OPENAI_API_KEY not set');
+    log.error('ANTHROPIC_API_KEY not set');
     return { type: 'text', body: 'Sorry, our AI assistant is temporarily unavailable. Please contact us directly.' };
   }
   if (needsHandover(incomingText)) {
-    const handoverNum = brain.handover_number || '';
-    const msg = handoverNum ? 'Let me connect you with our team. Reach us on WhatsApp: ' + handoverNum : 'Let me connect you with our team right away. Someone will be with you shortly.';
+    const msg = 'I am sorry to hear that. Let me connect you with our team right away  someone will be with you shortly.';
     saveMessage(businessId, customerPhone, 'user', incomingText);
     saveMessage(businessId, customerPhone, 'assistant', msg);
+    sendTelegramNotification(businessId,
+      'Handover Required\nCustomer: ' + customerName + '\nWhatsApp: ' + customerPhone + '\nMessage: ' + incomingText
+    ).catch(e => log.error({ err: e }, 'Telegram handover notify failed'));
     return { type: 'text', body: msg };
   }
   const history = getConversationHistory(businessId, customerPhone, 10);
   const systemPrompt = buildSystemPrompt(brain);
   const messages = [{ role: 'system', content: systemPrompt }, ...history, { role: 'user', content: incomingText }];
   try {
-    const res = await fetch(OPENAI_API, {
+    const res = await fetch(ANTHROPIC_API, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify({ model: 'gpt-4o-mini', messages, max_tokens: 400, temperature: 0.7 }),
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 1024, system: messages.find(m => m.role === 'system') ? messages.find(m => m.role === 'system').content : '', messages: messages.filter(m => m.role !== 'system') }),
     });
     const json = await res.json();
     if (json.error) {
       log.error({ error: json.error }, 'OpenAI API error');
       return { type: 'text', body: 'Sorry, I am having trouble right now. Please contact us directly.' };
     }
-    let reply = json.choices && json.choices[0] && json.choices[0].message && json.choices[0].message.content ? json.choices[0].message.content.trim() : null;
+    let reply = json.content && json.content[0] && json.content[0].text ? json.content[0].text.trim() : null;
     if (!reply) return { type: 'text', body: 'Sorry, I could not process that. Please try again.' };
     saveMessage(businessId, customerPhone, 'user', incomingText);
     if (reply.includes('BOOKING_COMPLETE:')) {
