@@ -640,8 +640,8 @@ export default function BrainPage({ businessId }) {
     authFetch('/api/business-brain')
       .then(r => r.json())
       .then(data => {
-        if (data.brain) {
-          const b = { ...data.brain }
+        if (data.exists) {
+          const b = { ...data }
           if (typeof b.services  === 'string') b.services  = JSON.parse(b.services  || '[]')
           if (typeof b.packages  === 'string') b.packages  = JSON.parse(b.packages  || '[]')
           if (typeof b.hours     === 'string') b.hours     = JSON.parse(b.hours     || '{}')
