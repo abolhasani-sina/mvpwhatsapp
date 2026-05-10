@@ -189,18 +189,18 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
             </h1>
           </div>
           <div className="flex items-center gap-3">
+            <button
+                onClick={() => setDarkMode(d => !d)}
+                className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+                title={darkMode ? 'Light mode' : 'Dark mode'}
+              >
+                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
             <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setNotifOpen(o => !o)}
                 className="relative w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all"
               >
-                <button
-                  onClick={() => setDarkMode(d => !d)}
-                  className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors mr-1"
-                  title={darkMode ? 'Light mode' : 'Dark mode'}
-                >
-                  {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                </button>
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
