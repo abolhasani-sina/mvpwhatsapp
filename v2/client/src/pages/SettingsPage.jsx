@@ -252,10 +252,10 @@ export default function SettingsPage({ businessId }) {
         window.removeEventListener('message', msgHandler);
       }
     }, {
-      config_id: '1262239595318168',
+      config_id: '1262395959310168',
       response_type: 'code',
       override_default_response_type: true,
-      extras: { sessionInfoVersion: 2 }
+      extras: { sessionInfoVersion: 3, version: 'v4' }
     });
     };
     if (window.FB) {

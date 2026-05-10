@@ -57,7 +57,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https://www.facebook.com"],
-      connectSrc: ["'self'", "https://api.anthropic.com", "https://graph.facebook.com"],
+      connectSrc: ["'self'", "https://api.anthropic.com", "https://graph.facebook.com", "https://www.facebook.com", "https://web.facebook.com"],
       frameSrc: ["https://www.facebook.com", "https://web.facebook.com"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
