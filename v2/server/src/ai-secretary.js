@@ -107,16 +107,21 @@ CRITICAL: Look at the conversation history. If there are ANY previous messages w
 Only introduce yourself if conversation history is completely empty (the very first message ever).
 
 # Booking flow
-Need 4 things: specific service, preferred date, name, phone. Be smart:
+Need 5 things: specific service, preferred date, preferred time, name, phone. Be smart:
 - Extract everything customer gives, only ask for whats missing.
 - If customer named only category (Hair, Nails) without specific service, ask which specific in one casual question.
 - If customer says "first available", "any time", "ASAP", "whenever" - accept it as date and move on.
-- Once you have all 4 pieces of info, you MUST do BOTH in the same response:
+- For time: ask morning/afternoon/evening if not specified. Accept vague answers like "morning" or "after 3pm".
+- Once you have all 5 pieces of info, you MUST do BOTH in the same response:
   (a) Call the save_booking tool
   NOTE: First name only. Never ask for last name.
   (b) Write a short warm confirmation message in the EXACT SAME LANGUAGE the customer was using.
   NEVER call the tool silently. NEVER use English if customer used another language.
   Persian customer needs Persian confirmation. Arabic needs Arabic. English needs English.
+# Post-booking notes
+If customer adds notes AFTER booking is confirmed (special requests, preferences):
+- Acknowledge warmly
+- Call add_booking_note tool to save the note
 
 NEVER confirm time slot availability. Always say team will confirm.
 
@@ -144,11 +149,23 @@ const TOOLS = [
       type: "object",
       properties: {
         service: { type: "string", description: "Specific service (e.g. Gel Manicure, Haircut and Blowdry)" },
-        preferred_date: { type: "string", description: "When (e.g. tomorrow morning, first available)" },
+        preferred_date: { type: "string", description: "When (e.g. tomorrow, next Monday)" },
+        preferred_time: { type: "string", description: "Preferred time (e.g. morning, after 3pm, 10am)" },
         customer_name: { type: "string", description: "Customer name" },
         customer_phone: { type: "string", description: "Customer phone number" }
       },
-      required: ["service", "preferred_date", "customer_name", "customer_phone"]
+      required: ["service", "preferred_date", "preferred_time", "customer_name", "customer_phone"]
+    }
+  },
+  {
+    name: "add_booking_note",
+    description: "Add a special note to the most recent booking for this customer. Call when customer adds requests or notes after booking is confirmed.",
+    input_schema: {
+      type: "object",
+      properties: {
+        note: { type: "string", description: "The customer's special request or note" }
+      },
+      required: ["note"]
     }
   },
   {
@@ -163,6 +180,18 @@ const TOOLS = [
     }
   }
 ];
+
+function addBookingNote(businessId, customerPhone, note) {
+  try {
+    const sub = db.prepare("SELECT id, data FROM submissions WHERE business_id = ? AND json_extract(data, '$._source') = 'ai_secretary' ORDER BY id DESC LIMIT 1").get(businessId);
+    if (sub) {
+      const data = JSON.parse(sub.data);
+      data["Special Notes"] = (data["Special Notes"] ? data["Special Notes"] + " | " : "") + note;
+      db.prepare("UPDATE submissions SET data = ? WHERE id = ?").run(JSON.stringify(data), sub.id);
+      log.info({ businessId, subId: sub.id, note }, "Booking note added");
+    }
+  } catch(e) { log.error({ err: e }, "Failed to add booking note"); }
+}
 
 const CONVERSATION_TIMEOUT_MS = 4 * 60 * 60 * 1000; // 4 hours
 function getHistory(businessId, customerPhone, limit) {
@@ -202,7 +231,7 @@ function normalizePhone(phone) {
     .replace(/[^0-9+]/g, '');
 }
 
-function saveBookingSubmission(businessId, customerPhone, service, date, name, phone) {
+function saveBookingSubmission(businessId, customerPhone, service, date, time, name, phone) {
   phone = normalizePhone(phone);
   try {
     const countRow = db.prepare("SELECT COUNT(*) as cnt FROM submissions WHERE business_id = ?").get(businessId);
@@ -210,6 +239,7 @@ function saveBookingSubmission(businessId, customerPhone, service, date, name, p
     const data = {
       "Service": service,
       "Preferred Date": date,
+      "Preferred Time": time || "Not specified",
       "Customer Name": name,
       "Customer Phone": phone,
       "Channel": "WhatsApp (AI Secretary)",
@@ -223,6 +253,7 @@ function saveBookingSubmission(businessId, customerPhone, service, date, name, p
       + "From: " + name + " (" + phone + ")\n"
       + "Service: " + service + "\n"
       + "Date: " + date + "\n"
+      + "Time: " + (time || "Not specified") + "\n"
       + "WhatsApp: " + customerPhone
     ).catch(e => log.error({ err: e }, "Telegram notify failed"));
     return counter;
@@ -307,6 +338,7 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
           businessId, customerPhone,
           input.service || "Not specified",
           input.preferred_date || "Not specified",
+                  input.preferred_time || "Not specified",
           input.customer_name || customerName,
           input.customer_phone || customerPhone
         );
@@ -330,6 +362,14 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
         const finalReply = textReply.trim() || "I am sorry to hear that. Let me connect you with our team right away - someone will be with you shortly.";
         saveMessage(businessId, customerPhone, "assistant", finalReply);
         log.info({ businessId, customerPhone, reason }, "Handover via tool use");
+        return { type: "text", body: finalReply };
+      }
+      if (toolUse.name === "add_booking_note") {
+        const note = (toolUse.input && toolUse.input.note) || "";
+        if (note) addBookingNote(businessId, customerPhone, note);
+        const finalReply = textReply.trim() || "Got it! I have noted that for the team.";
+        saveMessage(businessId, customerPhone, "assistant", finalReply);
+        log.info({ businessId, customerPhone, note }, "Booking note added via tool");
         return { type: "text", body: finalReply };
       }
     }
