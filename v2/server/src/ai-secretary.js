@@ -232,7 +232,7 @@ function sendHandoverNotification(businessId, customerPhone, customerName, reaso
   ).catch(e => log.error({ err: e }, "Telegram handover notify failed"));
 }
 
-export async function handleAISecretary(businessId, customerPhone, customerName, incomingText, brain) {
+export async function handleAISecretary(businessId, customerPhone, customerName, incomingText, brain, imageData = null) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     log.error("ANTHROPIC_API_KEY not set");
@@ -241,7 +241,16 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
 
   const history = getHistory(businessId, customerPhone, 10);
   const systemPrompt = buildSystemPrompt(brain);
-  const messages = [...history, { role: "user", content: incomingText }];
+  let userContent;
+  if (imageData && imageData.base64) {
+    userContent = [
+      { type: "image", source: { type: "base64", media_type: imageData.mimeType || "image/jpeg", data: imageData.base64 } },
+      { type: "text", text: incomingText || "What is in this image?" }
+    ];
+  } else {
+    userContent = incomingText;
+  }
+  const messages = [...history, { role: "user", content: userContent }];
 
   try {
     const res = await fetch(ANTHROPIC_API, {
