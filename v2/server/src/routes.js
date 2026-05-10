@@ -1359,7 +1359,7 @@ router.get('/business/:id/ai-conversations', tenantScope, (req, res) => {
            c.name as customer_name,
            c.channel as channel
     FROM ai_conversations a
-    LEFT JOIN customers c ON c.phone = a.customer_phone AND c.business_id = a.business_id
+    LEFT JOIN customers c ON c.channel_user_id = a.customer_phone AND c.business_id = a.business_id
     WHERE a.business_id = ?
     GROUP BY a.customer_phone
     ORDER BY last_message_at DESC
