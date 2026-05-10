@@ -100,19 +100,32 @@ export default function ConversationsPage({ businessId }) {
   const [filter, setFilter] = useState('all');
   const bottomRef = useRef(null);
 
-  useEffect(() => {
+  const fetchCustomers = () => {
     if (!businessId) return;
     authFetch(`${API}/business/${businessId}/ai-conversations`)
       .then(r => r.json()).then(data => { setCustomers(Array.isArray(data) ? data : []); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [businessId]);
+  };
 
   useEffect(() => {
-    if (!selected) return;
-    setMsgLoading(true);
-    authFetch(`${API}/business/${businessId}/ai-conversations/${encodeURIComponent(selected)}`)
+    fetchCustomers();
+    const interval = setInterval(fetchCustomers, 5000);
+    return () => clearInterval(interval);
+  }, [businessId]);
+
+  const fetchMessages = (phone, silent = false) => {
+    if (!phone) return;
+    if (!silent) setMsgLoading(true);
+    authFetch(`${API}/business/${businessId}/ai-conversations/${encodeURIComponent(phone)}`)
       .then(r => r.json()).then(data => { setMessages(Array.isArray(data) ? data : []); setMsgLoading(false); })
       .catch(() => setMsgLoading(false));
+  };
+
+  useEffect(() => {
+    fetchMessages(selected);
+    if (!selected) return;
+    const interval = setInterval(() => fetchMessages(selected, true), 5000);
+    return () => clearInterval(interval);
   }, [selected]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
