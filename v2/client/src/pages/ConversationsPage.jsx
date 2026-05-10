@@ -97,6 +97,7 @@ export default function ConversationsPage({ businessId }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msgLoading, setMsgLoading] = useState(false);
+  const [filter, setFilter] = useState('all');
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -116,6 +117,15 @@ export default function ConversationsPage({ businessId }) {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
+  const now = new Date();
+  const filteredCustomers = customers.filter(c => {
+    if (filter === 'all') return true;
+    const t = new Date(c.last_message_at);
+    if (filter === 'today') return t.toDateString() === now.toDateString();
+    if (filter === 'week') return (now - t) < 7 * 86400000;
+    if (filter === 'month') return (now - t) < 30 * 86400000;
+    return true;
+  });
   const selectedCustomer = customers.find(c => c.customer_phone === selected);
   const grouped = groupByDate(messages);
 
@@ -126,11 +136,19 @@ export default function ConversationsPage({ businessId }) {
       <div className="w-80 border-r border-slate-200 bg-white flex flex-col flex-shrink-0">
         <div className="px-5 py-4 border-b border-slate-100">
           <h2 className="text-base font-bold text-slate-900">Conversations</h2>
-          <p className="text-xs text-slate-400 mt-0.5">{customers.length} {customers.length === 1 ? 'customer' : 'customers'}</p>
+          <p className="text-xs text-slate-400 mt-0.5">{filteredCustomers.length} {filteredCustomers.length === 1 ? 'customer' : 'customers'}</p>
+        </div>
+        <div className="flex gap-1 px-3 py-2 border-b border-slate-100">
+          {[['all','All'],['today','Today'],['week','Week'],['month','Month']].map(([key,label]) => (
+            <button key={key} onClick={() => setFilter(key)}
+              className={`flex-1 py-1 text-[11px] font-semibold rounded-lg transition-colors ${filter === key ? 'bg-indigo-500 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
+              {label}
+            </button>
+          ))}
         </div>
         <div className="flex-1 overflow-y-auto">
-          {customers.length === 0 && <div className="flex flex-col items-center justify-center h-48 gap-2"><Bot className="w-8 h-8 text-slate-300" /><p className="text-sm text-slate-400">No conversations yet</p></div>}
-          {customers.map(c => (
+          {filteredCustomers.length === 0 && <div className="flex flex-col items-center justify-center h-48 gap-2"><Bot className="w-8 h-8 text-slate-300" /><p className="text-sm text-slate-400">No conversations yet</p></div>}
+          {filteredCustomers.map(c => (
             <button key={c.customer_phone} onClick={() => setSelected(c.customer_phone)}
               className={`w-full text-left px-4 py-3.5 border-b border-slate-50 transition-all ${selected === c.customer_phone ? 'bg-indigo-50 border-l-[3px] border-l-indigo-500' : 'hover:bg-slate-50 border-l-[3px] border-l-transparent'}`}>
               <div className="flex items-center gap-3">
