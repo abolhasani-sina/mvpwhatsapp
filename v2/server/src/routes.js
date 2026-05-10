@@ -975,7 +975,14 @@ router.put('/submissions/:id/status', tenantScopeResource('submissions'), update
               })
             }).then(r => r.json()).then(j => {
               if (j.error) log.error({ error: j.error }, 'WhatsApp status notify failed');
-              else log.info({ subId: req.params.id, status, waNumber }, 'WhatsApp status notification sent');
+              else {
+                log.info({ subId: req.params.id, status, waNumber }, 'WhatsApp status notification sent');
+                try {
+                  db.prepare('INSERT INTO ai_conversations (business_id, customer_phone, role, content, created_at) VALUES (?, ?, ?, ?, ?)').run(
+                    sub.business_id, waNumber, 'assistant', '[Status Update]: ' + msg, new Date().toISOString()
+                  );
+                } catch(e) {}
+              }
             }).catch(e => log.error({ err: e }, 'WhatsApp status notify error'));
           }
         }
