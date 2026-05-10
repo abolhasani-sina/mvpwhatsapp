@@ -53,12 +53,12 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://connect.facebook.net"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: ["'self'", "https://api.anthropic.com"],
-      frameSrc: ["'none'"],
+      imgSrc: ["'self'", "data:", "blob:", "https://www.facebook.com"],
+      connectSrc: ["'self'", "https://api.anthropic.com", "https://graph.facebook.com"],
+      frameSrc: ["https://www.facebook.com", "https://web.facebook.com"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
     },
