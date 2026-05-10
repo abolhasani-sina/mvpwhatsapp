@@ -16,6 +16,7 @@ import AdminLayout from './components/AdminLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import Landing1 from './pages/Landing1';
 import BrainPage from './pages/BrainPage';
+import ConversationsPage from './pages/ConversationsPage';
 
 function AppRoutes() {
   const { user, loading, logout } = useAuth();
@@ -98,6 +99,7 @@ function AppRoutes() {
       {page === 'brain' && <BrainPage businessId={businessId} />}
       {page === 'builder' && <BuilderPage businessId={businessId} setBusinessId={setBusinessId} />}
       {page === 'submissions' && <SubmissionsList businessId={businessId} />}
+      {page === 'conversations' && <ConversationsPage businessId={businessId} />}
       {page === 'staff' && <StaffManager businessId={businessId} />}
       {page === 'settings' && <SettingsPage businessId={businessId} />}
       {page === 'tester' && <WhatsAppTester businessId={businessId} />}

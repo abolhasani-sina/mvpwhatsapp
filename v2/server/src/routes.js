@@ -1346,6 +1346,34 @@ router.post('/whatsapp/exchange-token', async (req, res) => {
   }
 });
 
+// AI Conversations viewer
+router.get('/business/:id/ai-conversations', tenantScope, (req, res) => {
+  const businessId = Number(req.params.id);
+  // Get unique customers with last message time
+  const customers = db.prepare(`
+    SELECT customer_phone,
+           MAX(created_at) as last_message_at,
+           COUNT(*) as message_count
+    FROM ai_conversations
+    WHERE business_id = ?
+    GROUP BY customer_phone
+    ORDER BY last_message_at DESC
+  `).all(businessId);
+  res.json(customers);
+});
+
+router.get('/business/:id/ai-conversations/:phone', tenantScope, (req, res) => {
+  const businessId = Number(req.params.id);
+  const phone = req.params.phone;
+  const messages = db.prepare(`
+    SELECT role, content, created_at
+    FROM ai_conversations
+    WHERE business_id = ? AND customer_phone = ?
+    ORDER BY created_at ASC
+  `).all(businessId, phone);
+  res.json(messages);
+});
+
 router.get('/business/:id/whatsapp-preview', tenantScope, (req, res) => {
   const businessId = Number(req.params.id);
 
