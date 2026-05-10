@@ -7,6 +7,34 @@ import { handleAISecretary, isAISecretaryActive, getBusinessBrain } from './ai-s
 import { createLogger } from './logger.js';
 
 const log = createLogger('whatsapp-bot');
+
+//  Message Buffer 
+const messageBuffer = new Map();
+const BUFFER_TIMEOUT_MS = 8000; // 8 seconds
+
+async function sendReadReceipt(phoneNumberId, accessToken, messageId) {
+  try {
+    await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+      body: JSON.stringify({ messaging_product: 'whatsapp', status: 'read', message_id: messageId })
+    });
+  } catch(e) {}
+}
+
+async function processBufferedMessages(bufferKey) {
+  const buffered = messageBuffer.get(bufferKey);
+  if (!buffered) return;
+  messageBuffer.delete(bufferKey);
+  const { messages, lastMsgId, meta: { businessId, from, userName, phoneNumberId, accessToken, brain } } = buffered;
+  const combinedText = messages.join('\n');
+  log.info({ businessId, from, messageCount: messages.length, combinedText }, 'Processing buffered messages');
+  await sendReadReceipt(phoneNumberId, accessToken, lastMsgId);
+  const aiResponse = await handleAISecretary(businessId, from, userName, combinedText, brain);
+  await sendWhatsAppMessage(phoneNumberId, accessToken, from, aiResponse);
+}
+//  End Message Buffer 
+
 const WA_API = 'https://graph.facebook.com/v18.0';
 
 //  Send a message via WhatsApp Cloud API 
@@ -170,8 +198,22 @@ export async function handleWhatsAppWebhook(body) {
         const brain = getBusinessBrain(businessId);
         if (brain) {
           const textInput = input.text || input.callbackData || '';
-          const aiResponse = await handleAISecretary(businessId, from, userName, textInput, brain);
-          await sendWhatsAppMessage(phoneNumberId, accessToken, from, aiResponse);
+          // Buffer messages for 8 seconds to combine rapid multi-part messages
+          const bufferKey = `${businessId}:${from}`;
+          const existing = messageBuffer.get(bufferKey);
+          if (existing) {
+            clearTimeout(existing.timer);
+            existing.messages.push(textInput);
+            existing.lastMsgId = msg.id;
+          } else {
+            messageBuffer.set(bufferKey, {
+              messages: [textInput],
+              lastMsgId: msg.id,
+              meta: { businessId, from, userName, phoneNumberId, accessToken, brain }
+            });
+          }
+          const timer = setTimeout(() => processBufferedMessages(bufferKey), BUFFER_TIMEOUT_MS);
+          messageBuffer.get(bufferKey).timer = timer;
         } else {
           const responses = processIncoming(businessId, from, 'whatsapp', userName, input);
           for (const response of responses) {
