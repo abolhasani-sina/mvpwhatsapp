@@ -164,9 +164,18 @@ const TOOLS = [
   }
 ];
 
+const CONVERSATION_TIMEOUT_MS = 4 * 60 * 60 * 1000; // 4 hours
 function getHistory(businessId, customerPhone, limit) {
   limit = limit || 10;
   try {
+    const latest = db.prepare("SELECT created_at FROM ai_conversations WHERE business_id = ? AND customer_phone = ? ORDER BY created_at DESC LIMIT 1").get(businessId, customerPhone);
+    if (latest) {
+      const age = Date.now() - new Date(latest.created_at).getTime();
+      if (age > CONVERSATION_TIMEOUT_MS) {
+        db.prepare("DELETE FROM ai_conversations WHERE business_id = ? AND customer_phone = ?").run(businessId, customerPhone);
+        return [];
+      }
+    }
     const rows = db.prepare("SELECT role, content FROM ai_conversations WHERE business_id = ? AND customer_phone = ? ORDER BY created_at DESC LIMIT ?").all(businessId, customerPhone, limit);
     return rows.reverse().map(r => ({ role: r.role, content: r.content }));
   } catch(e) { return []; }
