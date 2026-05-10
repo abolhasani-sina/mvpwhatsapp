@@ -952,7 +952,7 @@ router.put('/submissions/:id/status', tenantScopeResource('submissions'), update
 
           // Get custom messages from brain
           const brain = db.prepare('SELECT msg_confirmed, msg_completed, msg_cancelled FROM business_brain WHERE business_id = ?').get(sub.business_id);
-          const rp = (t, n, s, d) => (t || '').replace(/{name}/g, n).replace(/{service}/g, s).replace(/{date}/g, d);
+          const rp = (t, n, s, d) => (t || '').replace(/{name}/g, n).replace(/{service}/g, s).replace(/{date}/g, d).replace(/\\n/g, '\n');
 
           let msg = null;
           if (status === 'in_progress') {
