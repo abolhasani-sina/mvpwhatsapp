@@ -193,7 +193,17 @@ function clearHistory(businessId, customerPhone) {
   } catch(e) {}
 }
 
+function normalizePhone(phone) {
+  if (!phone) return phone;
+  // Convert Eastern Arabic/Farsi digits to Western digits
+  return String(phone)
+    .replace(/[۰-۹]/g, d => d.charCodeAt(0) - 0x06F0)
+    .replace(/[٠-٩]/g, d => d.charCodeAt(0) - 0x0660)
+    .replace(/[^0-9+]/g, '');
+}
+
 function saveBookingSubmission(businessId, customerPhone, service, date, name, phone) {
+  phone = normalizePhone(phone);
   try {
     const countRow = db.prepare("SELECT COUNT(*) as cnt FROM submissions WHERE business_id = ?").get(businessId);
     const counter = (countRow ? countRow.cnt : 0) + 1;
