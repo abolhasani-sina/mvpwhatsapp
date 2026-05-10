@@ -1351,12 +1351,17 @@ router.get('/business/:id/ai-conversations', tenantScope, (req, res) => {
   const businessId = Number(req.params.id);
   // Get unique customers with last message time
   const customers = db.prepare(`
-    SELECT customer_phone,
-           MAX(created_at) as last_message_at,
-           COUNT(*) as message_count
-    FROM ai_conversations
-    WHERE business_id = ?
-    GROUP BY customer_phone
+    SELECT a.customer_phone,
+           MAX(a.created_at) as last_message_at,
+           COUNT(*) as message_count,
+           (SELECT content FROM ai_conversations WHERE business_id = a.business_id AND customer_phone = a.customer_phone ORDER BY created_at DESC LIMIT 1) as last_message,
+           (SELECT role FROM ai_conversations WHERE business_id = a.business_id AND customer_phone = a.customer_phone ORDER BY created_at DESC LIMIT 1) as last_role,
+           c.name as customer_name,
+           c.channel as channel
+    FROM ai_conversations a
+    LEFT JOIN customers c ON c.phone = a.customer_phone AND c.business_id = a.business_id
+    WHERE a.business_id = ?
+    GROUP BY a.customer_phone
     ORDER BY last_message_at DESC
   `).all(businessId);
   res.json(customers);
