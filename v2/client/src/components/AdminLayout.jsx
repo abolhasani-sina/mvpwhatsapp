@@ -1,4 +1,5 @@
-import { MessageSquare, LayoutDashboard, Bot, Inbox, Users, Settings, LogOut, ChevronLeft, ChevronRight, Smartphone, Menu, X, Bell, MessageCircle } from 'lucide-react';
+import React from 'react';
+import { MessageSquare, LayoutDashboard, Bot, Inbox, Users, Settings, LogOut, ChevronLeft, ChevronRight, Smartphone, Menu, X, Bell, MessageCircle, Sun, Moon } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth, authFetch } from '../lib/auth';
 
@@ -15,6 +16,20 @@ const NAV_ITEMS = [
 ];
 
 export default function AdminLayout({ children, currentView, onViewChange, onLogout, businessId }) {
+  const [darkMode, setDarkMode] = React.useState(() => {
+    const saved = localStorage.getItem('nabzchat-theme');
+    return saved === 'dark';
+  });
+
+  React.useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('nabzchat-theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('nabzchat-theme', 'light');
+    }
+  }, [darkMode]);
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -179,6 +194,13 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
                 onClick={() => setNotifOpen(o => !o)}
                 className="relative w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all"
               >
+                <button
+                  onClick={() => setDarkMode(d => !d)}
+                  className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors mr-1"
+                  title={darkMode ? 'Light mode' : 'Dark mode'}
+                >
+                  {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
