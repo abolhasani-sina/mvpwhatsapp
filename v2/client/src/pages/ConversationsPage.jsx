@@ -109,7 +109,7 @@ export default function ConversationsPage({ businessId }) {
 
   useEffect(() => {
     fetchCustomers();
-    const interval = setInterval(fetchCustomers, 5000);
+    const interval = setInterval(fetchCustomers, 30000);
     return () => clearInterval(interval);
   }, [businessId]);
 
@@ -124,7 +124,7 @@ export default function ConversationsPage({ businessId }) {
   useEffect(() => {
     fetchMessages(selected);
     if (!selected) return;
-    const interval = setInterval(() => fetchMessages(selected, true), 5000);
+    const interval = setInterval(() => fetchMessages(selected, true), 30000);
     return () => clearInterval(interval);
   }, [selected]);
 
