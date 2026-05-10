@@ -7,11 +7,12 @@ import { useAuth, authFetch } from '../lib/auth';
 
 const NAV_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { key: 'builder', label: 'Bot Builder', icon: Bot },
+  { key: 'brain', label: 'AI Brain', icon: Bot },
   { key: 'submissions', label: 'Submissions', icon: Inbox },
-  { key: 'staff', label: 'Staff', icon: Users },
   { key: 'conversations', label: 'Conversations', icon: MessageCircle },
+  { key: 'staff', label: 'Staff', icon: Users },
   { key: 'tester', label: 'Bot Tester', icon: Smartphone },
+  { key: 'builder', label: 'Bot Builder', icon: Bot },
   { key: 'settings', label: 'Settings', icon: Settings },
 ];
 
