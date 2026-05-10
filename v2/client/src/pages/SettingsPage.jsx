@@ -206,6 +206,72 @@ export default function SettingsPage({ businessId }) {
     return <div className="flex items-center justify-center h-64 text-slate-400 text-sm">Loading…</div>;
   }
 
+
+  //  Embedded Signup 
+  useEffect(() => {
+    if (window.FB) return;
+    window.fbAsyncInit = function () {
+      window.FB.init({ appId: '1974211913207772', autoLogAppEvents: true, xfbml: true, version: 'v21.0' });
+    };
+    const s = document.createElement('script');
+    s.src = 'https://connect.facebook.net/en_US/sdk.js';
+    s.async = true;
+    s.defer = true;
+    document.body.appendChild(s);
+    return () => { try { document.body.removeChild(s); } catch(e) {} };
+  }, []);
+
+  const [esLoading, setEsLoading] = useState(false);
+  const [esError, setEsError] = useState('');
+
+  const launchEmbeddedSignup = () => {
+    setEsError('');
+    if (!window.FB) { setEsError('Facebook SDK not loaded yet. Wait a moment and try again.'); return; }
+    setEsLoading(true);
+    const msgHandler = (ev) => {
+      if (ev.origin !== 'https://www.facebook.com' && ev.origin !== 'https://web.facebook.com') return;
+      try {
+        const data = JSON.parse(ev.data);
+        if (data.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH') {
+          const { phone_number_id, waba_id } = data.data;
+          if (phone_number_id) setWaPhoneNumberId(phone_number_id);
+          if (waba_id) setWaWabaId(waba_id);
+          setEsLoading(false);
+          window.removeEventListener('message', msgHandler);
+        } else if (data.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'CANCEL') {
+          setEsLoading(false);
+          window.removeEventListener('message', msgHandler);
+        }
+      } catch (e) {}
+    };
+    window.addEventListener('message', msgHandler);
+    window.FB.login((response) => {
+      if (response.authResponse) {
+        const code = response.authResponse.code;
+        authFetch('/api/whatsapp/exchange-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code })
+        })
+          .then(r => r.json())
+          .then(d => {
+            if (d.access_token) { setWaAccessToken(d.access_token); }
+            setEsLoading(false);
+          })
+          .catch(() => setEsLoading(false));
+      } else {
+        setEsLoading(false);
+        window.removeEventListener('message', msgHandler);
+      }
+    }, {
+      config_id: '1262239595318168',
+      response_type: 'code',
+      override_default_response_type: true,
+      extras: { sessionInfoVersion: 2 }
+    });
+  };
+  //  End Embedded Signup 
+
   return (
     <div className="p-6 max-w-[700px] mx-auto space-y-6">
 
@@ -483,6 +549,26 @@ export default function SettingsPage({ businessId }) {
           Connect your WhatsApp Business number via Meta Cloud API. You need a verified Meta Business account and a WhatsApp Business Account (WABA).
         </p>
         <div className="flex flex-col gap-3">
+          {/* Embedded Signup */}
+          <div className="flex flex-col gap-2 mb-1">
+            <button
+              type="button"
+              onClick={launchEmbeddedSignup}
+              disabled={esLoading}
+              style={{ background: '#1877F2' }}
+              className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+              {esLoading ? 'Connecting…' : 'Connect with Meta (Recommended)'}
+            </button>
+            {esError && <p className="text-[12px] text-red-500">{esError}</p>}
+            <p className="text-[11px] text-slate-400">Opens a secure Meta popup — auto-fills your credentials below.</p>
+          </div>
+          <div className="flex items-center gap-2 my-1">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-[11px] text-slate-400 font-medium">or enter manually</span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
           <label className="flex flex-col gap-1 text-[13px] font-medium text-slate-500">
             Phone Number ID
             <input
