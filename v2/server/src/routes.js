@@ -1329,7 +1329,7 @@ router.delete('/flows/:id/destinations/:destId', tenantScopeFlow, (req, res) => 
 // ──────────────────────────────────────────────
 
 // Embedded Signup - exchange code for access token
-router.post('/whatsapp/exchange-token', authenticateToken, async (req, res) => {
+router.post('/whatsapp/exchange-token', async (req, res) => {
   const { code } = req.body;
   if (!code) return res.status(400).json({ error: 'code required' });
   try {
