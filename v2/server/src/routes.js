@@ -1328,6 +1328,24 @@ router.delete('/flows/:id/destinations/:destId', tenantScopeFlow, (req, res) => 
 // flow as WhatsApp Cloud API message payloads
 // ──────────────────────────────────────────────
 
+// Embedded Signup - exchange code for access token
+router.post('/whatsapp/exchange-token', authenticateToken, async (req, res) => {
+  const { code } = req.body;
+  if (!code) return res.status(400).json({ error: 'code required' });
+  try {
+    const appId = process.env.WHATSAPP_APP_ID;
+    const appSecret = process.env.WHATSAPP_APP_SECRET;
+    const url = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${encodeURIComponent(code)}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data.error) return res.status(400).json({ error: data.error.message });
+    res.json({ access_token: data.access_token });
+  } catch (err) {
+    logger.error({ err }, 'exchange-token failed');
+    res.status(500).json({ error: 'Token exchange failed' });
+  }
+});
+
 router.get('/business/:id/whatsapp-preview', tenantScope, (req, res) => {
   const businessId = Number(req.params.id);
 
