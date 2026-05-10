@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageSquare, LayoutDashboard, Bot, Inbox, Users, Settings, LogOut, ChevronLeft, ChevronRight, Smartphone, Menu, X, Bell, MessageCircle, Sun, Moon } from 'lucide-react';
+import { MessageSquare, LayoutDashboard, Bot, Inbox, Users, Settings, LogOut, ChevronLeft, ChevronRight, Smartphone, Menu, X, Bell, MessageCircle } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth, authFetch } from '../lib/auth';
 
@@ -17,20 +17,6 @@ const NAV_ITEMS = [
 ];
 
 export default function AdminLayout({ children, currentView, onViewChange, onLogout, businessId }) {
-  const [darkMode, setDarkMode] = React.useState(() => {
-    const saved = localStorage.getItem('nabzchat-theme');
-    return saved === 'dark';
-  });
-
-  React.useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('nabzchat-theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('nabzchat-theme', 'light');
-    }
-  }, [darkMode]);
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -190,13 +176,6 @@ export default function AdminLayout({ children, currentView, onViewChange, onLog
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <button
-                onClick={() => setDarkMode(d => !d)}
-                className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
-                title={darkMode ? 'Light mode' : 'Dark mode'}
-              >
-                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
             <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setNotifOpen(o => !o)}
