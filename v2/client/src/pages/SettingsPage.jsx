@@ -210,25 +210,12 @@ export default function SettingsPage({ businessId }) {
   }
 
 
-  //  Embedded Signup 
-  useEffect(() => {
-    if (window.FB) return;
-    window.fbAsyncInit = function () {
-      window.FB.init({ appId: '1974211913207772', autoLogAppEvents: true, xfbml: true, version: 'v21.0' });
-    };
-    const s = document.createElement('script');
-    s.src = 'https://connect.facebook.net/en_US/sdk.js';
-    s.async = true;
-    s.defer = true;
-    document.body.appendChild(s);
-    return () => { try { document.body.removeChild(s); } catch(e) {} };
-  }, []);
 
 
   const launchEmbeddedSignup = () => {
     setEsError('');
-    if (!window.FB) { setEsError('Facebook SDK not loaded yet. Wait a moment and try again.'); return; }
     setEsLoading(true);
+    const doLogin = () => {
     const msgHandler = (ev) => {
       if (ev.origin !== 'https://www.facebook.com' && ev.origin !== 'https://web.facebook.com') return;
       try {
@@ -270,6 +257,19 @@ export default function SettingsPage({ businessId }) {
       override_default_response_type: true,
       extras: { sessionInfoVersion: 2 }
     });
+    };
+    if (window.FB) {
+      doLogin();
+    } else {
+      window.fbAsyncInit = function () {
+        window.FB.init({ appId: '1974211913207772', autoLogAppEvents: true, xfbml: true, version: 'v21.0' });
+        doLogin();
+      };
+      const s = document.createElement('script');
+      s.src = 'https://connect.facebook.net/en_US/sdk.js';
+      s.async = true;
+      document.body.appendChild(s);
+    }
   };
   //  End Embedded Signup 
 
