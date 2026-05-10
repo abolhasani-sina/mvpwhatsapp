@@ -5,6 +5,7 @@ import {
   createChannelChangeRequest, fetchChannelChangeRequests, fetchAnalytics,
 } from '../lib/api';
 import { useToast } from '../components/Toast';
+import { authFetch } from '../lib/auth.jsx';
 
 export default function SettingsPage({ businessId }) {
   const { addToast } = useToast();
@@ -26,6 +27,8 @@ export default function SettingsPage({ businessId }) {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState(null);
+  const [esLoading, setEsLoading] = useState(false);
+  const [esError, setEsError] = useState('');
   const [tgSetupMode, setTgSetupMode] = useState(null); // null | 'new' | 'import'
   const [detectingChatId, setDetectingChatId] = useState(false);
   const [detectStatus, setDetectStatus] = useState('');
@@ -221,8 +224,6 @@ export default function SettingsPage({ businessId }) {
     return () => { try { document.body.removeChild(s); } catch(e) {} };
   }, []);
 
-  const [esLoading, setEsLoading] = useState(false);
-  const [esError, setEsError] = useState('');
 
   const launchEmbeddedSignup = () => {
     setEsError('');
