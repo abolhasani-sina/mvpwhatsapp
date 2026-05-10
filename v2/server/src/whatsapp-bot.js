@@ -61,6 +61,7 @@ async function transcribeAudio(buffer, mimeType) {
     const blob = new Blob([buffer], { type: mimeType });
     formData.append('file', blob, 'audio.' + ext);
     formData.append('model', 'whisper-1');
+    formData.append('prompt', 'Beauty salon customer inquiry. Booking appointment, haircut, makeup, nails, massage, facial treatment.');
     const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` },
