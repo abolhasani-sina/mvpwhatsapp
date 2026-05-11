@@ -14,7 +14,7 @@ const STEPS = [
 
 const SALON_TYPES = ['Beauty Salon', 'Nail Studio', 'Hair Salon', 'Spa', 'Barbershop', 'Lash & Brow Studio', 'Makeup Studio', 'Wellness Center']
 const AREAS = ['Deira', 'Bur Dubai', 'Jumeirah', 'Dubai Marina', 'JBR', 'Downtown Dubai', 'Business Bay', 'DIFC', 'Al Quoz', 'Mirdif', 'Karama', 'Satwa', 'Al Barsha', 'JLT', 'Silicon Oasis', 'Al Nahda', 'Discovery Gardens', 'International City', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Other']
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 const AI_TONES = [
   { value: 'friendly',     label: '😊 Friendly & Warm',  desc: 'Like a helpful friend — casual, warm, approachable' },
   { value: 'professional', label: '💼 Professional',      desc: 'Polite and formal — good for premium salons' },
@@ -24,7 +24,7 @@ const AI_TONES = [
 const defaultHours = () => {
   const h = {}
   DAYS.forEach(d => { h[d] = { open: '10:00', close: '21:00', closed: false } })
-  h['Friday'] = { open: '14:00', close: '22:00', closed: false }
+  h['friday'] = { open: '10:00', close: '21:00', closed: false }
   return h
 }
 
@@ -334,7 +334,7 @@ function StepHours({ brain, set, setBrain }) {
           const h = (brain.hours && brain.hours[day]) || { open: '10:00', close: '21:00', closed: false }
           return (
             <div key={day} style={{ display: 'grid', gridTemplateColumns: '130px 1fr 1fr 100px', padding: '10px 16px', borderTop: '1px solid #e5e7eb', alignItems: 'center', opacity: h.closed ? 0.45 : 1 }}>
-              <span style={{ fontWeight: 500, fontSize: 14 }}>{day}</span>
+              <span style={{ fontWeight: 500, fontSize: 14 }}>{day.charAt(0).toUpperCase() + day.slice(1)}</span>
               <input type="time" value={h.open} disabled={h.closed} onChange={e => updateDay(day, 'open', e.target.value)} style={{ border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 8px', fontSize: 13, width: 110 }} />
               <input type="time" value={h.close} disabled={h.closed} onChange={e => updateDay(day, 'close', e.target.value)} style={{ border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 8px', fontSize: 13, width: 110 }} />
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
