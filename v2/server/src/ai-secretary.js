@@ -245,7 +245,7 @@ function saveBookingSubmission(businessId, customerPhone, service, date, time, n
     };
     // If same service already has an open booking from this customer, update it instead of duplicating
     const existing = db.prepare(
-      "SELECT id, business_submission_number FROM submissions WHERE business_id = ? AND status = 'new' AND json_extract(data, '$."WhatsApp Number"') = ? AND json_extract(data, '$.Service') = ? AND json_extract(data, '$._source') = 'ai_secretary' ORDER BY id DESC LIMIT 1"
+      `SELECT id, business_submission_number FROM submissions WHERE business_id = ? AND status = 'new' AND json_extract(data, '$."WhatsApp Number"') = ? AND json_extract(data, '$.Service') = ? AND json_extract(data, '$._source') = 'ai_secretary' ORDER BY id DESC LIMIT 1`
     ).get(businessId, customerPhone, service);
     if (existing) {
       db.prepare("UPDATE submissions SET data = ? WHERE id = ?").run(JSON.stringify(data), existing.id);
