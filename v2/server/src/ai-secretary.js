@@ -319,8 +319,18 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
   const systemPrompt = buildSystemPrompt(brain);
   const _pendingOffer = db.prepare("SELECT * FROM reschedule_offers WHERE customer_phone = ? AND status = 'pending' ORDER BY id DESC LIMIT 1").get(customerPhone);
   let finalSystemPrompt = systemPrompt;
-  const _dubaiTime = new Date(Date.now() + 4*3600*1000).toISOString().replace('T',' ').slice(0,16);
-  let _dynamicCtx = 'Current Dubai date/time: ' + _dubaiTime + '. Only suggest appointment times strictly in the future. Never suggest morning if it is already afternoon or evening.';
+  const _dNow = new Date(Date.now() + 4*3600*1000);
+  const _curH = _dNow.getUTCHours();
+  const _curMin = String(_dNow.getUTCMinutes()).padStart(2,'0');
+  const _ampm = _curH >= 12 ? 'PM' : 'AM';
+  const _h12 = _curH % 12 || 12;
+  const _dubaiTime = _dNow.toISOString().replace('T',' ').slice(0,16);
+  const _futureSlots = [];
+  for (let _fh = _curH + 1; _fh <= 22; _fh++) { const _fh12 = _fh > 12 ? _fh - 12 : _fh; const _fap = _fh >= 12 ? 'PM' : 'AM'; _futureSlots.push(_fh + ':00 (=' + _fh12 + ' ' + _fap + ')'); }
+  let _dynamicCtx = 'CURRENT DUBAI TIME: ' + String(_curH).padStart(2,'0') + ':' + _curMin + ' (' + _h12 + ':' + _curMin + ' ' + _ampm + '). ' +
+    'Hours still available today: ' + (_futureSlots.length ? _futureSlots.join(', ') : 'no more slots today') + '. ' +
+    'PM conversion: 1PM=13, 2PM=14, 3PM=15, 4PM=16, 5PM=17, 6PM=18, 7PM=19, 8PM=20, 9PM=21, 10PM=22. ' +
+    'ONLY reject a time if it does NOT appear in the available hours list above.';
   if (_pendingOffer) {
     const _slots = JSON.parse(_pendingOffer.offered_slots || '[]');
     const _D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
