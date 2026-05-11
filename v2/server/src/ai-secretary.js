@@ -341,8 +341,16 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
   const _ampm = _curH >= 12 ? 'PM' : 'AM';
   const _h12 = _curH % 12 || 12;
   const _dubaiTime = _dNow.toISOString().replace('T',' ').slice(0,16);
+  // Get actual closing hour from brain for today
+  const _todayDow = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][_dNow.getUTCDay()];
+  let _closeH = 22;
+  try {
+    let _bh = JSON.parse(brain?.hours || '{}');
+    if (typeof _bh === 'string') _bh = JSON.parse(_bh);
+    if (_bh[_todayDow] && !_bh[_todayDow].closed) _closeH = parseInt(_bh[_todayDow].close.split(':')[0]);
+  } catch(e) {}
   const _futureSlots = [];
-  for (let _fh = _curH + 1; _fh <= 22; _fh++) { const _fh12 = _fh > 12 ? _fh - 12 : _fh; const _fap = _fh >= 12 ? 'PM' : 'AM'; _futureSlots.push(_fh + ':00 (=' + _fh12 + ' ' + _fap + ')'); }
+  for (let _fh = _curH + 1; _fh < _closeH; _fh++) { const _fh12 = _fh > 12 ? _fh - 12 : _fh; const _fap = _fh >= 12 ? 'PM' : 'AM'; _futureSlots.push(_fh + ':00 (=' + _fh12 + ' ' + _fap + ')'); }
   let _dynamicCtx = 'CURRENT DUBAI TIME: ' + String(_curH).padStart(2,'0') + ':' + _curMin + ' (' + _h12 + ':' + _curMin + ' ' + _ampm + '). ' +
     'Hours still available today: ' + (_futureSlots.length ? _futureSlots.join(', ') : 'no more slots today') + '. ' +
     'PM conversion: 1PM=13, 2PM=14, 3PM=15, 4PM=16, 5PM=17, 6PM=18, 7PM=19, 8PM=20, 9PM=21, 10PM=22. ' +
