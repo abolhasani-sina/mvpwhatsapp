@@ -564,7 +564,18 @@ async function handleRescheduleFlow(businessId, token, chatId, messageId, callba
     if (state.selectedSlots.size === 0) return;
     const slots = [...state.selectedSlots].sort();
     const slotLines = slots.map(s => '• ' + formatSlotDisplay(s)).join('\n');
-    const waMsg = 'Hi ' + customerName + '! We need to reschedule your ' + service + ' appointment.\n\nHere are some available times:\n\n' + slotLines + '\n\nJust reply with whichever works best, or suggest another time 😊';
+    const _recentMsgs = db.prepare("SELECT content FROM ai_conversations WHERE business_id = ? AND customer_phone = ? AND role = 'user' ORDER BY id DESC LIMIT 5").all(businessId, waNumber);
+    const _convText = (_recentMsgs || []).map(m => m.content).join(' ') + customerName + service;
+    const _hasFarsi = /[\u067E\u0686\u06CC\u06A9\u06AF\u0641\u06BE]/.test(_convText);
+    const _hasArabic = /[\u0600-\u06FF]/.test(_convText) && !_hasFarsi;
+    let waMsg;
+    if (_hasFarsi) {
+      waMsg = '\u0633\u0644\u0627\u0645 ' + customerName + '! \u0645\u062A\u0623\u0633\u0641\u0627\u0646\u0647 \u0646\u06CC\u0627\u0632 \u062F\u0627\u0631\u06CC\u0645 \u0648\u0642\u062A ' + service + ' \u0634\u0645\u0627 \u0631\u0627 \u062A\u063A\u06CC\u06CC\u0631 \u062F\u0647\u06CC\u0645.\n\n\u0632\u0645\u0627\u0646\u200C\u0647\u0627\u06CC \u067E\u06CC\u0634\u0646\u0647\u0627\u062F\u06CC:\n\n' + slotLines + '\n\n\u0647\u0631 \u06A9\u062F\u0627\u0645 \u06A9\u0647 \u0631\u0627\u062D\u062A\u200C\u062A\u0631\u06CC\u062F \u0628\u06AF\u06CC\u06CC\u062F\u060C \u06CC\u0627 \u0632\u0645\u0627\u0646 \u062F\u06CC\u06AF\u0631\u06CC \u067E\u06CC\u0634\u0646\u0647\u0627\u062F \u062F\u0647\u06CC\u062F 😊';
+    } else if (_hasArabic) {
+      waMsg = '\u0645\u0631\u062D\u0628\u0627\u064B ' + customerName + '! \u0646\u062D\u062A\u0627\u062C \u0625\u0644\u0649 \u0625\u0639\u0627\u062F\u0629 \u062C\u062F\u0648\u0644\u0629 \u0645\u0648\u0639\u062F ' + service + ' \u0627\u0644\u062E\u0627\u0635 \u0628\u0643.\n\n\u0627\u0644\u0623\u0648\u0642\u0627\u062A \u0627\u0644\u0645\u062A\u0627\u062D\u0629:\n\n' + slotLines + '\n\n\u0623\u062E\u0628\u0631\u0646\u0627 \u0628\u0627\u0644\u0648\u0642\u062A \u0627\u0644\u0645\u0646\u0627\u0633\u0628 \u0623\u0648 \u0627\u0642\u062A\u0631\u062D \u0648\u0642\u062A\u0627\u064B \u0622\u062E\u0631 😊';
+    } else {
+      waMsg = 'Hi ' + customerName + '! We need to reschedule your ' + service + ' appointment.\n\nHere are some available times:\n\n' + slotLines + '\n\nJust reply with whichever works best, or suggest another time 😊';
+    }
     db.prepare("INSERT INTO reschedule_offers (submission_id, business_id, customer_phone, offered_slots, status) VALUES (?, ?, ?, ?, 'pending')").run(subId, businessId, waNumber, JSON.stringify(slots));
     if (waNumber) {
       try {
