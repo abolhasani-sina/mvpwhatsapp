@@ -1725,7 +1725,7 @@ router.get('/business-brain', authenticate, (req, res) => {
     languages: row.languages,
     services: JSON.parse(row.services || '[]'),
     packages: JSON.parse(row.packages || '[]'),
-    hours: JSON.parse(row.hours || '{}'),
+    hours: (() => { try { let _h = JSON.parse(row.hours || '{}'); return typeof _h === 'string' ? JSON.parse(_h) : _h; } catch(e) { return {}; } })(),
     ramadan_hours: row.ramadan_hours,
     ramadan_enabled: !!row.ramadan_enabled,
     holiday_closed: !!row.holiday_closed,

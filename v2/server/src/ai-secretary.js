@@ -11,7 +11,7 @@ function buildDataSection(brain) {
   try { packages = JSON.parse(brain.packages || "[]"); } catch(e) {}
   try { faqs = JSON.parse(brain.faqs || "[]"); } catch(e) {}
   try { scenarios = JSON.parse(brain.scenarios || "[]"); } catch(e) {}
-  try { hours = JSON.parse(brain.hours || "{}"); } catch(e) {}
+  try { hours = JSON.parse(brain.hours || "{}"); if (typeof hours === "string") hours = JSON.parse(hours); } catch(e) { hours = {}; }
 
   let out = "";
 
@@ -346,6 +346,7 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
   let _closeH = 22;
   try {
     let _bh = JSON.parse(brain?.hours || '{}');
+    if (typeof _bh === 'string') { try { _bh = JSON.parse(_bh); } catch(e) { _bh = {}; } }
     if (typeof _bh === 'string') _bh = JSON.parse(_bh);
     if (_bh[_todayDow] && !_bh[_todayDow].closed) _closeH = parseInt(_bh[_todayDow].close.split(':')[0]);
   } catch(e) {}
