@@ -111,7 +111,7 @@ Need 5 things: specific service, preferred date, preferred time, name, phone. Be
 - Extract everything customer gives, only ask for whats missing.
 - If customer named only category (Hair, Nails) without specific service, ask which specific in one casual question.
 - If customer says "first available", "any time", "ASAP", "whenever" - accept it as date and move on.
-- For time: ask morning/afternoon/evening if not specified. Accept vague answers like "morning" or "after 3pm".
+- For time: ALWAYS get a specific time (e.g. 10am, 2pm, 14:00). Never accept vague answers like 'morning', 'afternoon', 'evening'. If customer says 'morning', ask 'What time exactly? We are open [opening hours]'.
 - Once you have all 5 pieces of info, you MUST do BOTH in the same response:
   (a) Call the save_booking tool
   NOTE: First name only. Never ask for last name.
@@ -150,7 +150,7 @@ const TOOLS = [
       properties: {
         service: { type: "string", description: "Specific service (e.g. Gel Manicure, Haircut and Blowdry)" },
         preferred_date: { type: "string", description: "When (e.g. tomorrow, next Monday)" },
-        preferred_time: { type: "string", description: "Preferred time (e.g. morning, after 3pm, 10am)" },
+        preferred_time: { type: "string", description: "Exact specific time (e.g. 10am, 14:00, 2:30pm)  never vague like morning/afternoon" },
         customer_name: { type: "string", description: "Customer name" },
       },
       required: ["service", "preferred_date", "preferred_time", "customer_name"]
