@@ -7,10 +7,10 @@ const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 
 function buildDataSection(brain) {
   let services = [], packages = [], faqs = [], scenarios = [], hours = {};
-  try { services = JSON.parse(brain.services || "[]"); } catch(e) {}
-  try { packages = JSON.parse(brain.packages || "[]"); } catch(e) {}
-  try { faqs = JSON.parse(brain.faqs || "[]"); } catch(e) {}
-  try { scenarios = JSON.parse(brain.scenarios || "[]"); } catch(e) {}
+  try { services = JSON.parse(brain.services || "[]"); if (typeof services === "string") services = JSON.parse(services); } catch(e) { services = []; }
+  try { packages = JSON.parse(brain.packages || "[]"); if (typeof packages === "string") packages = JSON.parse(packages); } catch(e) { packages = []; }
+  try { faqs = JSON.parse(brain.faqs || "[]"); if (typeof faqs === "string") faqs = JSON.parse(faqs); } catch(e) { faqs = []; }
+  try { scenarios = JSON.parse(brain.scenarios || "[]"); if (typeof scenarios === "string") scenarios = JSON.parse(scenarios); } catch(e) { scenarios = []; }
   try { hours = JSON.parse(brain.hours || "{}"); if (typeof hours === "string") hours = JSON.parse(hours); } catch(e) { hours = {}; }
 
   let out = "";
