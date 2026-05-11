@@ -257,9 +257,7 @@ async function handleUpdate(businessId, token, update) {
           const fd = new FormData();
           fd.append('file', new Blob([abuf], { type: 'audio/ogg' }), 'voice.ogg');
           fd.append('model', 'whisper-1');
-          fd.append('prompt', 'Beauty salon customer inquiry. Arabic, English or Persian speaking customer.');
-          const _brainLang = brain?.languages || 'arabic_english';
-          if (_brainLang.includes('arabic') || _brainLang.includes('persian')) fd.append('language', 'ar');
+          fd.append('prompt', 'Beauty salon booking inquiry. Customer may speak English, Arabic, or Persian.');
           const wr = await fetch('https://api.openai.com/v1/audio/transcriptions', {
             method: 'POST', headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` }, body: fd
           });
