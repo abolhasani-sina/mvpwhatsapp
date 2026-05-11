@@ -428,7 +428,9 @@ function formatSlotDisplay(slotKey) {
 function buildCalendarKeyboard(subId, viewMonth, state) {
   const p = viewMonth.split('-');
   const year = parseInt(p[0]), month = parseInt(p[1]);
-  const now = new Date(); now.setHours(0,0,0,0);
+  const _tz = 4 * 3600 * 1000;
+  const _dubaiNow = new Date(Date.now() + _tz);
+  const todayStr = _dubaiNow.toISOString().split('T')[0];
   const MNAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const prevM = month === 1 ? (year-1) + '-12' : year + '-' + String(month-1).padStart(2,'0');
   const nextM = month === 12 ? (year+1) + '-01' : year + '-' + String(month+1).padStart(2,'0');
@@ -446,7 +448,7 @@ function buildCalendarKeyboard(subId, viewMonth, state) {
   for (let i = 0; i < offset; i++) row.push({ text: ' ', callback_data: 'bk_noop' });
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = year + '-' + String(month).padStart(2,'0') + '-' + String(d).padStart(2,'0');
-    const past = new Date(year, month-1, d) < now;
+    const past = ds < todayStr;
     const hasSlot = [...state.selectedSlots].some(s => s.startsWith(ds + ':'));
     const txt = past ? '·' : (hasSlot ? '●' + d : String(d));
     row.push({ text: txt, callback_data: past ? 'bk_noop' : 'bk_rday:' + subId + ':' + ds });
@@ -469,15 +471,17 @@ function buildTimeSlotsKeyboard(subId, dateStr, hoursJson, state) {
   ];
   const openH = parseInt(h.open.split(':')[0]);
   const closeH = parseInt(h.close.split(':')[0]);
-  const now = new Date();
-  const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  const _tz2 = 4 * 3600 * 1000;
+  const _dNow = new Date(Date.now() + _tz2);
+  const todayStr = _dNow.toISOString().split('T')[0];
   const isToday = dateStr === todayStr;
+  const currentHour = _dNow.getUTCHours();
   const keyboard = [];
   let row = [];
   for (let hr = openH; hr < closeH; hr++) {
     const hStr = String(hr).padStart(2,'0');
     const slotKey = dateStr + ':' + hStr;
-    const past = isToday && hr <= now.getHours();
+    const past = isToday && hr <= currentHour;
     const sel = state.selectedSlots.has(slotKey);
     const txt = past ? '·' : (sel ? '✓ ' + hStr + ':00' : hStr + ':00');
     row.push({ text: txt, callback_data: past ? 'bk_noop' : 'bk_rst:' + subId + ':' + dateStr + ':' + hStr });

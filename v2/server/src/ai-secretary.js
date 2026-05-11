@@ -279,11 +279,11 @@ function saveBookingSubmission(businessId, customerPhone, service, date, time, n
     const result = db.prepare("INSERT INTO submissions (business_id, data, status, business_submission_number) VALUES (?, ?, ?, ?)").run(businessId, JSON.stringify(data), "new", counter);
     const _subId = result.lastInsertRowid;
     log.info({ businessId, subId: _subId, customerPhone }, "AI Secretary booking saved");
-    const _msgText = "🆕 New Booking Request #" + counter + "\n"
-      + "👤 " + name + " — " + customerPhone + "\n"
-      + "✨ " + service + "\n"
-      + "📅 " + date + "\n"
-      + "⏰ " + (time || "Not specified");
+    const _msgText = "🆕 New Booking Request #" + counter + "\n\n"
+      + "👤 " + name + "\n"
+      + "📱 " + customerPhone + "\n\n"
+      + "📋 " + service + "\n"
+      + "📅 " + date + "  ·  " + (time || "Not specified");
     const _buttons = [[
       { text: "✅ Confirm", callback_data: "bk_confirm:" + _subId },
       { text: "❌ Cancel", callback_data: "bk_cancel:" + _subId },
@@ -319,12 +319,14 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
   const systemPrompt = buildSystemPrompt(brain);
   const _pendingOffer = db.prepare("SELECT * FROM reschedule_offers WHERE customer_phone = ? AND status = 'pending' ORDER BY id DESC LIMIT 1").get(customerPhone);
   let finalSystemPrompt = systemPrompt;
+  const _dubaiTime = new Date(Date.now() + 4*3600*1000).toISOString().replace('T',' ').slice(0,16);
+  let _dynamicCtx = 'Current Dubai date/time: ' + _dubaiTime + '. Only suggest appointment times strictly in the future. Never suggest morning if it is already afternoon or evening.';
   if (_pendingOffer) {
     const _slots = JSON.parse(_pendingOffer.offered_slots || '[]');
     const _D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     const _Mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const _slotList = _slots.map(s => { const _p = s.split(':'); const _d = new Date(_p[0] + 'T00:00:00'); return '- ' + _D[_d.getDay()] + ', ' + _Mo[_d.getMonth()] + ' ' + _d.getDate() + ' at ' + _p[1] + ':00'; }).join('\n');
-    finalSystemPrompt += '\n\n\u26A0 PENDING RESCHEDULE: Customer is responding to a reschedule offer. Offered slots:\n' + _slotList + '\n\nRules: if customer agrees to any slot call confirm_reschedule with slot key (YYYY-MM-DD:HH). If none work or they want different times call reject_reschedule with their suggestion. Do NOT suggest new times yourself.';
+    _dynamicCtx += '\n\n\u26A0 PENDING RESCHEDULE: Customer is responding to a reschedule offer. Offered slots:\n' + _slotList + '\n\nRules: if customer agrees to any slot call confirm_reschedule with slot key (YYYY-MM-DD:HH). If none work or they want different times call reject_reschedule with their suggestion. Do NOT suggest new times yourself.';
   }
   let userContent;
   if (imageData && imageData.base64) {
@@ -350,7 +352,7 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
         model: "claude-sonnet-4-5",
         max_tokens: 1024,
         temperature: 0.3,
-        system: [{ type: 'text', text: finalSystemPrompt, cache_control: { type: 'ephemeral' } }],
+        system: [{ type: 'text', text: finalSystemPrompt, cache_control: { type: 'ephemeral' } }, { type: 'text', text: _dynamicCtx }],
         tools: TOOLS,
         messages: messages,
       }),
