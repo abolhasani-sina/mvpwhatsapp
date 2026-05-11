@@ -223,6 +223,7 @@ async function handleUpdate(businessId, token, update) {
     chatId = update.message.chat.id;
     text = update.message.text || '';
     userName = [update.message.from?.first_name, update.message.from?.last_name].filter(Boolean).join(' ');
+    if (update.message.from?.username) userName = update.message.from.username + (userName ? ' (' + userName + ')' : '');
   }
 
   if (!chatId) return;
@@ -238,8 +239,9 @@ async function handleUpdate(businessId, token, update) {
   if (isAISecretaryActive(businessId)) {
     // Upsert customer record for channel tracking
     try {
-      db.prepare('INSERT OR IGNORE INTO customers (business_id, channel, channel_user_id, name) VALUES (?, ?, ?, ?)').run(businessId, 'telegram', String(chatId), userName || '');
-      if (userName) db.prepare('UPDATE customers SET name = ? WHERE business_id = ? AND channel = ? AND channel_user_id = ?').run(userName, businessId, 'telegram', String(chatId));
+      const _tgDisplay = (update.message?.from?.username ? '@' + update.message.from.username : '') || userName || '';
+    db.prepare('INSERT OR IGNORE INTO customers (business_id, channel, channel_user_id, name) VALUES (?, ?, ?, ?)').run(businessId, 'telegram', String(chatId), _tgDisplay);
+      if (_tgDisplay) db.prepare('UPDATE customers SET name = ? WHERE business_id = ? AND channel = ? AND channel_user_id = ?').run(_tgDisplay, businessId, 'telegram', String(chatId));
     } catch(e) {}
     const brain = getBusinessBrain(businessId);
     let aiText = text || '';
@@ -449,9 +451,11 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
   // Remove buttons from original, then send styled reply
   if (messageId) {
     await tgCall(token, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
+    const _notifChannel = _custChannel === 'telegram' ? 'Telegram' : _custChannel === 'instagram' ? 'Instagram' : 'WhatsApp';
+    const _displayId = waNumber || _chanId || '';
     const _replyText = newStatus === 'in_progress'
-      ? ('✅ Booking Confirmed\n\n👤 ' + customerName + '  —  ' + waNumber + '\n📋 ' + service + '\n\nCustomer notified on WhatsApp.')
-      : ('❌ Booking Cancelled\n\n👤 ' + customerName + '  —  ' + waNumber + '\n📋 ' + service + '\n\nCustomer notified on WhatsApp.');
+      ? ('✅ Booking Confirmed\n\n👤 ' + customerName + '  —  ' + _displayId + '\n📋 ' + service + '\n\nCustomer notified on ' + _notifChannel + '.')
+      : ('❌ Booking Cancelled\n\n👤 ' + customerName + '  —  ' + _displayId + '\n📋 ' + service + '\n\nCustomer notified on ' + _notifChannel + '.');
     await tgCall(token, 'sendMessage', { chat_id: chatId, text: _replyText, parse_mode: 'HTML', reply_to_message_id: messageId });
   }
   const _custChannel = data['_channel'] || 'whatsapp';
