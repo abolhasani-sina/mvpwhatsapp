@@ -437,7 +437,7 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
           const _label = _sD[_sd.getDay()] + ', ' + _sM[_sd.getMonth()] + ' ' + _sd.getDate() + ' at ' + (_sp2[1] || '') + ':00';
           sendTelegramNotification(businessId, '✅ Reschedule confirmed!\n' + customerName + ' chose: ' + _label).catch(() => {});
         }
-        const finalReply = textReply.trim() || ('Your appointment has been rescheduled ✨ See you then, ' + customerName + '!');
+        const finalReply = textReply.trim() || ('Your appointment has been rescheduled ✨ See you then!');
         saveMessage(businessId, customerPhone, "assistant", finalReply);
         return { type: "text", body: finalReply };
       }

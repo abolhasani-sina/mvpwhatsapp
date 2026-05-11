@@ -19,7 +19,7 @@ const DATE_RANGES = [
 ];
 
 const SERVICE_KEYS = ['Selected service', 'Service', 'selected service', 'service'];
-const NAME_KEYS   = ['step_name', 'Your name', 'Name', 'your name', 'name', 'Customer name', 'Guest name', 'Patient name', 'Student name', 'Pet parent name'];
+const NAME_KEYS   = ['step_name', 'Your name', 'Name', 'your name', 'name', 'Customer Name', 'Customer name', 'Guest name', 'Patient name', 'Student name', 'Pet parent name'];
 const PHONE_KEYS  = ['Phone', 'phone', 'Phone number', 'phone number', 'Mobile', 'mobile'];
 
 function extractField(data, keys) {
