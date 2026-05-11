@@ -15,6 +15,18 @@ import { telegramMessagesReceived, telegramPollingErrors } from './metrics.js';
 const log = createLogger('telegram-bot');
 
 const TG_API = 'https://api.telegram.org/bot';
+const TG_BUFFER_MS = 8000;
+const tgMsgBuffer = new Map();
+
+async function processTgBuffer(bufferKey) {
+  const b = tgMsgBuffer.get(bufferKey);
+  if (!b) return;
+  tgMsgBuffer.delete(bufferKey);
+  const combinedText = b.messages.join('\n');
+  log.info({ businessId: b.businessId, chatId: b.chatId, count: b.messages.length }, 'Processing buffered TG messages');
+  const result = await handleAISecretary(b.businessId, String(b.chatId), b.userName || 'Customer', combinedText, b.brain, b.imageData || null, 'telegram');
+  if (result && result.body) await tgCall(b.token, 'sendMessage', { chat_id: b.chatId, text: result.body, parse_mode: 'HTML' });
+}
 
 // Active polling loops keyed by businessId
 const activePollers = new Map();
@@ -266,10 +278,18 @@ async function handleUpdate(businessId, token, update) {
       } catch(e) { log.error({ err: e }, 'Telegram image download failed'); }
     }
     if (!aiText && !aiImage) return;
-    const result = await handleAISecretary(businessId, String(chatId), userName || 'Customer', aiText, brain, aiImage, 'telegram');
-    if (result && result.body) {
-      await tgCall(token, 'sendMessage', { chat_id: chatId, text: result.body, parse_mode: 'HTML' });
+    // 8-second buffer to combine chunked messages
+    const _bKey = businessId + '_' + chatId;
+    const _existing = tgMsgBuffer.get(_bKey);
+    if (_existing) {
+      clearTimeout(_existing.timer);
+      if (aiText) _existing.messages.push(aiText);
+      if (aiImage) _existing.imageData = aiImage;
+      _existing.userName = userName || _existing.userName;
+    } else {
+      tgMsgBuffer.set(_bKey, { messages: aiText ? [aiText] : [], token, chatId, businessId, userName, brain, imageData: aiImage });
     }
+    tgMsgBuffer.get(_bKey).timer = setTimeout(() => processTgBuffer(_bKey), TG_BUFFER_MS);
     return;
   }
 
