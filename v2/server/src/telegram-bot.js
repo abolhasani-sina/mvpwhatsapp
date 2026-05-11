@@ -224,6 +224,11 @@ async function handleUpdate(businessId, token, update) {
 
   // AI Secretary mode
   if (isAISecretaryActive(businessId)) {
+    // Upsert customer record for channel tracking
+    try {
+      db.prepare('INSERT OR IGNORE INTO customers (business_id, channel, channel_user_id, name) VALUES (?, ?, ?, ?)').run(businessId, 'telegram', String(chatId), userName || '');
+      if (userName) db.prepare('UPDATE customers SET name = ? WHERE business_id = ? AND channel = ? AND channel_user_id = ?').run(userName, businessId, 'telegram', String(chatId));
+    } catch(e) {}
     const brain = getBusinessBrain(businessId);
     let aiText = text || '';
     let aiImage = null;

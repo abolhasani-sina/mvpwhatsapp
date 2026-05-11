@@ -358,9 +358,9 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
   const _tools = channel === 'whatsapp' ? TOOLS : TOOLS.map(t => {
     if (t.name !== 'save_booking') return t;
     return { ...t,
-      description: 'Save a confirmed booking. Call ONLY when you have all 4 required pieces: specific service, preferred date, customer name, and customer WhatsApp phone number.',
+      description: 'Save a confirmed booking. Call ONLY when you have all 4 required pieces: specific service, preferred date, customer name, and customer phone number.',
       input_schema: { ...t.input_schema,
-        properties: { ...t.input_schema.properties, customer_phone: { type: 'string', description: 'Customer WhatsApp phone number  ask the customer for this' } },
+        properties: { ...t.input_schema.properties, customer_phone: { type: 'string', description: 'Customer phone number  ask naturally as their phone number' } },
         required: [...t.input_schema.required, 'customer_phone']
       }
     };
@@ -370,7 +370,7 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
     'Hours still available today: ' + (_futureSlots.length ? _futureSlots.join(', ') : 'no more slots today') + '. ' +
     'PM conversion: 1PM=13, 2PM=14, 3PM=15, 4PM=16, 5PM=17, 6PM=18, 7PM=19, 8PM=20, 9PM=21, 10PM=22. ' +
     'ONLY reject a time if it does NOT appear in the available hours list above.';
-  if (channel !== 'whatsapp') _dynamicCtx += ' This customer is on ' + channel + '. During booking, ask for their WhatsApp phone number so the business can reach them.';
+  if (channel !== 'whatsapp') _dynamicCtx += ' This customer is on ' + channel + '.';
   if (_pendingOffer) {
     const _slots = JSON.parse(_pendingOffer.offered_slots || '[]');
     const _D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];

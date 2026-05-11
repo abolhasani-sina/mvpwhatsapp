@@ -171,7 +171,7 @@ export default function ConversationsPage({ businessId }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-0.5">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-sm font-semibold text-slate-800 truncate">{c.customer_name || ('+' + c.customer_phone)}</span>
+                      <span className="text-sm font-semibold text-slate-800 truncate">{c.customer_name || (c.channel === 'telegram' ? 'TG: ' + c.customer_phone : c.channel === 'instagram' ? 'IG: ' + c.customer_phone : '+' + c.customer_phone)}</span>
                       {c.channel && <ChannelBadge channel={c.channel} />}
                     </div>
                     <span className="text-[11px] text-slate-400 flex-shrink-0 ml-1">{formatTime(c.last_message_at)}</span>
