@@ -281,7 +281,7 @@ function saveBookingSubmission(businessId, customerPhone, service, date, time, n
     const result = db.prepare("INSERT INTO submissions (business_id, data, status, business_submission_number) VALUES (?, ?, ?, ?)").run(businessId, JSON.stringify(data), "new", counter);
     const _subId = result.lastInsertRowid;
     log.info({ businessId, subId: _subId, customerPhone }, "AI Secretary booking saved");
-    const _tgUser = channel === 'telegram' ? (customerName.startsWith('@') ? customerName.split(' ')[0] : '') : '';
+    const _tgUser = channel === 'telegram' ? (name && name.startsWith('@') ? name.split(' ')[0] : '') : '';
     const _displayPhone = (phone && phone !== customerPhone) ? phone : (channel !== 'whatsapp' ? (_tgUser ? _tgUser + ' (TG: ' + customerPhone + ')' : 'TG: ' + customerPhone) : customerPhone);
     const _msgText = "🆕 New Booking Request #" + counter + "\n\n"
       + "👤 " + name + "\n"
