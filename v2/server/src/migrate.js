@@ -643,5 +643,19 @@ for (const sql of alterations) {
   if (!bbCols.includes('msg_confirmed')) db.exec("ALTER TABLE business_brain ADD COLUMN msg_confirmed TEXT");
   if (!bbCols.includes('msg_completed')) db.exec("ALTER TABLE business_brain ADD COLUMN msg_completed TEXT");
   if (!bbCols.includes('msg_cancelled')) db.exec("ALTER TABLE business_brain ADD COLUMN msg_cancelled TEXT");
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS reschedule_offers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      submission_id INTEGER NOT NULL,
+      business_id INTEGER NOT NULL,
+      customer_phone TEXT NOT NULL,
+      offered_slots TEXT NOT NULL DEFAULT '[]',
+      status TEXT NOT NULL DEFAULT 'pending',
+      chosen_slot TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    )
+  `);
 
 }

@@ -215,6 +215,12 @@ async function handleUpdate(businessId, token, update) {
   if (!chatId) return;
   notifyChatIdDetector(businessId, chatId, userName);
 
+  // Booking management callbacks bypass bot engine
+  if (callbackData && callbackData.startsWith('bk_')) {
+    await handleBookingCallback(businessId, token, chatId, update.callback_query?.message?.message_id, callbackData);
+    return;
+  }
+
   const input = { text: text || null, callbackData: callbackData || null };
   const responses = processIncoming(businessId, String(chatId), 'telegram', userName, input);
   await sendInternalMessages(token, chatId, responses, businessId);
@@ -336,4 +342,246 @@ export function cleanupTelegramUpdates() {
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   const result = db.prepare('DELETE FROM telegram_updates WHERE processed_at < ?').run(cutoff);
   if (result.changes > 0) log.info({ deleted: result.changes }, 'cleaned up old update records');
+}
+
+async function handleBookingCallback(businessId, token, chatId, messageId, callbackData) {
+  const parts = callbackData.split(':');
+  const action = parts[0];
+  if (action === 'bk_noop') return;
+  if (action.startsWith('bk_r')) { await handleRescheduleFlow(businessId, token, chatId, messageId, callbackData); return; }
+  const subId = parseInt(parts[1]);
+  if (!subId) return;
+  const sub = db.prepare('SELECT * FROM submissions WHERE id = ?').get(subId);
+  if (!sub) return;
+  const data = JSON.parse(sub.data || '{}');
+  const customerName = data['Customer Name'] || 'Customer';
+  const service = data['Service'] || 'service';
+  const date = data['Preferred Date'] || 'appointment';
+  const time = data['Preferred Time'] || '';
+  const waNumber = data['WhatsApp Number'];
+
+
+  let newStatus, doneText, customerMsg;
+  if (action === 'bk_confirm') {
+    newStatus = 'in_progress';
+    doneText = '✅ Confirmed: ' + customerName + ' — ' + service + ' on ' + date;
+    customerMsg = 'Hi ' + customerName + '! Your booking is confirmed ✨\n\nService: ' + service + '\nDate: ' + date + (time ? '\nTime: ' + time : '');
+  } else if (action === 'bk_cancel') {
+    newStatus = 'cancelled';
+    doneText = '❌ Cancelled: ' + customerName + ' — ' + service;
+    customerMsg = 'Hi ' + customerName + ', unfortunately we need to cancel your ' + service + ' booking. Please message us to reschedule.';
+  } else { return; }
+
+  db.prepare('UPDATE submissions SET status = ? WHERE id = ?').run(newStatus, subId);
+  if (messageId) {
+    await tgCall(token, 'editMessageText', {
+      chat_id: chatId, message_id: messageId, text: doneText, parse_mode: 'HTML'
+    });
+  }
+  if (waNumber) {
+    try {
+      const settings = db.prepare('SELECT whatsapp_phone_number_id, whatsapp_access_token FROM settings WHERE business_id = ?').get(businessId);
+      if (settings?.whatsapp_phone_number_id && settings?.whatsapp_access_token) {
+        let accessToken = settings.whatsapp_access_token;
+        try { accessToken = decryptField(accessToken); } catch(e) {}
+        const brain = db.prepare('SELECT msg_confirmed, msg_cancelled FROM business_brain WHERE business_id = ?').get(businessId);
+        const rp = (t, n, s, d) => (t || '').replace(/{name}/g, n).replace(/{service}/g, s).replace(/{date}/g, d).replace(/\\n/g, '\n');
+        if (newStatus === 'in_progress' && brain?.msg_confirmed) customerMsg = rp(brain.msg_confirmed, customerName, service, date);
+        if (newStatus === 'cancelled' && brain?.msg_cancelled) customerMsg = rp(brain.msg_cancelled, customerName, service, date);
+        await fetch('https://graph.facebook.com/v18.0/' + settings.whatsapp_phone_number_id + '/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + accessToken },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp', recipient_type: 'individual',
+            to: waNumber, type: 'text',
+            text: { body: customerMsg, preview_url: false }
+          })
+        });
+        log.info({ businessId, subId, newStatus, waNumber }, 'booking callback WA sent');
+      }
+    } catch(e) { log.error({ err: e }, 'WA notify from booking callback failed'); }
+  }
+}
+
+
+//  RESCHEDULE FLOW 
+const rescheduleState = new Map();
+
+function getRState(businessId, subId) {
+  const key = String(businessId);
+  if (!rescheduleState.has(key) || rescheduleState.get(key).subId !== subId) {
+    const now = new Date();
+    const vm = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+    rescheduleState.set(key, { subId, selectedSlots: new Set(), viewMonth: vm });
+  }
+  return rescheduleState.get(key);
+}
+
+function formatSlotDisplay(slotKey) {
+  const p = slotKey.split(':');
+  const date = new Date(p[0] + 'T00:00:00');
+  const D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return D[date.getDay()] + ', ' + M[date.getMonth()] + ' ' + date.getDate() + ' at ' + p[1] + ':00';
+}
+
+function buildCalendarKeyboard(subId, viewMonth, state) {
+  const p = viewMonth.split('-');
+  const year = parseInt(p[0]), month = parseInt(p[1]);
+  const now = new Date(); now.setHours(0,0,0,0);
+  const MNAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const prevM = month === 1 ? (year-1) + '-12' : year + '-' + String(month-1).padStart(2,'0');
+  const nextM = month === 12 ? (year+1) + '-01' : year + '-' + String(month+1).padStart(2,'0');
+  const keyboard = [];
+  keyboard.push([
+    { text: '◄', callback_data: 'bk_rcal:' + subId + ':' + prevM },
+    { text: MNAMES[month-1] + ' ' + year, callback_data: 'bk_noop' },
+    { text: '►', callback_data: 'bk_rcal:' + subId + ':' + nextM }
+  ]);
+  keyboard.push(['Mo','Tu','We','Th','Fr','Sa','Su'].map(d => ({ text: d, callback_data: 'bk_noop' })));
+  const firstDow = new Date(year, month-1, 1).getDay();
+  const offset = firstDow === 0 ? 6 : firstDow - 1;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  let row = [];
+  for (let i = 0; i < offset; i++) row.push({ text: ' ', callback_data: 'bk_noop' });
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = year + '-' + String(month).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    const past = new Date(year, month-1, d) < now;
+    const hasSlot = [...state.selectedSlots].some(s => s.startsWith(ds + ':'));
+    const txt = past ? '·' : (hasSlot ? '●' + d : String(d));
+    row.push({ text: txt, callback_data: past ? 'bk_noop' : 'bk_rday:' + subId + ':' + ds });
+    if (row.length === 7) { keyboard.push(row); row = []; }
+  }
+  while (row.length > 0 && row.length < 7) row.push({ text: ' ', callback_data: 'bk_noop' });
+  if (row.length === 7) keyboard.push(row);
+  const count = state.selectedSlots.size;
+  if (count > 0) keyboard.push([{ text: '✅ Send ' + count + ' slot' + (count > 1 ? 's' : '') + ' to customer', callback_data: 'bk_rsend:' + subId }]);
+  return keyboard;
+}
+
+function buildTimeSlotsKeyboard(subId, dateStr, hoursJson, state) {
+  const date = new Date(dateStr + 'T00:00:00');
+  const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  const h = (hoursJson || {})[DAYS[date.getDay()]];
+  if (!h || h.closed) return [
+    [{ text: 'Closed this day — pick another date', callback_data: 'bk_noop' }],
+    [{ text: '◄ Back', callback_data: 'bk_rback:' + subId }]
+  ];
+  const openH = parseInt(h.open.split(':')[0]);
+  const closeH = parseInt(h.close.split(':')[0]);
+  const now = new Date();
+  const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  const isToday = dateStr === todayStr;
+  const keyboard = [];
+  let row = [];
+  for (let hr = openH; hr < closeH; hr++) {
+    const hStr = String(hr).padStart(2,'0');
+    const slotKey = dateStr + ':' + hStr;
+    const past = isToday && hr <= now.getHours();
+    const sel = state.selectedSlots.has(slotKey);
+    const txt = past ? '·' : (sel ? '✓ ' + hStr + ':00' : hStr + ':00');
+    row.push({ text: txt, callback_data: past ? 'bk_noop' : 'bk_rst:' + subId + ':' + dateStr + ':' + hStr });
+    if (row.length === 4) { keyboard.push(row); row = []; }
+  }
+  if (row.length > 0) keyboard.push(row);
+  keyboard.push([{ text: '◄ Back to calendar', callback_data: 'bk_rback:' + subId }]);
+  return keyboard;
+}
+
+async function handleRescheduleFlow(businessId, token, chatId, messageId, callbackData) {
+  const parts = callbackData.split(':');
+  const action = parts[0];
+  const subId = parseInt(parts[1]);
+  if (!subId) return;
+  const sub = db.prepare('SELECT * FROM submissions WHERE id = ?').get(subId);
+  if (!sub) return;
+  const submData = JSON.parse(sub.data || '{}');
+  const customerName = submData['Customer Name'] || 'Customer';
+  const service = submData['Service'] || 'service';
+  const waNumber = submData['WhatsApp Number'];
+  const brain = db.prepare('SELECT hours FROM business_brain WHERE business_id = ?').get(businessId);
+  const hoursJson = JSON.parse(brain?.hours || '{}');
+  const state = getRState(businessId, subId);
+  const D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  if (action === 'bk_reschedule') {
+    if (messageId) await tgCall(token, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
+    const kb = buildCalendarKeyboard(subId, state.viewMonth, state);
+    await tgCall(token, 'sendMessage', {
+      chat_id: chatId,
+      text: '📅 Select dates & times to offer\n' + customerName + ' — ' + service,
+      parse_mode: 'HTML', reply_markup: { inline_keyboard: kb }
+    });
+
+  } else if (action === 'bk_rcal') {
+    const newMonth = parts[2];
+    if (newMonth) state.viewMonth = newMonth;
+    const kb = buildCalendarKeyboard(subId, state.viewMonth, state);
+    await tgCall(token, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: kb } });
+
+  } else if (action === 'bk_rday') {
+    const dateStr = parts[2];
+    if (!dateStr) return;
+    const date = new Date(dateStr + 'T00:00:00');
+    const dateLabel = D[date.getDay()] + ', ' + M[date.getMonth()] + ' ' + date.getDate();
+    const kb = buildTimeSlotsKeyboard(subId, dateStr, hoursJson, state);
+    await tgCall(token, 'editMessageText', {
+      chat_id: chatId, message_id: messageId,
+      text: '📅 ' + dateLabel + ' — select times:\n' + customerName + ' — ' + service,
+      parse_mode: 'HTML', reply_markup: { inline_keyboard: kb }
+    });
+
+  } else if (action === 'bk_rst') {
+    const dateStr = parts[2], hourStr = parts[3];
+    if (!dateStr || !hourStr) return;
+    const slotKey = dateStr + ':' + hourStr;
+    if (state.selectedSlots.has(slotKey)) state.selectedSlots.delete(slotKey);
+    else state.selectedSlots.add(slotKey);
+    const date = new Date(dateStr + 'T00:00:00');
+    const dateLabel = D[date.getDay()] + ', ' + M[date.getMonth()] + ' ' + date.getDate();
+    const kb = buildTimeSlotsKeyboard(subId, dateStr, hoursJson, state);
+    await tgCall(token, 'editMessageText', {
+      chat_id: chatId, message_id: messageId,
+      text: '📅 ' + dateLabel + ' — select times:\n' + customerName + ' — ' + service,
+      parse_mode: 'HTML', reply_markup: { inline_keyboard: kb }
+    });
+
+  } else if (action === 'bk_rback') {
+    const kb = buildCalendarKeyboard(subId, state.viewMonth, state);
+    await tgCall(token, 'editMessageText', {
+      chat_id: chatId, message_id: messageId,
+      text: '📅 Select dates & times to offer\n' + customerName + ' — ' + service,
+      parse_mode: 'HTML', reply_markup: { inline_keyboard: kb }
+    });
+
+  } else if (action === 'bk_rsend') {
+    if (state.selectedSlots.size === 0) return;
+    const slots = [...state.selectedSlots].sort();
+    const slotLines = slots.map(s => '• ' + formatSlotDisplay(s)).join('\n');
+    const waMsg = 'Hi ' + customerName + '! We need to reschedule your ' + service + ' appointment.\n\nHere are some available times:\n\n' + slotLines + '\n\nJust reply with whichever works best, or suggest another time 😊';
+    db.prepare("INSERT INTO reschedule_offers (submission_id, business_id, customer_phone, offered_slots, status) VALUES (?, ?, ?, ?, 'pending')").run(subId, businessId, waNumber, JSON.stringify(slots));
+    if (waNumber) {
+      try {
+        const settings = db.prepare('SELECT whatsapp_phone_number_id, whatsapp_access_token FROM settings WHERE business_id = ?').get(businessId);
+        if (settings?.whatsapp_phone_number_id && settings?.whatsapp_access_token) {
+          let waToken = settings.whatsapp_access_token;
+          try { waToken = decryptField(waToken); } catch(e) {}
+          await fetch('https://graph.facebook.com/v18.0/' + settings.whatsapp_phone_number_id + '/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + waToken },
+            body: JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to: waNumber, type: 'text', text: { body: waMsg, preview_url: false } })
+          });
+          log.info({ businessId, subId, waNumber }, 'reschedule offer sent to customer');
+        }
+      } catch(e) { log.error({ err: e }, 'WA reschedule offer failed'); }
+    }
+    const summary = slots.map(s => formatSlotDisplay(s)).join(', ');
+    if (messageId) await tgCall(token, 'editMessageText', {
+      chat_id: chatId, message_id: messageId,
+      text: '📤 Reschedule options sent to ' + customerName + ':\n' + summary,
+      parse_mode: 'HTML', reply_markup: { inline_keyboard: [] }
+    });
+    rescheduleState.delete(String(businessId));
+  }
 }

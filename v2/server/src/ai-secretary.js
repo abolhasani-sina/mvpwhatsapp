@@ -1,6 +1,6 @@
 import db from "./db.js";
 import { createLogger } from "./logger.js";
-import { sendTelegramNotification } from "./telegram.js";
+import { sendTelegramNotification, sendTelegramNotificationWithButtons } from "./telegram.js";
 
 const log = createLogger("ai-secretary");
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
@@ -177,6 +177,28 @@ const TOOLS = [
       },
       required: ["reason"]
     }
+  },
+  {
+    name: "confirm_reschedule",
+    description: "Call when customer agrees to one of the offered reschedule slots. Pass the slot key exactly as given in the context.",
+    input_schema: {
+      type: "object",
+      properties: {
+        chosen_slot: { type: "string", description: "Slot key e.g. 2026-06-15:10" }
+      },
+      required: ["chosen_slot"]
+    }
+  },
+  {
+    name: "reject_reschedule",
+    description: "Call when customer says none of the offered slots work or suggests a different time.",
+    input_schema: {
+      type: "object",
+      properties: {
+        suggestion: { type: "string", description: "Customer suggested time if any" }
+      },
+      required: []
+    }
   }
 ];
 
@@ -255,15 +277,20 @@ function saveBookingSubmission(businessId, customerPhone, service, date, time, n
     const countRow = db.prepare("SELECT COUNT(*) as cnt FROM submissions WHERE business_id = ?").get(businessId);
     const counter = (countRow ? countRow.cnt : 0) + 1;
     const result = db.prepare("INSERT INTO submissions (business_id, data, status, business_submission_number) VALUES (?, ?, ?, ?)").run(businessId, JSON.stringify(data), "new", counter);
-    log.info({ businessId, subId: result.lastInsertRowid, customerPhone }, "AI Secretary booking saved");
-    sendTelegramNotification(businessId,
-      "New Booking Request #" + counter + "\n"
-      + "From: " + name + " (" + phone + ")\n"
-      + "Service: " + service + "\n"
-      + "Date: " + date + "\n"
-      + "Time: " + (time || "Not specified") + "\n"
-      + "WhatsApp: " + customerPhone
-    ).catch(e => log.error({ err: e }, "Telegram notify failed"));
+    const _subId = result.lastInsertRowid;
+    log.info({ businessId, subId: _subId, customerPhone }, "AI Secretary booking saved");
+    const _msgText = "🆕 New Booking Request #" + counter + "\n"
+      + "👤 " + name + " — " + customerPhone + "\n"
+      + "✨ " + service + "\n"
+      + "📅 " + date + "\n"
+      + "⏰ " + (time || "Not specified");
+    const _buttons = [[
+      { text: "✅ Confirm", callback_data: "bk_confirm:" + _subId },
+      { text: "❌ Cancel", callback_data: "bk_cancel:" + _subId },
+      { text: "📅 Reschedule", callback_data: "bk_reschedule:" + _subId }
+    ]];
+    sendTelegramNotificationWithButtons(businessId, _msgText, _buttons)
+      .catch(e => log.error({ err: e }, "Telegram notify failed"));
     return counter;
   } catch(e) {
     log.error({ err: e }, "Failed to save booking");
@@ -290,6 +317,15 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
 
   const history = getHistory(businessId, customerPhone, 10);
   const systemPrompt = buildSystemPrompt(brain);
+  const _pendingOffer = db.prepare("SELECT * FROM reschedule_offers WHERE customer_phone = ? AND status = 'pending' ORDER BY id DESC LIMIT 1").get(customerPhone);
+  let finalSystemPrompt = systemPrompt;
+  if (_pendingOffer) {
+    const _slots = JSON.parse(_pendingOffer.offered_slots || '[]');
+    const _D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const _Mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const _slotList = _slots.map(s => { const _p = s.split(':'); const _d = new Date(_p[0] + 'T00:00:00'); return '- ' + _D[_d.getDay()] + ', ' + _Mo[_d.getMonth()] + ' ' + _d.getDate() + ' at ' + _p[1] + ':00'; }).join('\n');
+    finalSystemPrompt += '\n\n\u26A0 PENDING RESCHEDULE: Customer is responding to a reschedule offer. Offered slots:\n' + _slotList + '\n\nRules: if customer agrees to any slot call confirm_reschedule with slot key (YYYY-MM-DD:HH). If none work or they want different times call reject_reschedule with their suggestion. Do NOT suggest new times yourself.';
+  }
   let userContent;
   if (imageData && imageData.base64) {
     userContent = [
@@ -314,7 +350,7 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
         model: "claude-sonnet-4-5",
         max_tokens: 1024,
         temperature: 0.3,
-        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+        system: [{ type: 'text', text: finalSystemPrompt, cache_control: { type: 'ephemeral' } }],
         tools: TOOLS,
         messages: messages,
       }),
@@ -378,6 +414,41 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
         const finalReply = textReply.trim() || "Got it! I have noted that for the team.";
         saveMessage(businessId, customerPhone, "assistant", finalReply);
         log.info({ businessId, customerPhone, note }, "Booking note added via tool");
+        return { type: "text", body: finalReply };
+      }
+      if (toolUse.name === "confirm_reschedule") {
+        const chosenSlot = (toolUse.input && toolUse.input.chosen_slot) || "";
+        const _offer = db.prepare("SELECT * FROM reschedule_offers WHERE customer_phone = ? AND status = 'pending' ORDER BY id DESC LIMIT 1").get(customerPhone);
+        if (_offer) {
+          db.prepare("UPDATE reschedule_offers SET status = 'accepted', chosen_slot = ? WHERE id = ?").run(chosenSlot, _offer.id);
+          const _sub = db.prepare("SELECT * FROM submissions WHERE id = ?").get(_offer.submission_id);
+          if (_sub) {
+            const _d = JSON.parse(_sub.data || '{}');
+            const _sp = chosenSlot.split(':');
+            if (_sp[0]) _d['Preferred Date'] = _sp[0];
+            if (_sp[1]) _d['Preferred Time'] = _sp[1] + ':00';
+            db.prepare("UPDATE submissions SET data = ?, status = 'in_progress' WHERE id = ?").run(JSON.stringify(_d), _offer.submission_id);
+          }
+          const _sD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+          const _sM = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          const _sp2 = chosenSlot.split(':'); const _sd = new Date((_sp2[0] || '') + 'T00:00:00');
+          const _label = _sD[_sd.getDay()] + ', ' + _sM[_sd.getMonth()] + ' ' + _sd.getDate() + ' at ' + (_sp2[1] || '') + ':00';
+          sendTelegramNotification(businessId, '✅ Reschedule confirmed!\n' + customerName + ' chose: ' + _label).catch(() => {});
+        }
+        const finalReply = textReply.trim() || ('Your appointment has been rescheduled ✨ See you then, ' + customerName + '!');
+        saveMessage(businessId, customerPhone, "assistant", finalReply);
+        return { type: "text", body: finalReply };
+      }
+      if (toolUse.name === "reject_reschedule") {
+        const suggestion = (toolUse.input && toolUse.input.suggestion) || "";
+        const _offer2 = db.prepare("SELECT * FROM reschedule_offers WHERE customer_phone = ? AND status = 'pending' ORDER BY id DESC LIMIT 1").get(customerPhone);
+        if (_offer2) {
+          db.prepare("UPDATE reschedule_offers SET status = 'declined' WHERE id = ?").run(_offer2.id);
+          const _notif = suggestion ? ('❌ Reschedule rejected. Customer suggestion: ' + suggestion) : '❌ Customer could not make any offered times. Please select new slots.';
+          sendTelegramNotification(businessId, _notif).catch(() => {});
+        }
+        const finalReply = textReply.trim() || ("I'm sorry those times don't work, " + customerName + "! I'll let the team know and they'll suggest new options.");
+        saveMessage(businessId, customerPhone, "assistant", finalReply);
         return { type: "text", body: finalReply };
       }
     }

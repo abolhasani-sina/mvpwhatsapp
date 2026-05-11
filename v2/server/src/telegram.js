@@ -58,3 +58,33 @@ async function sendTelegramMessage(botToken, chatId, text) {
     log.error({ chatId, err }, 'telegram network error');
   }
 }
+
+async function sendTelegramMessageKeyboard(token, chatId, text, inlineKeyboard) {
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: inlineKeyboard }
+      }),
+    });
+    const json = await res.json();
+    if (!json.ok) log.error({ chatId, error: json.description }, 'telegram keyboard message error');
+    return json;
+  } catch (err) {
+    log.error({ chatId, err }, 'telegram keyboard network error');
+    return null;
+  }
+}
+
+export async function sendTelegramNotificationWithButtons(businessId, text, inlineKeyboard) {
+  const token = getBotToken(businessId);
+  if (!token) return null;
+  const settings = db.prepare('SELECT telegram_chat_id FROM settings WHERE business_id = ?').get(businessId);
+  if (!settings?.telegram_chat_id) return null;
+  return sendTelegramMessageKeyboard(token, settings.telegram_chat_id, text, inlineKeyboard);
+}
