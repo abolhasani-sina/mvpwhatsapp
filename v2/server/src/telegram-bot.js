@@ -504,7 +504,8 @@ async function handleRescheduleFlow(businessId, token, chatId, messageId, callba
   const service = submData['Service'] || 'service';
   const waNumber = submData['WhatsApp Number'];
   const brain = db.prepare('SELECT hours FROM business_brain WHERE business_id = ?').get(businessId);
-  const hoursJson = JSON.parse(brain?.hours || '{}');
+  let hoursJson = JSON.parse(brain?.hours || '{}');
+  if (typeof hoursJson === 'string') hoursJson = JSON.parse(hoursJson);
   const state = getRState(businessId, subId);
   const D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
