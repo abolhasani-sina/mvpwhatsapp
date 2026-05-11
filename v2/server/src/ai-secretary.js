@@ -336,7 +336,8 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
     const _D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     const _Mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const _slotList = _slots.map(s => { const _p = s.split(':'); const _d = new Date(_p[0] + 'T00:00:00'); return '- ' + _D[_d.getDay()] + ', ' + _Mo[_d.getMonth()] + ' ' + _d.getDate() + ' at ' + _p[1] + ':00'; }).join('\n');
-    _dynamicCtx += '\n\n\u26A0 PENDING RESCHEDULE: Customer is responding to a reschedule offer. Offered slots:\n' + _slotList + '\n\nRules: if customer agrees to any slot call confirm_reschedule with slot key (YYYY-MM-DD:HH). If none work or they want different times call reject_reschedule with their suggestion. Do NOT suggest new times yourself.';
+    const _slotKeys = JSON.parse(_pendingOffer.offered_slots || '[]');
+    _dynamicCtx += '\n\n\u26A0 PENDING RESCHEDULE: Customer is responding to a reschedule offer.\n\nEXACT valid slot keys (YYYY-MM-DD:HH): ' + _slotKeys.join(', ') + '\n\nDisplayed to customer as:\n' + _slotList + '\n\nSTRICT RULES:\n1. ONLY the slot keys above are valid. No other time is acceptable.\n2. If customer picks a time NOT matching any key above  call reject_reschedule with their suggestion.\n3. If customer picks a time matching one of the keys  call confirm_reschedule with that exact key.\n4. Example: if keys are 2026-05-13:11, 2026-05-13:13 and customer says Wednesday 12  that is NOT valid  call reject_reschedule.\n5. Never accept a time that is not in the exact key list.';
   }
   let userContent;
   if (imageData && imageData.base64) {
