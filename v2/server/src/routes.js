@@ -944,7 +944,9 @@ router.put('/submissions/:id/status', tenantScopeResource('submissions'), update
       const service = data['Service'] || 'your service';
       const date = data['Preferred Date'] || 'your appointment';
 
-      if (waNumber && data['_source'] === 'ai_secretary') {
+      const _custChan = data['_channel'] || 'whatsapp';
+      const _custChanId = data['_channel_id'];
+      if (data['_source'] === 'ai_secretary' && (_custChan === 'telegram' ? _custChanId : waNumber)) {
         const settings = db.prepare('SELECT whatsapp_phone_number_id, whatsapp_access_token FROM settings WHERE business_id = ?').get(sub.business_id);
         if (settings && settings.whatsapp_phone_number_id && settings.whatsapp_access_token) {
           let accessToken = settings.whatsapp_access_token;
@@ -963,6 +965,22 @@ router.put('/submissions/:id/status', tenantScopeResource('submissions'), update
             msg = rp((brain && brain.msg_cancelled) || 'Hi {name}, we need to cancel your booking for {service} on {date}. Please message us to reschedule.', customerName, service, date);
           }
           if (msg) {
+            // Send via customer's original channel
+            if (_custChan === 'telegram' && _custChanId) {
+              import('./telegram.js').then(({ sendTelegramReply }) => {
+                sendTelegramReply(sub.business_id, msg, null).catch(() => {});
+              }).catch(() => {});
+              // Send directly via Telegram API
+              const _tgSettings = db.prepare('SELECT telegram_bot_token FROM settings WHERE business_id = ?').get(sub.business_id);
+              if (_tgSettings?.telegram_bot_token) {
+                let _tgToken = _tgSettings.telegram_bot_token;
+                try { const { decryptField: _df } = await import('./middleware/encryption.js'); _tgToken = _df(_tgToken); } catch(e) {}
+                fetch(`https://api.telegram.org/bot${_tgToken}/sendMessage`, {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ chat_id: _custChanId, text: msg, parse_mode: 'HTML' })
+                }).catch(() => {});
+              }
+            } else {
             fetch('https://graph.facebook.com/v18.0/' + settings.whatsapp_phone_number_id + '/messages', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + accessToken },
@@ -984,6 +1002,7 @@ router.put('/submissions/:id/status', tenantScopeResource('submissions'), update
                 } catch(e) {}
               }
             }).catch(e => log.error({ err: e }, 'WhatsApp status notify error'));
+            }
           }
         }
       }

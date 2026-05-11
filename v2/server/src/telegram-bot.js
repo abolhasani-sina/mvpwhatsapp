@@ -651,7 +651,8 @@ async function handleRescheduleFlow(businessId, token, chatId, messageId, callba
     if (state.selectedSlots.size === 0) return;
     const slots = [...state.selectedSlots].sort();
     const slotLines = slots.map(s => '• ' + formatSlotDisplay(s)).join('\n');
-    const _recentMsgs = db.prepare("SELECT content FROM ai_conversations WHERE business_id = ? AND customer_phone = ? AND role = 'user' ORDER BY id DESC LIMIT 5").all(businessId, waNumber);
+    const _langId = _rCustChannel === 'telegram' ? String(_rChanId) : waNumber;
+    const _recentMsgs = db.prepare("SELECT content FROM ai_conversations WHERE business_id = ? AND customer_phone = ? AND role = 'user' ORDER BY id DESC LIMIT 5").all(businessId, _langId);
     const _convText = (_recentMsgs || []).map(m => m.content).join(' ') + customerName + service;
     const _hasFarsi = /[\u067E\u0686\u06CC\u06A9\u06AF\u0641\u06BE]/.test(_convText);
     const _hasArabic = /[\u0600-\u06FF]/.test(_convText) && !_hasFarsi;
@@ -663,8 +664,16 @@ async function handleRescheduleFlow(businessId, token, chatId, messageId, callba
     } else {
       waMsg = 'Hi ' + customerName + '! We need to reschedule your ' + service + ' appointment.\n\nHere are some available times:\n\n' + slotLines + '\n\nJust reply with whichever works best, or suggest another time 😊';
     }
-    db.prepare("INSERT INTO reschedule_offers (submission_id, business_id, customer_phone, offered_slots, status) VALUES (?, ?, ?, ?, 'pending')").run(subId, businessId, waNumber, JSON.stringify(slots));
-    if (waNumber) {
+    const _offerPhone = _rCustChannel === 'telegram' ? String(_rChanId) : waNumber;
+    db.prepare("INSERT INTO reschedule_offers (submission_id, business_id, customer_phone, offered_slots, status) VALUES (?, ?, ?, ?, 'pending')").run(subId, businessId, _offerPhone, JSON.stringify(slots));
+    const _rCustChannel = submData['_channel'] || 'whatsapp';
+    const _rChanId = submData['_channel_id'];
+    if (_rCustChannel === 'telegram' && _rChanId) {
+      try {
+        await tgCall(token, 'sendMessage', { chat_id: _rChanId, text: waMsg });
+        log.info({ businessId, subId, _rChanId }, 'reschedule offer sent via Telegram');
+      } catch(e) { log.error({ err: e }, 'TG reschedule offer failed'); }
+    } else if (waNumber) {
       try {
         const settings = db.prepare('SELECT whatsapp_phone_number_id, whatsapp_access_token FROM settings WHERE business_id = ?').get(businessId);
         if (settings?.whatsapp_phone_number_id && settings?.whatsapp_access_token) {
@@ -675,7 +684,7 @@ async function handleRescheduleFlow(businessId, token, chatId, messageId, callba
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + waToken },
             body: JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to: waNumber, type: 'text', text: { body: waMsg, preview_url: false } })
           });
-          log.info({ businessId, subId, waNumber }, 'reschedule offer sent to customer');
+          log.info({ businessId, subId, waNumber }, 'reschedule offer sent via WhatsApp');
         }
       } catch(e) { log.error({ err: e }, 'WA reschedule offer failed'); }
     }
