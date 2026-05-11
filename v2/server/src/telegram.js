@@ -23,7 +23,17 @@ export async function sendTelegramNotification(businessId, text) {
   ).get(businessId);
   if (!settings?.telegram_chat_id) return;
 
-  await sendTelegramMessage(token, settings.telegram_chat_id, text);
+  return sendTelegramMessage(token, settings.telegram_chat_id, text);
+}
+
+export async function sendTelegramReply(businessId, text, replyToMsgId) {
+  const token = getBotToken(businessId);
+  if (!token) return null;
+  const settings = db.prepare(
+    'SELECT telegram_chat_id FROM settings WHERE business_id = ?'
+  ).get(businessId);
+  if (!settings?.telegram_chat_id) return null;
+  return sendTelegramMessage(token, settings.telegram_chat_id, text, replyToMsgId || null);
 }
 
 export async function sendTelegramToChat(businessId, chatId, text) {

@@ -1,6 +1,6 @@
 import db from "./db.js";
 import { createLogger } from "./logger.js";
-import { sendTelegramNotification, sendTelegramNotificationWithButtons } from "./telegram.js";
+import { sendTelegramNotification, sendTelegramNotificationWithButtons, sendTelegramReply } from "./telegram.js";
 
 const log = createLogger("ai-secretary");
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
@@ -290,6 +290,15 @@ function saveBookingSubmission(businessId, customerPhone, service, date, time, n
       { text: "📅 Reschedule", callback_data: "bk_reschedule:" + _subId }
     ]];
     sendTelegramNotificationWithButtons(businessId, _msgText, _buttons)
+      .then(resp => {
+        if (resp && resp.ok && resp.result && resp.result.message_id) {
+          try {
+            const _sd = JSON.parse(db.prepare('SELECT data FROM submissions WHERE id = ?').get(_subId)?.data || '{}');
+            _sd._telegram_msg_id = resp.result.message_id;
+            db.prepare('UPDATE submissions SET data = ? WHERE id = ?').run(JSON.stringify(_sd), _subId);
+          } catch(e) {}
+        }
+      })
       .catch(e => log.error({ err: e }, "Telegram notify failed"));
     return counter;
   } catch(e) {
@@ -298,14 +307,21 @@ function saveBookingSubmission(businessId, customerPhone, service, date, time, n
   }
 }
 
+function _getTgMsgId(businessId, customerPhone) {
+  try {
+    const _s = db.prepare(`SELECT data FROM submissions WHERE business_id = ? AND json_extract(data, '$._source') = 'ai_secretary' AND (json_extract(data, '$."WhatsApp Number"') = ? OR json_extract(data, '$."Customer Phone"') = ?) ORDER BY id DESC LIMIT 1`).get(businessId, customerPhone, customerPhone);
+    return _s ? (JSON.parse(_s.data || '{}')._telegram_msg_id || null) : null;
+  } catch(e) { return null; }
+}
+
 function sendHandoverNotification(businessId, customerPhone, customerName, reason, lastMessage) {
-  sendTelegramNotification(businessId,
-    "Handover Required\n"
-    + "Customer: " + customerName + "\n"
-    + "WhatsApp: " + customerPhone + "\n"
-    + "Reason: " + reason + "\n"
-    + "Last message: " + lastMessage
-  ).catch(e => log.error({ err: e }, "Telegram handover notify failed"));
+  const _hText = '🚨 Handover Required\n\n'
+    + '👤 ' + customerName + '  —  ' + customerPhone + '\n\n'
+    + '💬 Reason: ' + reason + '\n'
+    + '📩 \"' + (lastMessage || '').slice(0, 120) + '\"';
+  const _hMsgId = _getTgMsgId(businessId, customerPhone);
+  (_hMsgId ? sendTelegramReply(businessId, _hText, _hMsgId) : sendTelegramNotification(businessId, _hText))
+    .catch(e => log.error({ err: e }, 'Telegram handover notify failed'));
 }
 
 export async function handleAISecretary(businessId, customerPhone, customerName, incomingText, brain, imageData = null) {
@@ -446,7 +462,12 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
           const _sM = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
           const _sp2 = chosenSlot.split(':'); const _sd = new Date((_sp2[0] || '') + 'T00:00:00');
           const _label = _sD[_sd.getDay()] + ', ' + _sM[_sd.getMonth()] + ' ' + _sd.getDate() + ' at ' + (_sp2[1] || '') + ':00';
-          sendTelegramNotification(businessId, '✅ Reschedule confirmed!\n' + customerName + ' chose: ' + _label).catch(() => {});
+          const _rcText = '✅ Reschedule Confirmed!\n\n'
+            + '👤 ' + customerName + '  —  ' + customerPhone + '\n'
+            + '📋 ' + (JSON.parse(_sub?.data || '{}')['Service'] || '') + '\n'
+            + '📅 ' + _label;
+          const _rcMsgId = _getTgMsgId(businessId, customerPhone);
+          (_rcMsgId ? sendTelegramReply(businessId, _rcText, _rcMsgId) : sendTelegramNotification(businessId, _rcText)).catch(() => {});
         }
         const finalReply = textReply.trim() || ('Your appointment has been rescheduled ✨ See you then!');
         saveMessage(businessId, customerPhone, "assistant", finalReply);
@@ -457,8 +478,13 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
         const _offer2 = db.prepare("SELECT * FROM reschedule_offers WHERE customer_phone = ? AND status = 'pending' ORDER BY id DESC LIMIT 1").get(customerPhone);
         if (_offer2) {
           db.prepare("UPDATE reschedule_offers SET status = 'declined' WHERE id = ?").run(_offer2.id);
-          const _notif = suggestion ? ('❌ Reschedule rejected. Customer suggestion: ' + suggestion) : '❌ Customer could not make any offered times. Please select new slots.';
-          sendTelegramNotification(businessId, _notif).catch(() => {});
+          const _sub3 = db.prepare('SELECT * FROM submissions WHERE id = ?').get(_offer2.submission_id);
+          const _rrText = '❌ Reschedule Rejected\n\n'
+            + '👤 ' + customerName + '  —  ' + customerPhone + '\n'
+            + (suggestion ? '💬 Suggestion: \"' + suggestion + '\"\n' : '')
+            + '\n📅 Tap Reschedule on the booking to offer new slots.';
+          const _rrMsgId = _sub3 ? (JSON.parse(_sub3.data || '{}')._telegram_msg_id || null) : null;
+          (_rrMsgId ? sendTelegramReply(businessId, _rrText, _rrMsgId) : sendTelegramNotification(businessId, _rrText)).catch(() => {});
         }
         const finalReply = textReply.trim() || ("I'm sorry those times don't work, " + customerName + "! I'll let the team know and they'll suggest new options.");
         saveMessage(businessId, customerPhone, "assistant", finalReply);

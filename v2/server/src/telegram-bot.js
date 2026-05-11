@@ -373,10 +373,13 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
   } else { return; }
 
   db.prepare('UPDATE submissions SET status = ? WHERE id = ?').run(newStatus, subId);
+  // Remove buttons from original, then send styled reply
   if (messageId) {
-    await tgCall(token, 'editMessageText', {
-      chat_id: chatId, message_id: messageId, text: doneText, parse_mode: 'HTML'
-    });
+    await tgCall(token, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
+    const _replyText = newStatus === 'in_progress'
+      ? ('✅ Booking Confirmed\n\n👤 ' + customerName + '  —  ' + waNumber + '\n📋 ' + service + '\n\nCustomer notified on WhatsApp.')
+      : ('❌ Booking Cancelled\n\n👤 ' + customerName + '  —  ' + waNumber + '\n📋 ' + service + '\n\nCustomer notified on WhatsApp.');
+    await tgCall(token, 'sendMessage', { chat_id: chatId, text: _replyText, parse_mode: 'HTML', reply_to_message_id: messageId });
   }
   if (waNumber) {
     try {
@@ -593,11 +596,16 @@ async function handleRescheduleFlow(businessId, token, chatId, messageId, callba
       } catch(e) { log.error({ err: e }, 'WA reschedule offer failed'); }
     }
     const summary = slots.map(s => formatSlotDisplay(s)).join(', ');
-    if (messageId) await tgCall(token, 'editMessageText', {
-      chat_id: chatId, message_id: messageId,
-      text: '📤 Reschedule options sent to ' + customerName + ':\n' + summary,
-      parse_mode: 'HTML', reply_markup: { inline_keyboard: [] }
-    });
+    const _slotListFmt = slots.map(s => '• ' + formatSlotDisplay(s)).join('\n');
+    const _rsText = '📤 Reschedule Options Sent\n\n'
+      + '👤 ' + customerName + '  —  ' + waNumber + '\n'
+      + '📋 ' + service + '\n\n' + _slotListFmt + '\n\nWaiting for customer reply...';
+    const _bookMsgId = submData._telegram_msg_id;
+    // Edit calendar message to confirm sent
+    if (messageId) await tgCall(token, 'editMessageText', { chat_id: chatId, message_id: messageId, text: '📤 Options sent to customer.', parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } });
+    // Reply to original booking notification
+    if (_bookMsgId) await tgCall(token, 'sendMessage', { chat_id: chatId, text: _rsText, parse_mode: 'HTML', reply_to_message_id: _bookMsgId });
+    else await tgCall(token, 'sendMessage', { chat_id: chatId, text: _rsText, parse_mode: 'HTML' });
     rescheduleState.delete(String(businessId));
   }
 }

@@ -845,7 +845,7 @@ router.post('/business/:id/submissions', tenantScope, (req, res) => {
         .map(([k, v]) => `${k}: ${v}`)
         .join('\n');
     }
-    const msg = `📋 New Booking #${subId}\n${biz ? biz.name : 'Business'}\n\n${summary}`;
+    const msg = `🆕 New Request #${subId}  📍  ${biz ? biz.name : 'Business'}\n\n${summary}`;
 
     // Track which chat IDs we've already sent to (prevent duplicates)
     const sentChatIds = new Set();
