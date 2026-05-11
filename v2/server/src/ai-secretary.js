@@ -252,7 +252,7 @@ function normalizePhone(phone) {
     .replace(/[^0-9+]/g, '');
 }
 
-function saveBookingSubmission(businessId, customerPhone, service, date, time, name, phone) {
+function saveBookingSubmission(businessId, customerPhone, service, date, time, name, phone, channel = 'whatsapp') {
   phone = normalizePhone(phone);
   try {
     const data = {
@@ -261,9 +261,11 @@ function saveBookingSubmission(businessId, customerPhone, service, date, time, n
       "Preferred Time": time || "Not specified",
       "Customer Name": name,
       "Customer Phone": phone,
-      "Channel": "WhatsApp (AI Secretary)",
-      "WhatsApp Number": customerPhone,
-      "_source": "ai_secretary"
+      "Channel": channel === 'telegram' ? "Telegram (AI Secretary)" : channel === 'instagram' ? "Instagram (AI Secretary)" : "WhatsApp (AI Secretary)",
+      "WhatsApp Number": channel === 'whatsapp' ? customerPhone : (phone || null),
+      "_source": "ai_secretary",
+      "_channel": channel,
+      "_channel_id": customerPhone
     };
     // If same service already has an open booking from this customer, update it instead of duplicating
     const existing = db.prepare(
@@ -324,7 +326,7 @@ function sendHandoverNotification(businessId, customerPhone, customerName, reaso
     .catch(e => log.error({ err: e }, 'Telegram handover notify failed'));
 }
 
-export async function handleAISecretary(businessId, customerPhone, customerName, incomingText, brain, imageData = null) {
+export async function handleAISecretary(businessId, customerPhone, customerName, incomingText, brain, imageData = null, channel = 'whatsapp') {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     log.error("ANTHROPIC_API_KEY not set");
@@ -352,10 +354,23 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
   } catch(e) {}
   const _futureSlots = [];
   for (let _fh = _curH + 1; _fh < _closeH; _fh++) { const _fh12 = _fh > 12 ? _fh - 12 : _fh; const _fap = _fh >= 12 ? 'PM' : 'AM'; _futureSlots.push(_fh + ':00 (=' + _fh12 + ' ' + _fap + ')'); }
+  // Channel-specific tool: non-WhatsApp needs phone collection
+  const _tools = channel === 'whatsapp' ? TOOLS : TOOLS.map(t => {
+    if (t.name !== 'save_booking') return t;
+    return { ...t,
+      description: 'Save a confirmed booking. Call ONLY when you have all 4 required pieces: specific service, preferred date, customer name, and customer WhatsApp phone number.',
+      input_schema: { ...t.input_schema,
+        properties: { ...t.input_schema.properties, customer_phone: { type: 'string', description: 'Customer WhatsApp phone number  ask the customer for this' } },
+        required: [...t.input_schema.required, 'customer_phone']
+      }
+    };
+  });
+
   let _dynamicCtx = 'CURRENT DUBAI TIME: ' + String(_curH).padStart(2,'0') + ':' + _curMin + ' (' + _h12 + ':' + _curMin + ' ' + _ampm + '). ' +
     'Hours still available today: ' + (_futureSlots.length ? _futureSlots.join(', ') : 'no more slots today') + '. ' +
     'PM conversion: 1PM=13, 2PM=14, 3PM=15, 4PM=16, 5PM=17, 6PM=18, 7PM=19, 8PM=20, 9PM=21, 10PM=22. ' +
     'ONLY reject a time if it does NOT appear in the available hours list above.';
+  if (channel !== 'whatsapp') _dynamicCtx += ' This customer is on ' + channel + '. During booking, ask for their WhatsApp phone number so the business can reach them.';
   if (_pendingOffer) {
     const _slots = JSON.parse(_pendingOffer.offered_slots || '[]');
     const _D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -389,7 +404,7 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
         max_tokens: 1024,
         temperature: 0.3,
         system: [{ type: 'text', text: finalSystemPrompt, cache_control: { type: 'ephemeral' } }, { type: 'text', text: _dynamicCtx }],
-        tools: TOOLS,
+        tools: _tools,
         messages: messages,
       }),
     });
@@ -422,7 +437,8 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
           input.preferred_date || "Not specified",
                   input.preferred_time || "Not specified",
           input.customer_name || customerName,
-          input.customer_phone || customerPhone
+          input.customer_phone || customerPhone,
+          channel
         );
         // Generate confirmation in customer language
         const hasPersian = /[\u0600-\u06FF]/.test(incomingText) && /[\u067E\u0686\u06CC\u06A9\u06AF]/.test(incomingText + (history.map(h=>h.content).join("")));

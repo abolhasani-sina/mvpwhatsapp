@@ -7,6 +7,7 @@ import db from './db.js';
 import { processIncoming } from './bot-engine.js';
 import { decryptField } from './middleware/encryption.js';
 import { enqueueMessage } from './message-queue.js';
+import { handleAISecretary, isAISecretaryActive, getBusinessBrain } from './ai-secretary.js';
 import { notifyChatIdDetector } from './routes.js';
 import { createLogger } from './logger.js';
 import { telegramMessagesReceived, telegramPollingErrors } from './metrics.js';
@@ -215,12 +216,59 @@ async function handleUpdate(businessId, token, update) {
   if (!chatId) return;
   notifyChatIdDetector(businessId, chatId, userName);
 
-  // Booking management callbacks bypass bot engine
+  // Booking management callbacks bypass AI
   if (callbackData && callbackData.startsWith('bk_')) {
     await handleBookingCallback(businessId, token, chatId, update.callback_query?.message?.message_id, callbackData);
     return;
   }
 
+  // AI Secretary mode
+  if (isAISecretaryActive(businessId)) {
+    const brain = getBusinessBrain(businessId);
+    let aiText = text || '';
+    let aiImage = null;
+    // Handle voice message
+    if (update.message?.voice || update.message?.audio) {
+      try {
+        const fid = (update.message.voice || update.message.audio).file_id;
+        const fi = await tgCall(token, 'getFile', { file_id: fid });
+        if (fi.ok && fi.result.file_path) {
+          const furl = `https://api.telegram.org/file/bot${token}/${fi.result.file_path}`;
+          const abuf = Buffer.from(await (await fetch(furl)).arrayBuffer());
+          const fd = new FormData();
+          fd.append('file', new Blob([abuf], { type: 'audio/ogg' }), 'voice.ogg');
+          fd.append('model', 'whisper-1');
+          fd.append('prompt', 'Beauty salon customer inquiry');
+          const wr = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+            method: 'POST', headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` }, body: fd
+          });
+          const wj = await wr.json();
+          aiText = wj.text || '';
+        }
+      } catch(e) { log.error({ err: e }, 'Telegram voice transcription failed'); }
+    }
+    // Handle image
+    if (update.message?.photo) {
+      try {
+        const photo = update.message.photo[update.message.photo.length - 1];
+        const fi = await tgCall(token, 'getFile', { file_id: photo.file_id });
+        if (fi.ok && fi.result.file_path) {
+          const furl = `https://api.telegram.org/file/bot${token}/${fi.result.file_path}`;
+          const ibuf = Buffer.from(await (await fetch(furl)).arrayBuffer());
+          aiImage = { base64: ibuf.toString('base64'), mimeType: 'image/jpeg' };
+          if (!aiText) aiText = update.message.caption || '';
+        }
+      } catch(e) { log.error({ err: e }, 'Telegram image download failed'); }
+    }
+    if (!aiText && !aiImage) return;
+    const result = await handleAISecretary(businessId, String(chatId), userName || 'Customer', aiText, brain, aiImage, 'telegram');
+    if (result && result.body) {
+      await tgCall(token, 'sendMessage', { chat_id: chatId, text: result.body, parse_mode: 'HTML' });
+    }
+    return;
+  }
+
+  // Fallback: button flows
   const input = { text: text || null, callbackData: callbackData || null };
   const responses = processIncoming(businessId, String(chatId), 'telegram', userName, input);
   await sendInternalMessages(token, chatId, responses, businessId);
@@ -381,7 +429,14 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
       : ('❌ Booking Cancelled\n\n👤 ' + customerName + '  —  ' + waNumber + '\n📋 ' + service + '\n\nCustomer notified on WhatsApp.');
     await tgCall(token, 'sendMessage', { chat_id: chatId, text: _replyText, parse_mode: 'HTML', reply_to_message_id: messageId });
   }
-  if (waNumber) {
+  const _custChannel = data['_channel'] || 'whatsapp';
+  const _chanId = data['_channel_id'];
+  if (_custChannel === 'telegram' && _chanId) {
+    try {
+      await tgCall(token, 'sendMessage', { chat_id: _chanId, text: customerMsg, parse_mode: 'HTML' });
+      log.info({ businessId, subId, newStatus, _chanId }, 'booking callback TG sent');
+    } catch(e) { log.error({ err: e }, 'TG notify from booking callback failed'); }
+  } else if (waNumber) {
     try {
       const settings = db.prepare('SELECT whatsapp_phone_number_id, whatsapp_access_token FROM settings WHERE business_id = ?').get(businessId);
       if (settings?.whatsapp_phone_number_id && settings?.whatsapp_access_token) {
