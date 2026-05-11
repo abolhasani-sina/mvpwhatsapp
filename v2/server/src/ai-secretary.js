@@ -144,7 +144,7 @@ ${dataSection}
 const TOOLS = [
   {
     name: "save_booking",
-    description: "Save a confirmed booking. Call ONLY when you have all 4 required pieces: specific service, preferred date, customer name, customer phone.",
+    description: "Save a confirmed booking. Call ONLY when you have all 3 required pieces: specific service, preferred date, and customer name.",
     input_schema: {
       type: "object",
       properties: {
@@ -152,9 +152,8 @@ const TOOLS = [
         preferred_date: { type: "string", description: "When (e.g. tomorrow, next Monday)" },
         preferred_time: { type: "string", description: "Preferred time (e.g. morning, after 3pm, 10am)" },
         customer_name: { type: "string", description: "Customer name" },
-        customer_phone: { type: "string", description: "Customer phone number" }
       },
-      required: ["service", "preferred_date", "preferred_time", "customer_name", "customer_phone"]
+      required: ["service", "preferred_date", "preferred_time", "customer_name"]
     }
   },
   {
@@ -234,8 +233,6 @@ function normalizePhone(phone) {
 function saveBookingSubmission(businessId, customerPhone, service, date, time, name, phone) {
   phone = normalizePhone(phone);
   try {
-    const countRow = db.prepare("SELECT COUNT(*) as cnt FROM submissions WHERE business_id = ?").get(businessId);
-    const counter = (countRow ? countRow.cnt : 0) + 1;
     const data = {
       "Service": service,
       "Preferred Date": date,
@@ -246,6 +243,17 @@ function saveBookingSubmission(businessId, customerPhone, service, date, time, n
       "WhatsApp Number": customerPhone,
       "_source": "ai_secretary"
     };
+    // If same service already has an open booking from this customer, update it instead of duplicating
+    const existing = db.prepare(
+      "SELECT id, business_submission_number FROM submissions WHERE business_id = ? AND status = 'new' AND json_extract(data, '$."WhatsApp Number"') = ? AND json_extract(data, '$.Service') = ? AND json_extract(data, '$._source') = 'ai_secretary' ORDER BY id DESC LIMIT 1"
+    ).get(businessId, customerPhone, service);
+    if (existing) {
+      db.prepare("UPDATE submissions SET data = ? WHERE id = ?").run(JSON.stringify(data), existing.id);
+      log.info({ businessId, subId: existing.id, customerPhone }, "AI Secretary booking updated (same service)");
+      return existing.business_submission_number;
+    }
+    const countRow = db.prepare("SELECT COUNT(*) as cnt FROM submissions WHERE business_id = ?").get(businessId);
+    const counter = (countRow ? countRow.cnt : 0) + 1;
     const result = db.prepare("INSERT INTO submissions (business_id, data, status, business_submission_number) VALUES (?, ?, ?, ?)").run(businessId, JSON.stringify(data), "new", counter);
     log.info({ businessId, subId: result.lastInsertRowid, customerPhone }, "AI Secretary booking saved");
     sendTelegramNotification(businessId,
