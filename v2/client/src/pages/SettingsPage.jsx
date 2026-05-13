@@ -637,7 +637,7 @@ export default function SettingsPage({ businessId }) {
               <input
                 value={requestValue}
                 onChange={(e) => setRequestValue(e.target.value)}
-                placeholder={requestModal.channel === 'telegram' ? 'New bot token' : 'New value'}
+                placeholder={requestModal.channel === 'telegram' ? 'New bot token' : requestModal.channel === 'telegram_chat_id' ? 'Your numeric Telegram ID' : 'New value'}
                 className="py-2 px-3 rounded-lg border border-slate-200 text-sm font-mono"
               />
             </label>

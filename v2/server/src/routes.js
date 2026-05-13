@@ -1235,7 +1235,7 @@ function maskChannelValue(channel, value) {
 router.post('/business/:id/channel-change-requests', tenantScope, (req, res) => {
   const businessId = Number(req.params.id);
   const { channel, requestedValue, reason } = req.body || {};
-  if (!['telegram', 'whatsapp', 'instagram'].includes(channel)) {
+  if (!['telegram', 'telegram_chat_id', 'whatsapp', 'instagram'].includes(channel)) {
     return res.status(400).json({ error: 'Invalid channel', code: 'INVALID_CHANNEL' });
   }
   if (!requestedValue || typeof requestedValue !== 'string') {
