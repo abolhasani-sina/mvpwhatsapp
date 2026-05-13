@@ -33,6 +33,9 @@ function getInitials(name) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
+function toUTC(str) {
+  return new Date(str + (str.endsWith('Z') ? '' : 'Z'));
+}
 function startOfDay(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -52,7 +55,7 @@ function filterByDateRange(submissions, range) {
     from.setDate(from.getDate() - 1);
     const to = todayStart;
     return submissions.filter(s => {
-      const d = new Date(s.created_at);
+      const d = toUTC(s.created_at);
       return d >= from && d < to;
     });
   } else if (range === '7d') {
@@ -362,8 +365,8 @@ function SubmissionRow({ sub, staff, expanded, onToggle, onStatusChange, onAssig
 
         {/* Date */}
         <td className="px-4 py-3.5 hidden sm:table-cell"> {/* [ADDED: mobile-responsive] */}
-          <div className="text-xs text-slate-500">{new Date(sub.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-          <div className="text-[10px] text-slate-400">{new Date(sub.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+          <div className="text-xs text-slate-500">{new Date(sub.created_at + (sub.created_at.endsWith('Z') ? '' : 'Z')).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'Asia/Dubai' })}</div>
+          <div className="text-[10px] text-slate-400">{new Date(sub.created_at + (sub.created_at.endsWith('Z') ? '' : 'Z')).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' })}</div>
         </td>
 
         {/* Expand icon */}
