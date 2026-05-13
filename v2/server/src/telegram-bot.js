@@ -479,15 +479,18 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
       const _tgHasPersian = /[\u067E\u0686\u06CC\u06A9\u06AF]/.test(_tgConvText);
       const _tgHasArabic = /[\u0600-\u06FF]/.test(_tgConvText) && !_tgHasPersian;
       if (newStatus === 'in_progress') {
-        if (_tgBrain?.msg_confirmed) customerMsg = _rp(_tgBrain.msg_confirmed, customerName, service, date);
-        else if (_tgHasPersian) customerMsg = '\u0631\u0632\u0631\u0648 \u0634\u0645\u0627 \u062A\u0627\u06CC\u06CC\u062F \u0634\u062F \u2728\n\u062E\u062F\u0645\u062A: ' + service + '\n\u062A\u0627\u0631\u06CC\u062E: ' + date + (time ? '\n\u0633\u0627\u0639\u062A: ' + time : '');
+        // Language takes priority over brain template for Persian/Arabic customers
+        if (_tgHasPersian) customerMsg = '\u0631\u0632\u0631\u0648 \u0634\u0645\u0627 \u062A\u0627\u06CC\u06CC\u062F \u0634\u062F \u2728\n\u062E\u062F\u0645\u062A: ' + service + '\n\u062A\u0627\u0631\u06CC\u062E: ' + date + (time ? '\n\u0633\u0627\u0639\u062A: ' + time : '');
         else if (_tgHasArabic) customerMsg = '\u062A\u0645 \u062A\u0623\u0643\u064A\u062F \u062D\u062C\u0632\u0643 \u2728\n\u0627\u0644\u062E\u062F\u0645\u0629: ' + service + '\n\u0627\u0644\u062A\u0627\u0631\u064A\u062E: ' + date + (time ? '\n\u0627\u0644\u0648\u0642\u062A: ' + time : '');
+        else if (_tgBrain?.msg_confirmed) customerMsg = _rp(_tgBrain.msg_confirmed, customerName, service, date);
       } else if (newStatus === 'cancelled') {
-        if (_tgBrain?.msg_cancelled) customerMsg = _rp(_tgBrain.msg_cancelled, customerName, service, date);
-        else if (_tgHasPersian) customerMsg = '\u0645\u062A\u0623\u0633\u0641\u0627\u0646\u0647 \u0631\u0632\u0631\u0648 ' + service + ' \u0634\u0645\u0627 \u0644\u063A\u0648 \u0634\u062F. \u0628\u0631\u0627\u06CC \u062A\u063A\u06CC\u06CC\u0631 \u0648\u0642\u062A \u0628\u0627 \u0645\u0627 \u062A\u0645\u0627\u0633 \u0628\u06AF\u06CC\u0631\u06CC\u062F.';
+        if (_tgHasPersian) customerMsg = '\u0645\u062A\u0623\u0633\u0641\u0627\u0646\u0647 \u0631\u0632\u0631\u0648 ' + service + ' \u0634\u0645\u0627 \u0644\u063A\u0648 \u0634\u062F. \u0628\u0631\u0627\u06CC \u062A\u063A\u06CC\u06CC\u0631 \u0648\u0642\u062A \u0628\u0627 \u0645\u0627 \u062A\u0645\u0627\u0633 \u0628\u06AF\u06CC\u0631\u06CC\u062F.';
         else if (_tgHasArabic) customerMsg = '\u0646\u0639\u062A\u0630\u0631 \u0639\u0646 \u0625\u0644\u063A\u0627\u0621 \u062D\u062C\u0632 ' + service + '. \u062A\u0648\u0627\u0635\u0644 \u0645\u0639\u0646\u0627 \u0644\u062A\u063A\u064A\u064A\u0631 \u0627\u0644\u0645\u0648\u0639\u062F.';
+        else if (_tgBrain?.msg_cancelled) customerMsg = _rp(_tgBrain.msg_cancelled, customerName, service, date);
       }
       await tgCall(token, 'sendMessage', { chat_id: _chanId, text: customerMsg, parse_mode: 'HTML' });
+      // Save outgoing message to conversation history
+      db.prepare("INSERT INTO ai_conversations (business_id, customer_phone, role, content) VALUES (?, ?, 'assistant', ?)").run(businessId, String(_chanId), customerMsg);
       log.info({ businessId, subId, newStatus, _chanId }, 'booking callback TG sent');
     } catch(e) { log.error({ err: e }, 'TG notify from booking callback failed'); }
   } else if (waNumber) {
