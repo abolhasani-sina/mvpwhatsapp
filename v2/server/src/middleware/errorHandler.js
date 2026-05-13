@@ -32,6 +32,23 @@ export function errorHandler(err, req, res, _next) {
     ip: req.ip,
   }, 'unhandled error');
 
+  // Send Telegram alert for 500 errors
+  if ((err.status || 500) >= 500) {
+    const _alertToken = process.env.ALERT_TELEGRAM_BOT_TOKEN;
+    const _alertChat = process.env.ALERT_TELEGRAM_CHAT_ID;
+    if (_alertToken && _alertChat) {
+      const _msg = '🚨 NabzChat Server Error\n\n'
+        + '📍 ' + (req.method || '') + ' ' + (req.originalUrl || req.url || '') + '\n'
+        + '👤 User: ' + (req.userId || 'anonymous') + '\n'
+        + '❌ ' + (err.message || 'Unknown error').slice(0, 200) + '\n'
+        + '🆔 ' + errorId;
+      fetch('https://api.telegram.org/bot' + _alertToken + '/sendMessage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: _alertChat, text: _msg, parse_mode: 'HTML' })
+      }).catch(() => {});
+    }
+  }
   // Never expose internal errors to the client
   res.status(err.status || 500).json({
     error: 'Internal server error',
