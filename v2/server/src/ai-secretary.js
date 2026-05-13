@@ -373,6 +373,11 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
     'PM conversion: 1PM=13, 2PM=14, 3PM=15, 4PM=16, 5PM=17, 6PM=18, 7PM=19, 8PM=20, 9PM=21, 10PM=22. ' +
     'ONLY reject a time if it does NOT appear in the available hours list above.';
   if (channel !== 'whatsapp') _dynamicCtx += ' This customer is on ' + channel + '.';
+  // Detect language from earliest customer messages and lock it
+  const _custMsgs = history.filter(h => h.role === 'user').map(h => h.content).join(' ') + ' ' + incomingText;
+  const _lockHasPersian = /[\u067E\u0686\u06CC\u06A9\u06AF]/.test(_custMsgs);
+  const _lockHasArabic = /[\u0600-\u06FF]/.test(_custMsgs) && !_lockHasPersian;
+  _dynamicCtx += '\n\n⚠️ LANGUAGE LOCK: Detect the language of the customer\'s FIRST message in this conversation. Reply in that EXACT language for every single message, no matter what. If they mix languages, still reply only in their original language. NEVER switch languages mid-conversation. NEVER reply in English if the customer started in another language.';
   if (_pendingOffer) {
     const _slots = JSON.parse(_pendingOffer.offered_slots || '[]');
     const _D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
