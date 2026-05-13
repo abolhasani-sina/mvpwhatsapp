@@ -688,6 +688,8 @@ async function handleRescheduleFlow(businessId, token, chatId, messageId, callba
         }
       } catch(e) { log.error({ err: e }, 'WA reschedule offer failed'); }
     }
+    // Save outgoing reschedule offer to conversation history
+    db.prepare("INSERT INTO ai_conversations (business_id, customer_phone, role, content) VALUES (?, ?, 'assistant', ?)").run(businessId, _offerPhone, waMsg);
     const summary = slots.map(s => formatSlotDisplay(s)).join(', ');
     const _slotListFmt = slots.map(s => '• ' + formatSlotDisplay(s)).join('\n');
     const _rsText = '📤 Reschedule Options Sent\n\n'
