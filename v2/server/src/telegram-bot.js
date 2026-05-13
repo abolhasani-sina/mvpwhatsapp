@@ -287,7 +287,7 @@ async function handleUpdate(businessId, token, update) {
       const _wSalon = _wb?.salon_name || _wb?.business_name || '';
       const _wMsg = 'Hi! I\'m ' + _wName + (_wSalon ? ' from ' + _wSalon : '') + ' \uD83D\uDE0A How can I help you today?';
       await tgCall(token, 'sendMessage', { chat_id: chatId, text: _wMsg, parse_mode: 'HTML' });
-      db.prepare("INSERT INTO ai_conversations (business_id, customer_phone, role, content) VALUES (?, ?, 'assistant', ?)").run(businessId, String(chatId), _wMsg);
+      db.prepare("INSERT INTO ai_conversations (business_id, customer_phone, role, content, created_at) VALUES (?, ?, 'assistant', ?, ?)").run(businessId, String(chatId), _wMsg, new Date().toISOString());
       return;
     }
     // 8-second buffer to combine chunked messages
@@ -490,7 +490,7 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
       }
       await tgCall(token, 'sendMessage', { chat_id: _chanId, text: customerMsg, parse_mode: 'HTML' });
       // Save outgoing message to conversation history
-      db.prepare("INSERT INTO ai_conversations (business_id, customer_phone, role, content) VALUES (?, ?, 'assistant', ?)").run(businessId, String(_chanId), customerMsg);
+      db.prepare("INSERT INTO ai_conversations (business_id, customer_phone, role, content, created_at) VALUES (?, ?, 'assistant', ?, ?)").run(businessId, String(_chanId), customerMsg, new Date().toISOString());
       log.info({ businessId, subId, newStatus, _chanId }, 'booking callback TG sent');
     } catch(e) { log.error({ err: e }, 'TG notify from booking callback failed'); }
   } else if (waNumber) {
@@ -720,7 +720,7 @@ async function handleRescheduleFlow(businessId, token, chatId, messageId, callba
       } catch(e) { log.error({ err: e }, 'WA reschedule offer failed'); }
     }
     // Save outgoing reschedule offer to conversation history
-    db.prepare("INSERT INTO ai_conversations (business_id, customer_phone, role, content) VALUES (?, ?, 'assistant', ?)").run(businessId, _offerPhone, waMsg);
+    db.prepare("INSERT INTO ai_conversations (business_id, customer_phone, role, content, created_at) VALUES (?, ?, 'assistant', ?, ?)").run(businessId, _offerPhone, waMsg, new Date().toISOString());
     const summary = slots.map(s => formatSlotDisplay(s)).join(', ');
     const _slotListFmt = slots.map(s => '• ' + formatSlotDisplay(s)).join('\n');
     const _rsText = '📤 Reschedule Options Sent\n\n'

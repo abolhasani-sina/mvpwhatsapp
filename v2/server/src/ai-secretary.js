@@ -512,7 +512,8 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
         const _crAllText = incomingText + (history.map(h=>h.content).join(""));
         const _crHasPersian = /[\u067E\u0686\u06CC\u06A9\u06AF]/.test(_crAllText);
         const _crHasArabic = /[\u0600-\u06FF]/.test(_crAllText) && !_crHasPersian;
-        const _crFallback = _crHasPersian ? '\u0648\u0642\u062A \u0634\u0645\u0627 \u062A\u063A\u06CC\u06CC\u0631 \u06A9\u0631\u062F \u2728 \u062A\u0627 \u0627\u0648\u0646 \u0645\u0648\u0642\u0639 \u0645\u0646\u062A\u0638\u0631\u062A\u0648\u0646!' : (_crHasArabic ? '\u062A\u0645 \u062A\u063A\u064A\u064A\u0631 \u0645\u0648\u0639\u062F\u0643 \u2728 \u0646\u0631\u0627\u0643 \u0642\u0631\u064A\u0628\u0627\u064B!' : 'Your appointment has been rescheduled \u2728 See you then!');
+        const _crParts = chosenSlot.split(':'); const _crDate = _crParts[0] || ''; const _crTime = _crParts[1] ? _crParts[1] + ':00' : '';
+        const _crFallback = _crHasPersian ? ('✅ وقت شما تغییر کرد!\n\n📅 ' + _crDate + (_crTime ? '\n🕐 ' + _crTime : '') + '\n\nمنتظرتون هستیم ✨') : (_crHasArabic ? ('✅ تم تغيير موعدك!\n\n📅 ' + _crDate + (_crTime ? '\n🕐 ' + _crTime : '') + '\n\nنراك قريباً ✨') : ('✅ Appointment rescheduled!\n\n📅 ' + _crDate + (_crTime ? '\n🕐 ' + _crTime : '') + '\n\nSee you then ✨'));
         const finalReply = textReply.trim() || _crFallback;
         saveMessage(businessId, customerPhone, "assistant", finalReply);
         return { type: "text", body: finalReply };
