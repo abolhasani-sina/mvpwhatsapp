@@ -450,11 +450,11 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
   if (action === 'bk_confirm') {
     newStatus = 'in_progress';
     doneText = '✅ Confirmed: ' + customerName + ' — ' + service + ' on ' + date;
-    customerMsg = 'Hi ' + customerName + '! Your booking is confirmed ✨\n\nService: ' + service + '\nDate: ' + date + (time ? '\nTime: ' + time : '');
+    customerMsg = '✅ Booking Confirmed!\n\n👤 ' + customerName + '\n📋 ' + service + '\n📅 ' + date + (time ? '\n🕐 ' + time : '') + '\n\nWe look forward to seeing you ✨';
   } else if (action === 'bk_cancel') {
     newStatus = 'cancelled';
     doneText = '❌ Cancelled: ' + customerName + ' — ' + service;
-    customerMsg = 'Hi ' + customerName + ', unfortunately we need to cancel your ' + service + ' booking. Please message us to reschedule.';
+    customerMsg = '❌ Booking Cancelled\n\n👤 ' + customerName + '\n📋 ' + service + '\n📅 ' + date + (time ? '\n🕐 ' + time : '') + '\n\nSorry for the inconvenience. Message us to reschedule 🙏';
   } else { return; }
 
   db.prepare('UPDATE submissions SET status = ? WHERE id = ?').run(newStatus, subId);
