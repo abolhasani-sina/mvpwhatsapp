@@ -443,8 +443,9 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
           channel
         );
         // Generate confirmation in customer language
-        const hasPersian = /[\u0600-\u06FF]/.test(incomingText) && /[\u067E\u0686\u06CC\u06A9\u06AF]/.test(incomingText + (history.map(h=>h.content).join("")));
-        const hasArabic = /[\u0600-\u06FF]/.test(incomingText) && !hasPersian;
+        const _allText = incomingText + (history.map(h=>h.content).join(""));
+        const hasPersian = /[\u067E\u0686\u06CC\u06A9\u06AF]/.test(_allText);
+        const hasArabic = /[\u0600-\u06FF]/.test(_allText) && !hasPersian;
         const custName = (toolUse.input && toolUse.input.customer_name) || "";
         let finalReply;
         if (hasPersian) finalReply = "\u0645\u0645\u0646\u0648\u0646 " + custName + " \u062C\u0627\u0646! \u0631\u0632\u0631\u0648\u062A \u062B\u0628\u062A \u0634\u062F\u060C \u062A\u06CC\u0645 \u0645\u0627 \u0628\u0647 \u0632\u0648\u062F\u06CC \u062A\u0645\u0627\u0633 \u0645\u06CC\u06AF\u06CC\u0631\u0647 \u2728";
@@ -459,7 +460,10 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
       if (toolUse.name === "request_handover") {
         const reason = (toolUse.input && toolUse.input.reason) || "customer requested";
         sendHandoverNotification(businessId, customerPhone, customerName, reason, incomingText);
-        const finalReply = textReply.trim() || "I am sorry to hear that. Let me connect you with our team right away - someone will be with you shortly.";
+        const _hvHasPersian = /[\u067E\u0686\u06CC\u06A9\u06AF]/.test(incomingText + (history.map(h=>h.content).join("")));
+        const _hvHasArabic = /[\u0600-\u06FF]/.test(incomingText + (history.map(h=>h.content).join(""))) && !_hvHasPersian;
+        const _hvFallback = _hvHasPersian ? "\u0645\u062A\u0623\u0633\u0641\u0645. \u0628\u0630\u0627\u0631\u06CC\u062F \u062A\u06CC\u0645 \u0645\u0627 \u0628\u0627 \u0634\u0645\u0627 \u062A\u0645\u0627\u0633 \u0628\u06AF\u06CC\u0631\u062F." : (_hvHasArabic ? "\u0622\u0633\u0641. \u0633\u064A\u062A\u0648\u0627\u0635\u0644 \u0645\u0639\u0643 \u0641\u0631\u064A\u0642\u0646\u0627 \u0642\u0631\u064A\u0628\u0627\u064B." : "I am sorry to hear that. Let me connect you with our team right away - someone will be with you shortly.");
+        const finalReply = textReply.trim() || _hvFallback;
         saveMessage(businessId, customerPhone, "assistant", finalReply);
         log.info({ businessId, customerPhone, reason }, "Handover via tool use");
         return { type: "text", body: finalReply };
@@ -467,7 +471,10 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
       if (toolUse.name === "add_booking_note") {
         const note = (toolUse.input && toolUse.input.note) || "";
         if (note) addBookingNote(businessId, customerPhone, note);
-        const finalReply = textReply.trim() || "Got it! I have noted that for the team.";
+        const _noteHasPersian = /[\u067E\u0686\u06CC\u06A9\u06AF]/.test(incomingText + (history.map(h=>h.content).join("")));
+        const _noteHasArabic = /[\u0600-\u06FF]/.test(incomingText + (history.map(h=>h.content).join(""))) && !_noteHasPersian;
+        const _noteFallback = _noteHasPersian ? "\u0645\u062A\u0648\u062C\u0647 \u0634\u062F\u0645! \u06CC\u0627\u062F\u062F\u0627\u0634\u062A \u0628\u0631\u0627\u06CC \u062A\u06CC\u0645 \u062B\u0628\u062A \u0634\u062F \u2728" : (_noteHasArabic ? "\u062A\u0645! \u062A\u0645 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u0645\u0644\u0627\u062D\u0638\u0629 \u2728" : "Got it! I have noted that for the team.");
+        const finalReply = textReply.trim() || _noteFallback;
         saveMessage(businessId, customerPhone, "assistant", finalReply);
         log.info({ businessId, customerPhone, note }, "Booking note added via tool");
         return { type: "text", body: finalReply };

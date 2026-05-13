@@ -651,6 +651,8 @@ async function handleRescheduleFlow(businessId, token, chatId, messageId, callba
     if (state.selectedSlots.size === 0) return;
     const slots = [...state.selectedSlots].sort();
     const slotLines = slots.map(s => '• ' + formatSlotDisplay(s)).join('\n');
+    const _rCustChannel = submData['_channel'] || 'whatsapp';
+    const _rChanId = submData['_channel_id'];
     const _langId = _rCustChannel === 'telegram' ? String(_rChanId) : waNumber;
     const _recentMsgs = db.prepare("SELECT content FROM ai_conversations WHERE business_id = ? AND customer_phone = ? AND role = 'user' ORDER BY id DESC LIMIT 5").all(businessId, _langId);
     const _convText = (_recentMsgs || []).map(m => m.content).join(' ') + customerName + service;
@@ -666,8 +668,6 @@ async function handleRescheduleFlow(businessId, token, chatId, messageId, callba
     }
     const _offerPhone = _rCustChannel === 'telegram' ? String(_rChanId) : waNumber;
     db.prepare("INSERT INTO reschedule_offers (submission_id, business_id, customer_phone, offered_slots, status) VALUES (?, ?, ?, ?, 'pending')").run(subId, businessId, _offerPhone, JSON.stringify(slots));
-    const _rCustChannel = submData['_channel'] || 'whatsapp';
-    const _rChanId = submData['_channel_id'];
     if (_rCustChannel === 'telegram' && _rChanId) {
       try {
         await tgCall(token, 'sendMessage', { chat_id: _rChanId, text: waMsg });
