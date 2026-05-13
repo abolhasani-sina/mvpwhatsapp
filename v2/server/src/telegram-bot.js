@@ -280,6 +280,16 @@ async function handleUpdate(businessId, token, update) {
       } catch(e) { log.error({ err: e }, 'Telegram image download failed'); }
     }
     if (!aiText && !aiImage) return;
+    // Intercept /start  send welcome once, save to history so Luna won't re-greet
+    if (aiText.trim() === '/start') {
+      const _wb = brain;
+      const _wName = _wb?.name || 'Luna';
+      const _wSalon = _wb?.salon_name || _wb?.business_name || '';
+      const _wMsg = 'Hi! I\'m ' + _wName + (_wSalon ? ' from ' + _wSalon : '') + ' \uD83D\uDE0A How can I help you today?';
+      await tgCall(token, 'sendMessage', { chat_id: chatId, text: _wMsg, parse_mode: 'HTML' });
+      db.prepare("INSERT INTO ai_conversations (business_id, customer_phone, role, content) VALUES (?, ?, 'assistant', ?)").run(businessId, String(chatId), _wMsg);
+      return;
+    }
     // 8-second buffer to combine chunked messages
     const _bKey = businessId + '_' + chatId;
     const _existing = tgMsgBuffer.get(_bKey);
@@ -449,6 +459,8 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
 
   db.prepare('UPDATE submissions SET status = ? WHERE id = ?').run(newStatus, subId);
   // Remove buttons from original, then send styled reply
+  const _custChannel = data['_channel'] || 'whatsapp';
+  const _chanId = data['_channel_id'];
   if (messageId) {
     await tgCall(token, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
     const _notifChannel = _custChannel === 'telegram' ? 'Telegram' : _custChannel === 'instagram' ? 'Instagram' : 'WhatsApp';
@@ -458,10 +470,23 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
       : ('❌ Booking Cancelled\n\n👤 ' + customerName + '  —  ' + _displayId + '\n📋 ' + service + '\n\nCustomer notified on ' + _notifChannel + '.');
     await tgCall(token, 'sendMessage', { chat_id: chatId, text: _replyText, parse_mode: 'HTML', reply_to_message_id: messageId });
   }
-  const _custChannel = data['_channel'] || 'whatsapp';
-  const _chanId = data['_channel_id'];
   if (_custChannel === 'telegram' && _chanId) {
     try {
+      // Use brain templates if available, with language-aware fallback
+      const _tgBrain = db.prepare('SELECT msg_confirmed, msg_cancelled FROM business_brain WHERE business_id = ?').get(businessId);
+      const _rp = (t, n, s, d) => (t || '').replace(/{name}/g, n).replace(/{service}/g, s).replace(/{date}/g, d).replace(/\\n/g, '\n');
+      const _tgConvText = (db.prepare("SELECT content FROM ai_conversations WHERE business_id = ? AND customer_phone = ? AND role = 'user' ORDER BY id ASC LIMIT 3").all(businessId, String(_chanId)) || []).map(m => m.content).join(' ');
+      const _tgHasPersian = /[\u067E\u0686\u06CC\u06A9\u06AF]/.test(_tgConvText);
+      const _tgHasArabic = /[\u0600-\u06FF]/.test(_tgConvText) && !_tgHasPersian;
+      if (newStatus === 'in_progress') {
+        if (_tgBrain?.msg_confirmed) customerMsg = _rp(_tgBrain.msg_confirmed, customerName, service, date);
+        else if (_tgHasPersian) customerMsg = '\u0631\u0632\u0631\u0648 \u0634\u0645\u0627 \u062A\u0627\u06CC\u06CC\u062F \u0634\u062F \u2728\n\u062E\u062F\u0645\u062A: ' + service + '\n\u062A\u0627\u0631\u06CC\u062E: ' + date + (time ? '\n\u0633\u0627\u0639\u062A: ' + time : '');
+        else if (_tgHasArabic) customerMsg = '\u062A\u0645 \u062A\u0623\u0643\u064A\u062F \u062D\u062C\u0632\u0643 \u2728\n\u0627\u0644\u062E\u062F\u0645\u0629: ' + service + '\n\u0627\u0644\u062A\u0627\u0631\u064A\u062E: ' + date + (time ? '\n\u0627\u0644\u0648\u0642\u062A: ' + time : '');
+      } else if (newStatus === 'cancelled') {
+        if (_tgBrain?.msg_cancelled) customerMsg = _rp(_tgBrain.msg_cancelled, customerName, service, date);
+        else if (_tgHasPersian) customerMsg = '\u0645\u062A\u0623\u0633\u0641\u0627\u0646\u0647 \u0631\u0632\u0631\u0648 ' + service + ' \u0634\u0645\u0627 \u0644\u063A\u0648 \u0634\u062F. \u0628\u0631\u0627\u06CC \u062A\u063A\u06CC\u06CC\u0631 \u0648\u0642\u062A \u0628\u0627 \u0645\u0627 \u062A\u0645\u0627\u0633 \u0628\u06AF\u06CC\u0631\u06CC\u062F.';
+        else if (_tgHasArabic) customerMsg = '\u0646\u0639\u062A\u0630\u0631 \u0639\u0646 \u0625\u0644\u063A\u0627\u0621 \u062D\u062C\u0632 ' + service + '. \u062A\u0648\u0627\u0635\u0644 \u0645\u0639\u0646\u0627 \u0644\u062A\u063A\u064A\u064A\u0631 \u0627\u0644\u0645\u0648\u0639\u062F.';
+      }
       await tgCall(token, 'sendMessage', { chat_id: _chanId, text: customerMsg, parse_mode: 'HTML' });
       log.info({ businessId, subId, newStatus, _chanId }, 'booking callback TG sent');
     } catch(e) { log.error({ err: e }, 'TG notify from booking callback failed'); }
