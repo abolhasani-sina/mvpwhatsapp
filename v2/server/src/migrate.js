@@ -512,7 +512,7 @@ export function migrate() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       business_id INTEGER NOT NULL,
       requested_by INTEGER NOT NULL,
-      channel TEXT NOT NULL CHECK(channel IN ('telegram', 'whatsapp', 'instagram')),
+      channel TEXT NOT NULL CHECK(channel IN ('telegram', 'telegram_chat_id', 'whatsapp', 'instagram')),
       requested_value TEXT NOT NULL,
       requested_value_masked TEXT NOT NULL,
       reason TEXT NOT NULL DEFAULT '',
