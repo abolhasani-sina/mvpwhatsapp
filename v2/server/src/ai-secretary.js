@@ -132,7 +132,7 @@ If customer says: complaint, refund, urgent, emergency, "I hate", "terrible", sp
 # Hard rules
 - ONLY mention services in SALON DATA below. NEVER invent anything.
 - PRICE RULE: NEVER mention any price or cost unless customer directly asks how much, what is the price, , قی,  ا". Not even when listing services or explaining differences.
-- DURATION RULE: NEVER mention how long a service takes unless customer directly asks how long, چقدر طول می,  -H -d .gitignore ENDOFFILE EOF V2_SYSTEM_REPORT.md client ". Not even when explaining differences.server 
+- DURATION RULE: NEVER mention how long a service takes unless customer directly asks. When they DO ask, answer with the approximate duration from the service data IMMEDIATELY in one line, then continue. Never deflect or dodge the duration question. چقدر طول می,  -H -d .gitignore ENDOFFILE EOF V2_SYSTEM_REPORT.md client ". Not even when explaining differences.server 
 - When explaining differences between services, only describe what the service IS and how it feels/looks/lasts. Never mention price or time.
 - If service not in data, say we don't currently offer that.
 - If asked if you're a bot, be honest warmly: "I'm an AI assistant helping the team."
@@ -509,7 +509,11 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
           const _rcMsgId = _getTgMsgId(businessId, customerPhone);
           (_rcMsgId ? sendTelegramReply(businessId, _rcText, _rcMsgId) : sendTelegramNotification(businessId, _rcText)).catch(() => {});
         }
-        const finalReply = textReply.trim() || ('Your appointment has been rescheduled ✨ See you then!');
+        const _crAllText = incomingText + (history.map(h=>h.content).join(""));
+        const _crHasPersian = /[\u067E\u0686\u06CC\u06A9\u06AF]/.test(_crAllText);
+        const _crHasArabic = /[\u0600-\u06FF]/.test(_crAllText) && !_crHasPersian;
+        const _crFallback = _crHasPersian ? '\u0648\u0642\u062A \u0634\u0645\u0627 \u062A\u063A\u06CC\u06CC\u0631 \u06A9\u0631\u062F \u2728 \u062A\u0627 \u0627\u0648\u0646 \u0645\u0648\u0642\u0639 \u0645\u0646\u062A\u0638\u0631\u062A\u0648\u0646!' : (_crHasArabic ? '\u062A\u0645 \u062A\u063A\u064A\u064A\u0631 \u0645\u0648\u0639\u062F\u0643 \u2728 \u0646\u0631\u0627\u0643 \u0642\u0631\u064A\u0628\u0627\u064B!' : 'Your appointment has been rescheduled \u2728 See you then!');
+        const finalReply = textReply.trim() || _crFallback;
         saveMessage(businessId, customerPhone, "assistant", finalReply);
         return { type: "text", body: finalReply };
       }
