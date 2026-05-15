@@ -502,9 +502,11 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
           const _sM = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
           const _sp2 = chosenSlot.split(':'); const _sd = new Date((_sp2[0] || '') + 'T00:00:00');
           const _label = _sD[_sd.getDay()] + ', ' + _sM[_sd.getMonth()] + ' ' + _sd.getDate() + ' at ' + (_sp2[1] || '') + ':00';
+          const _rcSubData = JSON.parse(_sub?.data || '{}');
+          const _rcPhone = _rcSubData['WhatsApp Number'] || customerPhone;
           const _rcText = '✅ Reschedule Confirmed!\n\n'
-            + '👤 ' + customerName + '  —  ' + customerPhone + '\n'
-            + '📋 ' + (JSON.parse(_sub?.data || '{}')['Service'] || '') + '\n'
+            + '👤 ' + customerName + '  —  ' + _rcPhone + '\n'
+            + '📋 ' + (_rcSubData['Service'] || '') + '\n'
             + '📅 ' + _label;
           const _rcMsgId = _getTgMsgId(businessId, customerPhone);
           (_rcMsgId ? sendTelegramReply(businessId, _rcText, _rcMsgId) : sendTelegramNotification(businessId, _rcText)).catch(() => {});
