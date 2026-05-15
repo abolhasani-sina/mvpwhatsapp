@@ -255,7 +255,7 @@ export default function SettingsPage({ businessId }) {
       config_id: '1262395959310168',
       response_type: 'code',
       override_default_response_type: true,
-      extras: { sessionInfoVersion: 3, version: 'v4' }
+      extras: { sessionInfoVersion: 3, version: 'v4', featureType: 'whatsapp_business_app_onboarding' }
     });
     };
     if (window.FB) {
