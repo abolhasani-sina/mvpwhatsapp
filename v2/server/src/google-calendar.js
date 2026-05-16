@@ -129,6 +129,31 @@ export async function getAvailableSlots(businessId, dateStr, durationMinutes, se
   const timeMin = new Date(dateStr + 'T00:00:00+04:00').toISOString();
   const timeMax = new Date(dateStr + 'T23:59:59+04:00').toISOString();
 
+  // Also block times from pending DB submissions (not yet confirmed by owner)
+  const _pendingBlocks = [];
+  try {
+    const _pendingSubs = db.prepare(
+      "SELECT data FROM submissions WHERE business_id = ? AND status = 'new' AND json_extract(data, '$.Preferred Date') = ?"
+    ).all(businessId, dateStr);
+    for (const _ps of _pendingSubs) {
+      try {
+        const _pd = JSON.parse(_ps.data);
+        const _pt = _pd['Preferred Time'] || '';
+        const _timeMatch = String(_pt).match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+        if (_timeMatch) {
+          let _ph = parseInt(_timeMatch[1]);
+          const _pm2 = parseInt(_timeMatch[2] || '0');
+          const _pampm = (_timeMatch[3] || '').toLowerCase();
+          if (_pampm === 'pm' && _ph !== 12) _ph += 12;
+          if (_pampm === 'am' && _ph === 12) _ph = 0;
+          const _pStart = new Date(dateStr + 'T' + String(_ph).padStart(2,'0') + ':' + String(_pm2).padStart(2,'0') + ':00+04:00');
+          const _pEnd = new Date(_pStart.getTime() + durationMinutes * 60000);
+          _pendingBlocks.push({ start: _pStart, end: _pEnd });
+        }
+      } catch(_pe) {}
+    }
+  } catch(_pbe) {}
+
   let events = [];
   try {
     const res = await calendar.events.list({
@@ -159,7 +184,7 @@ export async function getAvailableSlots(businessId, dateStr, durationMinutes, se
       const evStart = new Date(ev.start.dateTime);
       const evEnd = new Date(ev.end.dateTime);
       return slotStart < evEnd && slotEnd > evStart;
-    });
+    }) || _pendingBlocks.some(pb => slotStart < pb.end && slotEnd > pb.start);
     if (!conflict) slots.push(hh + ':' + mm);
   }
 
@@ -195,16 +220,21 @@ export async function createBookingEvent(businessId, dateStr, timeStr, durationM
   const hh = String(timeHour).padStart(2, '0');
   const mm = String(timeMin).padStart(2, '0');
 
-  const startDT = new Date(dateStr + 'T' + hh + ':' + mm + ':00');
-  const endDT = new Date(startDT.getTime() + durationMinutes * 60000);
+  // Use Dubai timezone offset explicitly (+04:00) to avoid timezone shift
+  const _startStr = dateStr + 'T' + hh + ':' + mm + ':00+04:00';
+  const _endDate = new Date(new Date(_startStr).getTime() + durationMinutes * 60000);
+  const _endH = String(_endDate.getUTCHours() + 4).padStart(2,'0'); // +4 for Dubai
+  const _endM = String(_endDate.getUTCMinutes()).padStart(2,'0');
+  const _endDateStr = _endDate.toISOString().slice(0,10);
+  const _endStr = _endDateStr + 'T' + _endH.padStart(2,'0') + ':' + _endM + ':00+04:00';
 
   const event = await calendar.events.insert({
     calendarId: 'primary',
     requestBody: {
       summary: service + ' \u2014 ' + customerName,
       description: 'Customer: ' + customerName + '\nPhone: ' + customerPhone + '\nService: ' + service + '\n\nBooked via NabzChat',
-      start: { dateTime: startDT.toISOString() },
-      end: { dateTime: endDT.toISOString() },
+      start: { dateTime: _startStr, timeZone: 'Asia/Dubai' },
+      end: { dateTime: _endStr, timeZone: 'Asia/Dubai' },
     },
   });
 
