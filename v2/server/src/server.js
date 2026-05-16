@@ -243,6 +243,26 @@ app.post('/api/webhook/instagram', webhookLimiter, (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/owner', ownerRoutes);
+
+// Google Calendar OAuth callback  public, no auth required
+app.get('/api/google/callback', async (req, res) => {
+  const code = req.query.code;
+  const businessId = req.query.state;
+  const oauthError = req.query.error;
+  const appUrl = process.env.APP_URL || 'https://app.nabzchat.tech';
+  if (oauthError || !code || !businessId) {
+    return res.redirect(appUrl + '/settings?gcal=error');
+  }
+  try {
+    const { handleOAuthCallback } = await import('./google-calendar.js');
+    await handleOAuthCallback(code, businessId);
+    res.redirect(appUrl + '/settings?gcal=connected');
+  } catch(e) {
+    log.error({ err: e }, 'Google OAuth callback failed');
+    res.redirect(appUrl + '/settings?gcal=error');
+  }
+});
+
 app.use('/api', routes);
 
 // Cleanup unverified accounts older than 7 days (runs daily)

@@ -458,6 +458,24 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
   } else { return; }
 
   db.prepare('UPDATE submissions SET status = ? WHERE id = ?').run(newStatus, subId);
+
+  // Google Calendar: create event when owner manually confirms
+  if (action === 'bk_confirm') {
+    try {
+      const { getCalendarStatus, createBookingEvent } = await import('./google-calendar.js');
+      const _calSt = getCalendarStatus(businessId);
+      if (_calSt.connected && _calSt.confirmationMode === 'manual') {
+        const _evDate = data['Preferred Date'] || '';
+        const _evTime = data['Preferred Time'] || '09:00';
+        const _evPhone = data['WhatsApp Number'] || data['_channel_id'] || String(chatId);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(_evDate)) {
+          createBookingEvent(businessId, _evDate, _evTime, 60, customerName, service, _evPhone)
+            .catch(e => log.warn({ err: e.message }, 'Calendar event skipped'));
+        }
+      }
+    } catch(_gcalErr) { log.warn({ err: _gcalErr.message }, 'Calendar event error'); }
+  }
+
   // Remove buttons from original, then send styled reply
   const _custChannel = data['_channel'] || 'whatsapp';
   const _chanId = data['_channel_id'];

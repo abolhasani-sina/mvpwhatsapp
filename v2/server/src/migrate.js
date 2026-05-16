@@ -658,4 +658,10 @@ for (const sql of alterations) {
     )
   `);
 
+  // Phase C1  Google Calendar columns
+  const _gcalCols = db.prepare("PRAGMA table_info(settings)").all().map(c => c.name);
+  if (!_gcalCols.includes('google_refresh_token')) db.exec("ALTER TABLE settings ADD COLUMN google_refresh_token TEXT");
+  if (!_gcalCols.includes('google_cal_connected')) db.exec("ALTER TABLE settings ADD COLUMN google_cal_connected INTEGER NOT NULL DEFAULT 0");
+  if (!_gcalCols.includes('google_connected_at')) db.exec("ALTER TABLE settings ADD COLUMN google_connected_at TEXT");
+  if (!_gcalCols.includes('confirmation_mode')) db.exec("ALTER TABLE settings ADD COLUMN confirmation_mode TEXT NOT NULL DEFAULT 'manual'");
 }

@@ -35,6 +35,9 @@ export default function SettingsPage({ businessId }) {
   const [detectDone, setDetectDone] = useState(false);
   const [botInfo, setBotInfo] = useState(null); // { username, firstName }
   const [chatIdLocked, setChatIdLocked] = useState(false);
+  const [gcalConnected, setGcalConnected] = useState(false);
+  const [confirmationMode, setConfirmationMode] = useState('manual');
+  const [gcalConnecting, setGcalConnecting] = useState(false);
 
   useEffect(() => {
     if (!businessId) return;
@@ -58,6 +61,8 @@ export default function SettingsPage({ businessId }) {
           instagram: s.instagram_locked === 1,
         });
         setChatIdLocked(s.telegram_chat_id_locked === 1);
+        setGcalConnected(s.google_cal_connected === 1);
+        setConfirmationMode(s.confirmation_mode || 'manual');
       }
       if (biz) {
         setBizName(biz.name || '');
@@ -78,6 +83,58 @@ export default function SettingsPage({ businessId }) {
       }
     });
   }, [businessId]);
+
+  // Check for Google Calendar OAuth result in URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const gcalResult = params.get('gcal');
+    if (gcalResult === 'connected') {
+      addToast('Google Calendar connected!', 'success');
+      setGcalConnected(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (gcalResult === 'error') {
+      addToast('Google Calendar connection failed. Try again.', 'error');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  async function handleConnectGoogle() {
+    setGcalConnecting(true);
+    try {
+      const res = await authFetch('/api/business/' + businessId + '/google/auth-url');
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else throw new Error('No URL');
+    } catch(e) {
+      addToast('Failed to connect Google Calendar', 'error');
+      setGcalConnecting(false);
+    }
+  }
+
+  async function handleDisconnectGoogle() {
+    try {
+      await authFetch('/api/business/' + businessId + '/google/disconnect', { method: 'DELETE' });
+      setGcalConnected(false);
+      setConfirmationMode('manual');
+      addToast('Google Calendar disconnected', 'success');
+    } catch(e) {
+      addToast('Failed to disconnect', 'error');
+    }
+  }
+
+  async function handleConfirmationMode(mode) {
+    setConfirmationMode(mode);
+    try {
+      await authFetch('/api/business/' + businessId + '/google/confirmation-mode', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode })
+      });
+      addToast(mode === 'auto' ? 'Auto mode  Luna books instantly' : 'Manual mode  you approve each booking', 'success');
+    } catch(e) {
+      addToast('Failed to update mode', 'error');
+    }
+  }
 
   function pendingFor(channel) {
     return requests.find((r) => r.channel === channel && r.status === 'pending');
@@ -610,6 +667,53 @@ export default function SettingsPage({ businessId }) {
           </label>
         </div>
       </div>}
+
+      {/* Google Calendar */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
+            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="#16a34a" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-slate-900">Google Calendar</h2>
+            <p className="text-[12px] text-slate-400">Luna checks real availability and avoids double-bookings</p>
+          </div>
+          {gcalConnected && <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700">Connected</span>}
+        </div>
+        {gcalConnected ? (
+          <div className="flex flex-col gap-4">
+            <div className="bg-green-50 rounded-xl p-4 border border-green-100 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0"></div>
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Google Calendar is connected</p>
+                <p className="text-xs text-slate-500">Luna now checks real availability before booking</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-slate-700 mb-2">Confirmation Mode</p>
+              <div className="flex gap-3">
+                <button onClick={() => handleConfirmationMode('manual')} className={'flex-1 p-3 rounded-xl border-2 text-left transition-all ' + (confirmationMode === 'manual' ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-slate-300')}>
+                  <p className="text-sm font-semibold text-slate-800">Manual</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">You approve each booking via Telegram </p>
+                </button>
+                <button onClick={() => handleConfirmationMode('auto')} className={'flex-1 p-3 rounded-xl border-2 text-left transition-all ' + (confirmationMode === 'auto' ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-slate-300')}>
+                  <p className="text-sm font-semibold text-slate-800">Auto</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Luna books directly, no approval needed</p>
+                </button>
+              </div>
+            </div>
+            <button onClick={handleDisconnectGoogle} className="self-start text-xs text-red-500 hover:text-red-700 underline">Disconnect Google Calendar</button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <p className="text-[13px] text-slate-500">Connect your Google Calendar so Luna can check real availability and avoid double-bookings.</p>
+            <button onClick={handleConnectGoogle} disabled={gcalConnecting} className="flex items-center gap-2 self-start px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 transition-all disabled:opacity-50 shadow-sm">
+              <svg viewBox="0 0 24 24" className="w-4 h-4 flex-shrink-0"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+              {gcalConnecting ? 'Redirecting to Google...' : 'Connect Google Calendar'}
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Save */}
       <div className="flex items-center gap-3">

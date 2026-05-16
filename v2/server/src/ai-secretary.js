@@ -358,7 +358,7 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
   const _futureSlots = [];
   for (let _fh = _curH + 1; _fh < _closeH; _fh++) { const _fh12 = _fh > 12 ? _fh - 12 : _fh; const _fap = _fh >= 12 ? 'PM' : 'AM'; _futureSlots.push(_fh + ':00 (=' + _fh12 + ' ' + _fap + ')'); }
   // Channel-specific tool: non-WhatsApp needs phone collection
-  const _tools = channel === 'whatsapp' ? TOOLS : TOOLS.map(t => {
+  let _tools = channel === 'whatsapp' ? TOOLS : TOOLS.map(t => {
     if (t.name !== 'save_booking') return t;
     return { ...t,
       description: 'Save a confirmed booking. Call ONLY when you have all 4 required pieces: specific service, preferred date, customer name, and customer phone number.',
@@ -368,6 +368,30 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
       }
     };
   });
+
+  // Add check_availability if Google Calendar is connected
+  try {
+    const { getCalendarStatus } = await import('./google-calendar.js');
+    const _calSt = getCalendarStatus(businessId);
+    if (_calSt.connected) {
+      _tools = [..._tools, {
+        name: "check_availability",
+        description: "Check real available appointment slots from Google Calendar. Call this BEFORE suggesting times or accepting a booking. Resolve natural language dates (tomorrow, next Monday) to YYYY-MM-DD format.",
+        input_schema: {
+          type: "object",
+          properties: {
+            date: { type: "string", description: "Date in YYYY-MM-DD format e.g. 2026-05-20" },
+            duration_minutes: { type: "number", description: "Duration in minutes (default 60)" }
+          },
+          required: ["date"]
+        }
+      }];
+      _tools = _tools.map(t => t.name === 'save_booking' ? {
+        ...t,
+        description: t.description + ' Calendar connected: use YYYY-MM-DD for preferred_date.'
+      } : t);
+    }
+  } catch(_gcalInitErr) { /* google calendar not configured */ }
 
   let _dynamicCtx = 'CURRENT DUBAI TIME: ' + String(_curH).padStart(2,'0') + ':' + _curMin + ' (' + _h12 + ':' + _curMin + ' ' + _ampm + '). ' +
     'Hours still available today: ' + (_futureSlots.length ? _futureSlots.join(', ') : 'no more slots today') + '. ' +
@@ -458,6 +482,21 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
         else if (hasArabic) finalReply = "\u062A\u0645\u0627\u0645 " + custName + "! \u062D\u062C\u0632\u0643 \u0633\u062C\u0644\u062A\u060C \u0627\u0644\u0641\u0631\u064A\u0642 \u0647\u064A\u062A\u0648\u0627\u0635\u0644 \u0645\u0639\u0627\u0643 \u0642\u0631\u064A\u0628 \u2728";
         else finalReply = textReply.trim() || ("All set " + custName + "! Got your booking, our team will reach out shortly \u2728");
         saveMessage(businessId, customerPhone, "assistant", finalReply);
+        // Auto mode: create Google Calendar event immediately
+        try {
+          const { getCalendarStatus, createBookingEvent } = await import('./google-calendar.js');
+          const _autoCalSt = getCalendarStatus(businessId);
+          if (_autoCalSt.connected && _autoCalSt.confirmationMode === 'auto') {
+            const _bDate = input.preferred_date || '';
+            const _bTime = input.preferred_time || '09:00';
+            if (/^\d{4}-\d{2}-\d{2}$/.test(_bDate)) {
+              createBookingEvent(businessId, _bDate, _bTime, 60,
+                input.customer_name || customerName, input.service || 'Service',
+                input.customer_phone || customerPhone
+              ).catch(e => log.warn({ err: e.message }, 'Auto calendar event failed'));
+            }
+          }
+        } catch(_autoCalErr) {}
         // keep history for corrections
         log.info({ businessId, customerPhone, refNum }, "Booking via tool use");
         return { type: "text", body: finalReply };
@@ -536,6 +575,48 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
         const finalReply = textReply.trim() || ("I'm sorry those times don't work, " + customerName + "! I'll let the team know and they'll suggest new options.");
         saveMessage(businessId, customerPhone, "assistant", finalReply);
         return { type: "text", body: finalReply };
+      }
+      if (toolUse.name === "check_availability") {
+        const _caInput = toolUse.input || {};
+        let _slotsResult;
+        try {
+          const { getAvailableSlots } = await import('./google-calendar.js');
+          _slotsResult = await getAvailableSlots(businessId, _caInput.date, _caInput.duration_minutes || 60);
+        } catch(_caErr) {
+          _slotsResult = { available: false, reason: 'Could not check calendar: ' + _caErr.message, slots: [], date: _caInput.date };
+        }
+        const _msgsWithResult = [
+          ...messages,
+          { role: "assistant", content: json.content },
+          { role: "user", content: [{ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(_slotsResult) }] }
+        ];
+        const _res2 = await fetch(ANTHROPIC_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-5",
+            max_tokens: 1024,
+            temperature: 0.3,
+            system: [{ type: "text", text: finalSystemPrompt }, { type: "text", text: _dynamicCtx }],
+            tools: _tools,
+            messages: _msgsWithResult,
+          }),
+        });
+        const _json2 = await _res2.json();
+        let _reply2 = "";
+        if (_json2.content && Array.isArray(_json2.content)) {
+          for (const _b of _json2.content) if (_b.type === "text") _reply2 += _b.text;
+          const _toolUse2 = _json2.content.find(b => b.type === "tool_use");
+          if (_toolUse2 && _toolUse2.name === "save_booking") {
+            const _inp2 = _toolUse2.input || {};
+            saveBookingSubmission(businessId, customerPhone, _inp2.service || "Service",
+              _inp2.preferred_date || "", _inp2.preferred_time || "", _inp2.customer_name || customerName,
+              _inp2.customer_phone || customerPhone, channel);
+          }
+        }
+        const _finalReply2 = _reply2.trim() || "Let me check our schedule for you.";
+        saveMessage(businessId, customerPhone, "assistant", _finalReply2);
+        return { type: "text", body: _finalReply2 };
       }
     }
 

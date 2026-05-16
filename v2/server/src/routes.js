@@ -1828,4 +1828,38 @@ router.post('/business-brain', authenticate, (req, res) => {
   res.json({ success: true });
 });
 
+//  Google Calendar 
+
+// GET auth URL for connecting Google Calendar
+router.get('/business/:id/google/auth-url', tenantScope, async (req, res) => {
+  if (!process.env.GOOGLE_CLIENT_ID) return res.status(503).json({ error: 'Google Calendar not configured' });
+  try {
+    const { getAuthUrl, getCalendarStatus } = await import('./google-calendar.js');
+    const url = getAuthUrl(req.params.id);
+    const status = getCalendarStatus(req.params.id);
+    res.json({ url, status });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE  disconnect Google Calendar
+router.delete('/business/:id/google/disconnect', tenantScope, async (req, res) => {
+  try {
+    const { disconnectCalendar } = await import('./google-calendar.js');
+    disconnectCalendar(req.params.id);
+    res.json({ success: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PUT  update confirmation mode (manual / auto)
+router.put('/business/:id/google/confirmation-mode', tenantScope, (req, res) => {
+  const { mode } = req.body;
+  if (!['manual', 'auto'].includes(mode)) return res.status(400).json({ error: 'mode must be manual or auto' });
+  db.prepare('UPDATE settings SET confirmation_mode = ? WHERE business_id = ?').run(mode, req.params.id);
+  res.json({ success: true });
+});
+
 export default router;
