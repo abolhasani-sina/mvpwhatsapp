@@ -340,14 +340,20 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
   const systemPrompt = buildSystemPrompt(brain);
   const _pendingOffer = db.prepare("SELECT * FROM reschedule_offers WHERE customer_phone = ? AND status = 'pending' ORDER BY id DESC LIMIT 1").get(customerPhone);
   let finalSystemPrompt = systemPrompt;
-  const _dNow = new Date(Date.now() + 4*3600*1000);
-  const _curH = _dNow.getUTCHours();
-  const _curMin = String(_dNow.getUTCMinutes()).padStart(2,'0');
+  try {
+    const { getCalendarStatus: _gcsFsp } = await import('./google-calendar.js');
+    if (_gcsFsp(businessId).connected) {
+      finalSystemPrompt += '\n\nCALENDAR RULE: Google Calendar is connected. Real available slots are in your context under CALENDAR AVAILABILITY. ONLY suggest those exact times. Never suggest a time not listed there.';
+    }
+  } catch(_fspErr) {}
+  const _dNow = new Date();
+  const _curH = _dNow.getHours();
+  const _curMin = String(_dNow.getMinutes()).padStart(2,'0');
   const _ampm = _curH >= 12 ? 'PM' : 'AM';
   const _h12 = _curH % 12 || 12;
   const _dubaiTime = _dNow.toISOString().replace('T',' ').slice(0,16);
   // Get actual closing hour from brain for today
-  const _todayDow = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][_dNow.getUTCDay()];
+  const _todayDow = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][_dNow.getDay()];
   let _closeH = 22;
   try {
     let _bh = JSON.parse(brain?.hours || '{}');
@@ -376,12 +382,12 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
     if (_calSt.connected) {
       _tools = [..._tools, {
         name: "check_availability",
-        description: "Check real available appointment slots from Google Calendar. Call this BEFORE suggesting times or accepting a booking. Resolve natural language dates (tomorrow, next Monday) to YYYY-MM-DD format.",
+        description: "Check real available appointment slots from Google Calendar. Call this BEFORE suggesting times or accepting a booking. Resolve natural language dates to YYYY-MM-DD format.",
         input_schema: {
           type: "object",
           properties: {
             date: { type: "string", description: "Date in YYYY-MM-DD format e.g. 2026-05-20" },
-            duration_minutes: { type: "number", description: "Duration in minutes (default 60)" }
+            service_name: { type: "string", description: "Exact service name e.g. Gel Manicure, Haircut and Blowdry  used to calculate correct slot duration" }
           },
           required: ["date"]
         }
@@ -393,11 +399,32 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
     }
   } catch(_gcalInitErr) { /* google calendar not configured */ }
 
-  let _dynamicCtx = 'CURRENT DUBAI TIME: ' + String(_curH).padStart(2,'0') + ':' + _curMin + ' (' + _h12 + ':' + _curMin + ' ' + _ampm + '). ' +
+  const _dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const _todayDateStr = _dNow.getFullYear() + '-' + String(_dNow.getMonth()+1).padStart(2,'0') + '-' + String(_dNow.getDate()).padStart(2,'0');
+  const _tomorrowDate = new Date(_dNow); _tomorrowDate.setDate(_tomorrowDate.getDate() + 1);
+  const _tomorrowDateStr = _tomorrowDate.getFullYear() + '-' + String(_tomorrowDate.getMonth()+1).padStart(2,'0') + '-' + String(_tomorrowDate.getDate()).padStart(2,'0');
+  let _dynamicCtx = 'CURRENT DUBAI DATE & TIME: ' + _dayNames[_dNow.getDay()] + ' ' + _todayDateStr + ' at ' + String(_curH).padStart(2,'0') + ':' + _curMin + ' (' + _h12 + ':' + _curMin + ' ' + _ampm + '). TOMORROW IS: ' + _dayNames[_tomorrowDate.getDay()] + ' ' + _tomorrowDateStr + '. ' +
     'Hours still available today: ' + (_futureSlots.length ? _futureSlots.join(', ') : 'no more slots today') + '. ' +
     'PM conversion: 1PM=13, 2PM=14, 3PM=15, 4PM=16, 5PM=17, 6PM=18, 7PM=19, 8PM=20, 9PM=21, 10PM=22. ' +
     'ONLY reject a time if it does NOT appear in the available hours list above.';
   if (channel !== 'whatsapp') _dynamicCtx += ' This customer is on ' + channel + '.';
+  // Calendar prefetch: inject real availability into context
+  let _calendarConnected = false;
+  try {
+    const { getCalendarStatus: _gcs } = await import('./google-calendar.js');
+    if (_gcs(businessId).connected) {
+      _calendarConnected = true;
+      const { getAvailableSlots: _gas } = await import('./google-calendar.js');
+      const _ts = await _gas(businessId, _todayDateStr, 75).catch(() => null);
+      const _tms = await _gas(businessId, _tomorrowDateStr, 75).catch(() => null);
+      log.info({ todaySlots: _ts && _ts.slots && _ts.slots.length, tomorrowSlots: _tms && _tms.slots && _tms.slots.length }, 'calendar prefetch');
+      let _calCtx = '\n\nCALENDAR AVAILABILITY - USE ONLY THESE TIMES (ignore brain hours for booking):';
+      _calCtx += '\nToday ' + _todayDateStr + ' (' + _dayNames[_dNow.getDay()] + '): ' + (_ts && _ts.available ? 'slots: ' + _ts.slots.join(', ') : 'no slots available today');
+      _calCtx += '\nTomorrow ' + _tomorrowDateStr + ' (' + _dayNames[_tomorrowDate.getDay()] + '): ' + (_tms && _tms.available ? 'slots: ' + _tms.slots.join(', ') : 'no slots available tomorrow');
+      _calCtx += '\nFor other dates use check_availability tool. NEVER suggest a time not listed above.';
+      _dynamicCtx += _calCtx;
+    }
+  } catch(_ce) { log.warn({ err: _ce.message }, 'calendar prefetch failed'); }
   // Detect language from earliest customer messages and lock it
   const _custMsgs = history.filter(h => h.role === 'user').map(h => h.content).join(' ') + ' ' + incomingText;
   const _lockHasPersian = /[\u067E\u0686\u06CC\u06A9\u06AF]/.test(_custMsgs);
@@ -581,7 +608,7 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
         let _slotsResult;
         try {
           const { getAvailableSlots } = await import('./google-calendar.js');
-          _slotsResult = await getAvailableSlots(businessId, _caInput.date, _caInput.duration_minutes || 60);
+          _slotsResult = await getAvailableSlots(businessId, _caInput.date, _caInput.duration_minutes || 75, _caInput.service_name || null);
         } catch(_caErr) {
           _slotsResult = { available: false, reason: 'Could not check calendar: ' + _caErr.message, slots: [], date: _caInput.date };
         }

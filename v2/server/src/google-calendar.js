@@ -5,6 +5,33 @@ import { encryptField, decryptField } from './middleware/encryption.js';
 import { createLogger } from './logger.js';
 
 const log = createLogger('google-calendar');
+
+// Look up service duration (in minutes) from brain data
+export function getServiceDuration(brain, serviceName) {
+  if (!brain || !serviceName) return 60;
+  try {
+    let services = JSON.parse(brain.services || '[]');
+    if (typeof services === 'string') services = JSON.parse(services);
+    const name = serviceName.toLowerCase().trim();
+    for (const cat of services) {
+      for (const sub of (cat.subcategories || [])) {
+        for (const item of (sub.items || [])) {
+          if (item.name && item.name.toLowerCase().trim() === name) {
+            return parseInt(item.duration) || 60;
+          }
+        }
+      }
+    }
+  } catch(e) {}
+  return 60; // default
+}
+
+// Get booking buffer from brain (default 15 min)
+export function getBookingBuffer(brain) {
+  try {
+    return parseInt(brain?.booking_buffer) || 15;
+  } catch(e) { return 15; }
+}
 const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://app.nabzchat.tech/api/google/callback';
 
 export function getOAuth2Client() {
@@ -63,8 +90,16 @@ function getAuthedClient(businessId) {
   return oauth2Client;
 }
 
-export async function getAvailableSlots(businessId, dateStr, durationMinutes) {
-  durationMinutes = Number(durationMinutes) || 60;
+export async function getAvailableSlots(businessId, dateStr, durationMinutes, serviceName) {
+  // If serviceName provided, look up real duration from brain
+  if (serviceName) {
+    const _brain = db.prepare('SELECT services, booking_buffer FROM business_brain WHERE business_id = ?').get(businessId);
+    const _svcDuration = getServiceDuration(_brain, serviceName);
+    const _buffer = getBookingBuffer(_brain);
+    durationMinutes = _svcDuration + _buffer;
+  } else {
+    durationMinutes = Number(durationMinutes) || 75; // default: 60min service + 15min buffer
+  }
 
   const brain = db.prepare('SELECT hours FROM business_brain WHERE business_id = ?').get(businessId);
   let hours = {};
@@ -90,8 +125,9 @@ export async function getAvailableSlots(businessId, dateStr, durationMinutes) {
 
   const auth = getAuthedClient(businessId);
   const calendar = google.calendar({ version: 'v3', auth });
-  const timeMin = new Date(dateStr + 'T00:00:00').toISOString();
-  const timeMax = new Date(dateStr + 'T23:59:59').toISOString();
+  // Use Dubai timezone offset (+04:00) for calendar queries
+  const timeMin = new Date(dateStr + 'T00:00:00+04:00').toISOString();
+  const timeMax = new Date(dateStr + 'T23:59:59+04:00').toISOString();
 
   let events = [];
   try {
@@ -115,7 +151,7 @@ export async function getAvailableSlots(businessId, dateStr, durationMinutes) {
   for (let m = openMins; m + durationMinutes <= closeMins; m += 30) {
     const hh = String(Math.floor(m / 60)).padStart(2, '0');
     const mm = String(m % 60).padStart(2, '0');
-    const slotStart = new Date(dateStr + 'T' + hh + ':' + mm + ':00');
+    const slotStart = new Date(dateStr + 'T' + hh + ':' + mm + ':00+04:00');
     const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60000);
     if (slotStart.getTime() < now + 30 * 60000) continue;
     const conflict = events.some(ev => {
@@ -135,10 +171,29 @@ export async function createBookingEvent(businessId, dateStr, timeStr, durationM
   const auth = getAuthedClient(businessId);
   const calendar = google.calendar({ version: 'v3', auth });
 
-  const match = String(timeStr).match(/(\d{1,2}):(\d{2})/);
+  // Normalize time: handle '4pm', '4:00pm', '16:00', '16', etc.
+  let normalizedTime = String(timeStr).trim().toLowerCase();
+  let timeHour = 0, timeMin = 0;
+  const ampmMatch = normalizedTime.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/);
+  const colonMatch = normalizedTime.match(/^(\d{1,2}):(\d{2})$/);
+  const hourOnly = normalizedTime.match(/^(\d{1,2})$/);
+  if (ampmMatch) {
+    timeHour = parseInt(ampmMatch[1]);
+    timeMin = parseInt(ampmMatch[2] || '0');
+    if (ampmMatch[3] === 'pm' && timeHour !== 12) timeHour += 12;
+    if (ampmMatch[3] === 'am' && timeHour === 12) timeHour = 0;
+  } else if (colonMatch) {
+    timeHour = parseInt(colonMatch[1]);
+    timeMin = parseInt(colonMatch[2]);
+  } else if (hourOnly) {
+    timeHour = parseInt(hourOnly[1]);
+  } else {
+    throw new Error('Invalid time format: ' + timeStr);
+  }
+  const match = [null, String(timeHour), String(timeMin).padStart(2,'0')];
   if (!match) throw new Error('Invalid time format: ' + timeStr);
-  const hh = match[1].padStart(2, '0');
-  const mm = match[2];
+  const hh = String(timeHour).padStart(2, '0');
+  const mm = String(timeMin).padStart(2, '0');
 
   const startDT = new Date(dateStr + 'T' + hh + ':' + mm + ':00');
   const endDT = new Date(startDT.getTime() + durationMinutes * 60000);

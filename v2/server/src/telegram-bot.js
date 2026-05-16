@@ -469,7 +469,11 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
         const _evTime = data['Preferred Time'] || '09:00';
         const _evPhone = data['WhatsApp Number'] || data['_channel_id'] || String(chatId);
         if (/^\d{4}-\d{2}-\d{2}$/.test(_evDate)) {
-          createBookingEvent(businessId, _evDate, _evTime, 60, customerName, service, _evPhone)
+          // Look up correct service duration from brain
+          const { getServiceDuration, getBookingBuffer } = await import('./google-calendar.js');
+          const _brain = db.prepare('SELECT services, booking_buffer FROM business_brain WHERE business_id = ?').get(businessId);
+          const _svcDur = getServiceDuration(_brain, service);
+          createBookingEvent(businessId, _evDate, _evTime, _svcDur, customerName, service, _evPhone)
             .catch(e => log.warn({ err: e.message }, 'Calendar event skipped'));
         }
       }

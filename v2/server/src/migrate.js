@@ -641,6 +641,7 @@ for (const sql of alterations) {
   // Add msg columns to business_brain if not exists
   const bbCols = db.prepare("PRAGMA table_info(business_brain)").all().map(c => c.name);
   if (!bbCols.includes('msg_confirmed')) db.exec("ALTER TABLE business_brain ADD COLUMN msg_confirmed TEXT");
+  if (!bbCols.includes('booking_buffer')) db.exec("ALTER TABLE business_brain ADD COLUMN booking_buffer INTEGER NOT NULL DEFAULT 15");
   if (!bbCols.includes('msg_completed')) db.exec("ALTER TABLE business_brain ADD COLUMN msg_completed TEXT");
   if (!bbCols.includes('msg_cancelled')) db.exec("ALTER TABLE business_brain ADD COLUMN msg_cancelled TEXT");
   db.exec(`
