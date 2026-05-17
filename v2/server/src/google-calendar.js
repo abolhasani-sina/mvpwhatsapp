@@ -184,7 +184,7 @@ export async function getAvailableSlots(businessId, dateStr, durationMinutes, se
       const evStart = new Date(ev.start.dateTime);
       const evEnd = new Date(ev.end.dateTime);
       return slotStart < evEnd && slotEnd > evStart;
-    }) || _pendingBlocks.some(pb => slotStart < pb.end && slotEnd > pb.start);
+    });
     if (!conflict) slots.push(hh + ':' + mm);
   }
 

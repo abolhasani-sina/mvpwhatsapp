@@ -459,8 +459,16 @@ async function handleRescheduleRequest(businessId, token, chatId, messageId, cal
     data['Preferred Time'] = req.new_time;
     db.prepare("UPDATE submissions SET data = ?, status = 'in_progress' WHERE id = ?").run(JSON.stringify(data), req.submission_id);
     if (messageId) {
-      const _approvedText = '\u2194\uFE0F Reschedule Approved\n\n\uD83D\uDC64 ' + customerName + '\n\uD83D\uDCCB ' + service + '\n\uD83D\uDCC5 ' + req.new_date + ' at ' + req.new_time;
-      await tgCall(token, 'editMessageText', { chat_id: chatId, message_id: messageId, text: _approvedText, reply_markup: { inline_keyboard: [] }, parse_mode: 'HTML' });
+      const _approvedText = '\u2194\uFE0F Rescheduled\n\n\uD83D\uDC64 ' + customerName + '  \u2014  ' + (waNumber || _chanId || '') + '\n\uD83D\uDCCB ' + service + '\n\uD83D\uDCC5 ' + req.new_date + ' at ' + req.new_time + '\n\nCustomer notified.';
+      const _mgmtButtons2 = [[{ text: '\u2705 Completed', callback_data: 'bk_complete:' + req.submission_id }, { text: '\u274C Cancel', callback_data: 'bk_cancel_confirmed:' + req.submission_id }]];
+      await tgCall(token, 'editMessageText', { chat_id: chatId, message_id: messageId, text: _approvedText, reply_markup: { inline_keyboard: _mgmtButtons2 }, parse_mode: 'HTML' });
+    }
+    // Also edit the original booking confirmation message if we have its message_id
+    const _origMsgId = data['_telegram_msg_id'];
+    if (_origMsgId && _origMsgId !== messageId) {
+      const _origText = '\u2194\uFE0F Rescheduled\n\n\uD83D\uDC64 ' + customerName + '  \u2014  ' + (waNumber || _chanId || '') + '\n\uD83D\uDCCB ' + service + '\n\uD83D\uDCC5 ' + req.new_date + ' at ' + req.new_time;
+      const _mgmtButtons3 = [[{ text: '\u2705 Completed', callback_data: 'bk_complete:' + req.submission_id }, { text: '\u274C Cancel', callback_data: 'bk_cancel_confirmed:' + req.submission_id }]];
+      await tgCall(token, 'editMessageText', { chat_id: chatId, message_id: _origMsgId, text: _origText, reply_markup: { inline_keyboard: _mgmtButtons3 }, parse_mode: 'HTML' }).catch(() => {});
     }
     const _approveMsg = '\u2705 Reschedule Confirmed!\n\n' + customerName + '\n' + service + '\n' + req.new_date + ' at ' + req.new_time + '\n\nSee you then!';
     if (_custChannel === 'telegram' && _chanId) await tgCall(token, 'sendMessage', { chat_id: _chanId, text: _approveMsg });
@@ -487,6 +495,22 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
   const action = parts[0];
   if (action === 'bk_noop') return;
   if (action === 'bk_reschedule_approve' || action === 'bk_reschedule_reject') { await handleRescheduleRequest(businessId, token, chatId, messageId, callbackData); return; }
+  if (action === 'bk_keep') {
+    const _keepSubId = parseInt(callbackData.split(':')[1]);
+    if (messageId) {
+      await tgCall(token, 'editMessageText', { chat_id: chatId, message_id: messageId, text: '\u2705 Cancellation rejected  booking kept.', reply_markup: { inline_keyboard: [] } });
+    }
+    const _keepSub = db.prepare('SELECT * FROM submissions WHERE id = ?').get(_keepSubId);
+    if (_keepSub) {
+      const _keepData = JSON.parse(_keepSub.data || '{}');
+      const _keepChanId = _keepData['_channel_id'];
+      const _keepChannel = _keepData['_channel'] || 'whatsapp';
+      if (_keepChannel === 'telegram' && _keepChanId) {
+        await tgCall(token, 'sendMessage', { chat_id: _keepChanId, text: 'Your appointment is still confirmed. See you then!' });
+      }
+    }
+    return;
+  }
   if (action === 'bk_complete') {
     const _cSubId = parseInt(callbackData.split(':')[1]);
     db.prepare("UPDATE submissions SET status = 'done' WHERE id = ?").run(_cSubId);
