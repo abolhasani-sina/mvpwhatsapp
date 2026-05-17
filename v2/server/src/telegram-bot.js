@@ -625,28 +625,15 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
   const _custChannel = data['_channel'] || 'whatsapp';
   const _chanId = data['_channel_id'];
   if (messageId) {
-    await tgCall(token, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
     const _notifChannel = _custChannel === 'telegram' ? 'Telegram' : _custChannel === 'instagram' ? 'Instagram' : 'WhatsApp';
     const _displayId = waNumber || _chanId || '';
-    const _replyText = newStatus === 'in_progress'
-      ? ('✅ Booking Confirmed\n\n👤 ' + customerName + '  —  ' + _displayId + '\n📋 ' + service + '\n\nCustomer notified on ' + _notifChannel + '.')
-      : ('❌ Booking Cancelled\n\n👤 ' + customerName + '  —  ' + _displayId + '\n📋 ' + service + '\n\nCustomer notified on ' + _notifChannel + '.');
-    await tgCall(token, 'sendMessage', { chat_id: chatId, text: _replyText, parse_mode: 'HTML', reply_to_message_id: messageId });
-    // Send management buttons for confirmed bookings
     if (newStatus === 'in_progress') {
-      const _mgmtButtons = [[
-        { text: '\u2705 Completed', callback_data: 'bk_complete:' + subId },
-        { text: '\u274C Cancel', callback_data: 'bk_cancel_confirmed:' + subId }
-      ]];
-      await tgCall(token, 'sendMessage', { chat_id: chatId, text: '\uD83D\uDCCB Manage booking #' + subId + ':', reply_markup: { inline_keyboard: _mgmtButtons } });
-    }
-    // Send management buttons for confirmed bookings
-    if (newStatus === 'in_progress') {
-      const _mgmtButtons = [[
-        { text: '\u2705 Completed', callback_data: 'bk_complete:' + subId },
-        { text: '\u274C Cancel', callback_data: 'bk_cancel_confirmed:' + subId }
-      ]];
-      await tgCall(token, 'sendMessage', { chat_id: chatId, text: '\uD83D\uDCCB Manage booking #' + subId + ':', reply_markup: { inline_keyboard: _mgmtButtons } });
+      const _confirmedText = '\u2705 Confirmed\n\n\uD83D\uDC64 ' + customerName + '  \u2014  ' + _displayId + '\n\uD83D\uDCCB ' + service + '\n\uD83D\uDCC5 ' + date + (time ? '  \u00B7  ' + time : '') + '\n\nCustomer notified on ' + _notifChannel + '.';
+      const _mgmtButtons = [[{ text: '\u2705 Completed', callback_data: 'bk_complete:' + subId }, { text: '\u274C Cancel', callback_data: 'bk_cancel_confirmed:' + subId }]];
+      await tgCall(token, 'editMessageText', { chat_id: chatId, message_id: messageId, text: _confirmedText, reply_markup: { inline_keyboard: _mgmtButtons }, parse_mode: 'HTML' });
+    } else {
+      const _cancelledText = '\u274C Cancelled\n\n\uD83D\uDC64 ' + customerName + '  \u2014  ' + _displayId + '\n\uD83D\uDCCB ' + service + '\n\nCustomer notified on ' + _notifChannel + '.';
+      await tgCall(token, 'editMessageText', { chat_id: chatId, message_id: messageId, text: _cancelledText, reply_markup: { inline_keyboard: [] }, parse_mode: 'HTML' });
     }
   }
   if (_custChannel === 'telegram' && _chanId) {

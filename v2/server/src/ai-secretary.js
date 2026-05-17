@@ -504,6 +504,30 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
     if (toolUse) {
       if (toolUse.name === "save_booking") {
         const input = toolUse.input || {};
+        // Validate against calendar before saving
+        if (_calendarConnected && input.preferred_date && /^\d{4}-\d{2}-\d{2}$/.test(input.preferred_date)) {
+          try {
+            const { getAvailableSlots: _gasChk } = await import('./google-calendar.js');
+            const _chkResult = await _gasChk(businessId, input.preferred_date, 75, input.service).catch(() => null);
+            if (_chkResult && input.preferred_time) {
+              const _tMatch = String(input.preferred_time).match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+              if (_tMatch) {
+                let _tH = parseInt(_tMatch[1]);
+                const _tM = (_tMatch[2] || '00');
+                const _tAmpm = (_tMatch[3] || '').toLowerCase();
+                if (_tAmpm === 'pm' && _tH !== 12) _tH += 12;
+                if (_tAmpm === 'am' && _tH === 12) _tH = 0;
+                const _tStr = String(_tH).padStart(2,'0') + ':' + _tM;
+                if (_chkResult.slots && !_chkResult.slots.includes(_tStr)) {
+                  const _avail = _chkResult.slots.slice(0,5).join(', ') || 'none today';
+                  const _takenMsg = "Sorry, " + input.preferred_time + " is no longer available on " + input.preferred_date + ". Available: " + _avail + ". Which works for you?";
+                  saveMessage(businessId, customerPhone, "assistant", _takenMsg);
+                  return { type: "text", body: _takenMsg };
+                }
+              }
+            }
+          } catch(_chkErr) { log.warn({ err: _chkErr.message }, 'Pre-save calendar check failed'); }
+        }
         const refNum = saveBookingSubmission(
           businessId, customerPhone,
           input.service || "Not specified",
@@ -674,9 +698,25 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
           const _toolUse2 = _json2.content.find(b => b.type === "tool_use");
           if (_toolUse2 && _toolUse2.name === "save_booking") {
             const _inp2 = _toolUse2.input || {};
-            saveBookingSubmission(businessId, customerPhone, _inp2.service || "Service",
-              _inp2.preferred_date || "", _inp2.preferred_time || "", _inp2.customer_name || customerName,
-              _inp2.customer_phone || customerPhone, channel);
+            // Validate time is in available slots before saving
+            let _canSave2 = true;
+            if (_slotsResult && _slotsResult.slots && _inp2.preferred_time) {
+              const _t2m = String(_inp2.preferred_time).match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+              if (_t2m) {
+                let _t2h = parseInt(_t2m[1]);
+                const _t2mn = (_t2m[2] || '00');
+                const _t2ap = (_t2m[3] || '').toLowerCase();
+                if (_t2ap === 'pm' && _t2h !== 12) _t2h += 12;
+                if (_t2ap === 'am' && _t2h === 12) _t2h = 0;
+                const _t2str = String(_t2h).padStart(2,'0') + ':' + _t2mn;
+                if (!_slotsResult.slots.includes(_t2str)) _canSave2 = false;
+              }
+            }
+            if (_canSave2) {
+              saveBookingSubmission(businessId, customerPhone, _inp2.service || "Service",
+                _inp2.preferred_date || "", _inp2.preferred_time || "", _inp2.customer_name || customerName,
+                _inp2.customer_phone || customerPhone, channel);
+            }
           }
         }
         const _finalReply2 = _reply2.trim() || "Let me check our schedule for you.";
