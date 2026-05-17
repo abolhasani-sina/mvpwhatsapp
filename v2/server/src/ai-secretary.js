@@ -338,7 +338,9 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
 
   const history = getHistory(businessId, customerPhone, 10);
   const systemPrompt = buildSystemPrompt(brain);
-  const _pendingOffer = db.prepare("SELECT * FROM reschedule_offers WHERE customer_phone = ? AND status = 'pending' ORDER BY id DESC LIMIT 1").get(customerPhone);
+  // Only show reschedule offer if it was created after the latest booking for this customer
+  const _latestSub = db.prepare("SELECT id FROM submissions WHERE business_id = ? AND json_extract(data, '$._channel_id') = ? ORDER BY id DESC LIMIT 1").get(businessId, customerPhone);
+  const _pendingOffer = db.prepare("SELECT * FROM reschedule_offers WHERE customer_phone = ? AND status = 'pending' AND (" + (_latestSub ? "submission_id = " + _latestSub.id : "1=1") + ") ORDER BY id DESC LIMIT 1").get(customerPhone);
   let finalSystemPrompt = systemPrompt;
   try {
     const { getCalendarStatus: _gcsFsp } = await import('./google-calendar.js');
