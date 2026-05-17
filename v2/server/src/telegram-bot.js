@@ -468,13 +468,27 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
         const _evDate = data['Preferred Date'] || '';
         const _evTime = data['Preferred Time'] || '09:00';
         const _evPhone = data['WhatsApp Number'] || data['_channel_id'] || String(chatId);
-        if (/^\d{4}-\d{2}-\d{2}$/.test(_evDate)) {
+        // Resolve natural language dates to YYYY-MM-DD
+        let _resolvedDate = _evDate;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(_evDate)) {
+          const _now = new Date();
+          const _dl = (_evDate || '').toLowerCase().trim();
+          if (_dl === 'tomorrow' || _dl === '\u0641\u0631\u062f\u0627' || _dl === '\u063a\u062f\u0627') {
+            const _tom = new Date(_now); _tom.setDate(_tom.getDate() + 1);
+            _resolvedDate = _tom.getFullYear() + '-' + String(_tom.getMonth()+1).padStart(2,'0') + '-' + String(_tom.getDate()).padStart(2,'0');
+          } else if (_dl === 'today' || _dl === '\u0627\u0645\u0631\u0648\u0632') {
+            _resolvedDate = _now.getFullYear() + '-' + String(_now.getMonth()+1).padStart(2,'0') + '-' + String(_now.getDate()).padStart(2,'0');
+          }
+        }
+        if (/^\d{4}-\d{2}-\d{2}$/.test(_resolvedDate)) {
           // Look up correct service duration from brain
-          const { getServiceDuration, getBookingBuffer } = await import('./google-calendar.js');
+          const { getServiceDuration } = await import('./google-calendar.js');
           const _brain = db.prepare('SELECT services, booking_buffer FROM business_brain WHERE business_id = ?').get(businessId);
           const _svcDur = getServiceDuration(_brain, service);
-          createBookingEvent(businessId, _evDate, _evTime, _svcDur, customerName, service, _evPhone)
+          createBookingEvent(businessId, _resolvedDate, _evTime, _svcDur, customerName, service, _evPhone)
             .catch(e => log.warn({ err: e.message }, 'Calendar event skipped'));
+        } else {
+          log.warn({ businessId, date: _evDate }, 'Calendar event skipped: unresolved date');
         }
       }
     } catch(_gcalErr) { log.warn({ err: _gcalErr.message }, 'Calendar event error'); }
