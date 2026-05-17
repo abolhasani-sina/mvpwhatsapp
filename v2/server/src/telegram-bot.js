@@ -459,8 +459,8 @@ async function handleRescheduleRequest(businessId, token, chatId, messageId, cal
     data['Preferred Time'] = req.new_time;
     db.prepare("UPDATE submissions SET data = ?, status = 'in_progress' WHERE id = ?").run(JSON.stringify(data), req.submission_id);
     if (messageId) {
-      await tgCall(token, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
-      await tgCall(token, 'sendMessage', { chat_id: chatId, text: '\u2705 Reschedule approved: ' + customerName + ' \u2014 ' + service + '\nNew: ' + req.new_date + ' at ' + req.new_time, reply_to_message_id: messageId });
+      const _approvedText = '\u2194\uFE0F Reschedule Approved\n\n\uD83D\uDC64 ' + customerName + '\n\uD83D\uDCCB ' + service + '\n\uD83D\uDCC5 ' + req.new_date + ' at ' + req.new_time;
+      await tgCall(token, 'editMessageText', { chat_id: chatId, message_id: messageId, text: _approvedText, reply_markup: { inline_keyboard: [] }, parse_mode: 'HTML' });
     }
     const _approveMsg = '\u2705 Reschedule Confirmed!\n\n' + customerName + '\n' + service + '\n' + req.new_date + ' at ' + req.new_time + '\n\nSee you then!';
     if (_custChannel === 'telegram' && _chanId) await tgCall(token, 'sendMessage', { chat_id: _chanId, text: _approveMsg });
@@ -468,8 +468,8 @@ async function handleRescheduleRequest(businessId, token, chatId, messageId, cal
   } else if (action === 'bk_reschedule_reject') {
     db.prepare("UPDATE reschedule_requests SET status = 'rejected' WHERE id = ?").run(reqId);
     if (messageId) {
-      await tgCall(token, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
-      await tgCall(token, 'sendMessage', { chat_id: chatId, text: '\u274C Reschedule rejected for ' + customerName + '. Original kept.', reply_to_message_id: messageId });
+      const _rejectedText = '\u274C Reschedule Rejected\n\n\uD83D\uDC64 ' + customerName + '\n\uD83D\uDCCB ' + service + '\nOriginal appointment kept: ' + oldDate + (oldTime ? ' at ' + oldTime : '');
+      await tgCall(token, 'editMessageText', { chat_id: chatId, message_id: messageId, text: _rejectedText, reply_markup: { inline_keyboard: [] }, parse_mode: 'HTML' });
     }
     const _rejectMsg = 'Your reschedule request was declined. Original: ' + service + ' on ' + oldDate + (oldTime ? ' at ' + oldTime : '') + ' is still confirmed.';
     if (_custChannel === 'telegram' && _chanId) await tgCall(token, 'sendMessage', { chat_id: _chanId, text: _rejectMsg });
