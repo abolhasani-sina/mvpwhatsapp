@@ -180,6 +180,18 @@ const TOOLS = [
     }
   },
   {
+    name: "request_reschedule",
+    description: "Call when customer wants to reschedule their existing confirmed appointment. First use check_availability to find free slots, present them to customer, then call this with the new date and time they chose.",
+    input_schema: {
+      type: "object",
+      properties: {
+        new_date: { type: "string", description: "New date in YYYY-MM-DD format" },
+        new_time: { type: "string", description: "New time in HH:MM format e.g. 14:00" }
+      },
+      required: ["new_date", "new_time"]
+    }
+  },
+  {
     name: "confirm_reschedule",
     description: "Call when customer agrees to one of the offered reschedule slots. Pass the slot key exactly as given in the context.",
     input_schema: {
@@ -553,6 +565,30 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
         log.info({ businessId, customerPhone, note }, "Booking note added via tool");
         return { type: "text", body: finalReply };
       }
+      if (toolUse.name === "request_reschedule") {
+        const _rrInput = toolUse.input || {};
+        const _rrNewDate = _rrInput.new_date || '';
+        const _rrNewTime = _rrInput.new_time || '';
+        const _rrSub = db.prepare("SELECT * FROM submissions WHERE business_id = ? AND json_extract(data, '$._channel_id') = ? AND status = 'in_progress' ORDER BY id DESC LIMIT 1").get(businessId, customerPhone);
+        if (_rrSub && /^\d{4}-\d{2}-\d{2}$/.test(_rrNewDate)) {
+          const _rrData = JSON.parse(_rrSub.data || '{}');
+          const _rrService = _rrData['Service'] || 'Service';
+          const _rrOldDate = _rrData['Preferred Date'] || '';
+          const _rrOldTime = _rrData['Preferred Time'] || '';
+          const _rrResult = db.prepare("INSERT INTO reschedule_requests (submission_id, business_id, customer_phone, new_date, new_time) VALUES (?, ?, ?, ?, ?)").run(_rrSub.id, businessId, customerPhone, _rrNewDate, _rrNewTime);
+          const _rrReqId = _rrResult.lastInsertRowid;
+          const _rrMsg = '\u2194\uFE0F Reschedule Request\n\n\uD83D\uDC64 ' + customerName + '\n\uD83D\uDCCB ' + _rrService + '\n\nFrom: ' + _rrOldDate + (_rrOldTime ? ' at ' + _rrOldTime : '') + '\nTo: ' + _rrNewDate + ' at ' + _rrNewTime;
+          const _rrButtons = [[{ text: '\u2705 Approve', callback_data: 'bk_reschedule_approve:' + _rrReqId }, { text: '\u274C Keep original', callback_data: 'bk_reschedule_reject:' + _rrReqId }]];
+          sendTelegramNotificationWithButtons(businessId, _rrMsg, _rrButtons).catch(() => {});
+        }
+        const _rrAllText = incomingText + (history.map(h=>h.content).join(""));
+        const _rrHasPersian = /[\u067E\u0686\u06CC\u06A9\u06AF]/.test(_rrAllText);
+        const _rrHasArabic = /[\u0600-\u06FF]/.test(_rrAllText) && !_rrHasPersian;
+        const _rrReply = _rrHasPersian ? '\u062F\u0631\u062E\u0648\u0627\u0633\u062A \u062A\u063A\u06CC\u06CC\u0631 \u0648\u0642\u062A \u0628\u0631\u0627\u06CC \u062A\u06CC\u0645 \u0627\u0631\u0633\u0627\u0644 \u0634\u062F. \u0628\u0647 \u0632\u0648\u062F\u06CC \u062A\u0623\u06CC\u06CC\u062F \u0645\u06CC\u06AF\u06CC\u0631\u06CC\u062F \u2728' : (_rrHasArabic ? '\u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0637\u0644\u0628 \u062A\u063A\u064A\u064A\u0631 \u0627\u0644\u0645\u0648\u0639\u062F. \u0633\u064A\u062A\u0645 \u062A\u0623\u0643\u064A\u062F\u0647 \u0642\u0631\u064A\u0628\u064B\u0627 \u2728' : "Your reschedule request has been sent to the team. You'll get a confirmation shortly \u2728");
+        saveMessage(businessId, customerPhone, "assistant", _rrReply);
+        return { type: "text", body: _rrReply };
+      }
+
       if (toolUse.name === "confirm_reschedule") {
         const chosenSlot = (toolUse.input && toolUse.input.chosen_slot) || "";
         const _offer = db.prepare("SELECT * FROM reschedule_offers WHERE customer_phone = ? AND status = 'pending' ORDER BY id DESC LIMIT 1").get(customerPhone);

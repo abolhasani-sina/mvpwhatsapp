@@ -659,6 +659,22 @@ for (const sql of alterations) {
     )
   `);
 
+  // Phase C1  Reschedule requests table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS reschedule_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      submission_id INTEGER NOT NULL,
+      business_id INTEGER NOT NULL,
+      customer_phone TEXT NOT NULL,
+      new_date TEXT NOT NULL,
+      new_time TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    )
+  `);
+
   // Phase C1  Google Calendar columns
   const _gcalCols = db.prepare("PRAGMA table_info(settings)").all().map(c => c.name);
   if (!_gcalCols.includes('google_refresh_token')) db.exec("ALTER TABLE settings ADD COLUMN google_refresh_token TEXT");

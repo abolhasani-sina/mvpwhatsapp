@@ -241,3 +241,15 @@ export async function createBookingEvent(businessId, dateStr, timeStr, durationM
   log.info({ businessId, eventId: event.data.id, customerName, service }, 'Calendar event created');
   return event.data.id;
 }
+
+export async function deleteCalendarEvent(businessId, eventId) {
+  if (!eventId) return;
+  try {
+    const auth = getAuthedClient(businessId);
+    const calendar = google.calendar({ version: 'v3', auth });
+    await calendar.events.delete({ calendarId: 'primary', eventId });
+    log.info({ businessId, eventId }, 'Calendar event deleted');
+  } catch(e) {
+    log.warn({ businessId, eventId, err: e.message }, 'Calendar event delete failed');
+  }
+}

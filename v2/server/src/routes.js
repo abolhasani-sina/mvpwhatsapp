@@ -1011,6 +1011,23 @@ router.put('/submissions/:id/status', tenantScopeResource('submissions'), update
     log.error({ err: e }, 'Status notification error');
   }
 
+  // Google Calendar: delete event when cancelled via web app
+  if (status === 'cancelled') {
+    try {
+      const _sub2 = db.prepare('SELECT * FROM submissions WHERE id = ?').get(req.params.id);
+      if (_sub2) {
+        const _data2 = JSON.parse(_sub2.data || '{}');
+        const _eventId2 = _data2['_gcal_event_id'];
+        if (_eventId2) {
+          const { getCalendarStatus, deleteCalendarEvent } = await import('./google-calendar.js');
+          if (getCalendarStatus(_sub2.business_id).connected) {
+            await deleteCalendarEvent(_sub2.business_id, _eventId2);
+          }
+        }
+      }
+    } catch(_cancelErr) { log.warn({ err: _cancelErr.message }, 'Calendar delete on cancel failed'); }
+  }
+
   res.json({ success: true });
 });
 

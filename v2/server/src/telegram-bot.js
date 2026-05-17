@@ -423,6 +423,59 @@ export async function handleWebhook(businessId, updateBody) {
 }
 
 // Cleanup old telegram_updates records (keep last 24 hours)
+async function handleRescheduleRequest(businessId, token, chatId, messageId, callbackData) {
+  const parts = callbackData.split(':');
+  const action = parts[0];
+  const reqId = parseInt(parts[1]);
+  if (!reqId) return;
+  const req = db.prepare('SELECT * FROM reschedule_requests WHERE id = ?').get(reqId);
+  if (!req || req.status !== 'pending') return;
+  const sub = db.prepare('SELECT * FROM submissions WHERE id = ?').get(req.submission_id);
+  if (!sub) return;
+  const data = JSON.parse(sub.data || '{}');
+  const customerName = data['Customer Name'] || 'Customer';
+  const service = data['Service'] || 'service';
+  const oldDate = data['Preferred Date'] || '';
+  const oldTime = data['Preferred Time'] || '';
+  const _custChannel = data['_channel'] || 'whatsapp';
+  const _chanId = data['_channel_id'];
+  const waNumber = data['WhatsApp Number'];
+
+  if (action === 'bk_reschedule_approve') {
+    db.prepare("UPDATE reschedule_requests SET status = 'approved' WHERE id = ?").run(reqId);
+    try {
+      const { getCalendarStatus, deleteCalendarEvent, createBookingEvent, getServiceDuration } = await import('./google-calendar.js');
+      if (getCalendarStatus(businessId).connected) {
+        if (data['_gcal_event_id']) await deleteCalendarEvent(businessId, data['_gcal_event_id']);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(req.new_date)) {
+          const _brain = db.prepare('SELECT services, booking_buffer FROM business_brain WHERE business_id = ?').get(businessId);
+          const _svcDur = getServiceDuration(_brain, service);
+          const newEvId = await createBookingEvent(businessId, req.new_date, req.new_time, _svcDur, customerName, service, waNumber || _chanId || '').catch(() => null);
+          if (newEvId) { data['_gcal_event_id'] = newEvId; }
+        }
+      }
+    } catch(e) { log.warn({ err: e.message }, 'Reschedule calendar failed'); }
+    data['Preferred Date'] = req.new_date;
+    data['Preferred Time'] = req.new_time;
+    db.prepare("UPDATE submissions SET data = ?, status = 'in_progress' WHERE id = ?").run(JSON.stringify(data), req.submission_id);
+    if (messageId) {
+      await tgCall(token, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
+      await tgCall(token, 'sendMessage', { chat_id: chatId, text: '\u2705 Reschedule approved: ' + customerName + ' \u2014 ' + service + '\nNew: ' + req.new_date + ' at ' + req.new_time, reply_to_message_id: messageId });
+    }
+    const _approveMsg = '\u2705 Reschedule Confirmed!\n\n' + customerName + '\n' + service + '\n' + req.new_date + ' at ' + req.new_time + '\n\nSee you then!';
+    if (_custChannel === 'telegram' && _chanId) await tgCall(token, 'sendMessage', { chat_id: _chanId, text: _approveMsg });
+
+  } else if (action === 'bk_reschedule_reject') {
+    db.prepare("UPDATE reschedule_requests SET status = 'rejected' WHERE id = ?").run(reqId);
+    if (messageId) {
+      await tgCall(token, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
+      await tgCall(token, 'sendMessage', { chat_id: chatId, text: '\u274C Reschedule rejected for ' + customerName + '. Original kept.', reply_to_message_id: messageId });
+    }
+    const _rejectMsg = 'Your reschedule request was declined. Original: ' + service + ' on ' + oldDate + (oldTime ? ' at ' + oldTime : '') + ' is still confirmed.';
+    if (_custChannel === 'telegram' && _chanId) await tgCall(token, 'sendMessage', { chat_id: _chanId, text: _rejectMsg });
+  }
+}
+
 export function cleanupTelegramUpdates() {
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   const result = db.prepare('DELETE FROM telegram_updates WHERE processed_at < ?').run(cutoff);
@@ -433,6 +486,7 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
   const parts = callbackData.split(':');
   const action = parts[0];
   if (action === 'bk_noop') return;
+  if (action === 'bk_reschedule_approve' || action === 'bk_reschedule_reject') { await handleRescheduleRequest(businessId, token, chatId, messageId, callbackData); return; }
   if (action.startsWith('bk_r')) { await handleRescheduleFlow(businessId, token, chatId, messageId, callbackData); return; }
   const subId = parseInt(parts[1]);
   if (!subId) return;
@@ -486,12 +540,23 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
           const _brain = db.prepare('SELECT services, booking_buffer FROM business_brain WHERE business_id = ?').get(businessId);
           const _svcDur = getServiceDuration(_brain, service);
           createBookingEvent(businessId, _resolvedDate, _evTime, _svcDur, customerName, service, _evPhone)
+            .then(evId => { if (evId) { try { const _sd = JSON.parse(db.prepare('SELECT data FROM submissions WHERE id = ?').get(subId)?.data || '{}'); _sd._gcal_event_id = evId; db.prepare('UPDATE submissions SET data = ? WHERE id = ?').run(JSON.stringify(_sd), subId); } catch(_se) {} } })
             .catch(e => log.warn({ err: e.message }, 'Calendar event skipped'));
         } else {
           log.warn({ businessId, date: _evDate }, 'Calendar event skipped: unresolved date');
         }
       }
     } catch(_gcalErr) { log.warn({ err: _gcalErr.message }, 'Calendar event error'); }
+  }
+
+  // Google Calendar: delete event on cancel
+  if (action === 'bk_cancel') {
+    try {
+      const { getCalendarStatus, deleteCalendarEvent } = await import('./google-calendar.js');
+      if (getCalendarStatus(businessId).connected && data['_gcal_event_id']) {
+        await deleteCalendarEvent(businessId, data['_gcal_event_id']);
+      }
+    } catch(_ce) { log.warn({ err: _ce.message }, 'Calendar delete error'); }
   }
 
   // Remove buttons from original, then send styled reply
