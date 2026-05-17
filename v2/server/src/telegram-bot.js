@@ -487,6 +487,68 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
   const action = parts[0];
   if (action === 'bk_noop') return;
   if (action === 'bk_reschedule_approve' || action === 'bk_reschedule_reject') { await handleRescheduleRequest(businessId, token, chatId, messageId, callbackData); return; }
+  if (action === 'bk_complete') {
+    const _cSubId = parseInt(callbackData.split(':')[1]);
+    db.prepare("UPDATE submissions SET status = 'done' WHERE id = ?").run(_cSubId);
+    if (messageId) await tgCall(token, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
+    await tgCall(token, 'sendMessage', { chat_id: chatId, text: '\u2705 Booking #' + _cSubId + ' marked as completed.', reply_to_message_id: messageId });
+    return;
+  }
+  if (action === 'bk_cancel_confirmed') {
+    const _ccSubId = parseInt(callbackData.split(':')[1]);
+    const _ccSub = db.prepare('SELECT * FROM submissions WHERE id = ?').get(_ccSubId);
+    if (!_ccSub) return;
+    const _ccData = JSON.parse(_ccSub.data || '{}');
+    db.prepare("UPDATE submissions SET status = 'cancelled' WHERE id = ?").run(_ccSubId);
+    // Delete calendar event
+    try {
+      const { getCalendarStatus, deleteCalendarEvent } = await import('./google-calendar.js');
+      if (getCalendarStatus(businessId).connected && _ccData['_gcal_event_id']) {
+        await deleteCalendarEvent(businessId, _ccData['_gcal_event_id']);
+      }
+    } catch(_ce) { log.warn({ err: _ce.message }, 'Calendar delete error on cancel_confirmed'); }
+    if (messageId) await tgCall(token, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
+    await tgCall(token, 'sendMessage', { chat_id: chatId, text: '\u274C Booking #' + _ccSubId + ' cancelled and calendar event deleted.', reply_to_message_id: messageId });
+    // Notify customer
+    const _ccChannel = _ccData['_channel'] || 'whatsapp';
+    const _ccChanId = _ccData['_channel_id'];
+    if (_ccChannel === 'telegram' && _ccChanId) {
+      const _ccMsg = '\u274C Your appointment (' + (_ccData['Service'] || 'service') + ' on ' + (_ccData['Preferred Date'] || '') + ') has been cancelled. Please contact us to reschedule.';
+      await tgCall(token, 'sendMessage', { chat_id: _ccChanId, text: _ccMsg });
+    }
+    return;
+  }
+  if (action === 'bk_complete') {
+    const _cSubId = parseInt(callbackData.split(':')[1]);
+    db.prepare("UPDATE submissions SET status = 'done' WHERE id = ?").run(_cSubId);
+    if (messageId) await tgCall(token, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
+    await tgCall(token, 'sendMessage', { chat_id: chatId, text: '\u2705 Booking #' + _cSubId + ' marked as completed.', reply_to_message_id: messageId });
+    return;
+  }
+  if (action === 'bk_cancel_confirmed') {
+    const _ccSubId = parseInt(callbackData.split(':')[1]);
+    const _ccSub = db.prepare('SELECT * FROM submissions WHERE id = ?').get(_ccSubId);
+    if (!_ccSub) return;
+    const _ccData = JSON.parse(_ccSub.data || '{}');
+    db.prepare("UPDATE submissions SET status = 'cancelled' WHERE id = ?").run(_ccSubId);
+    // Delete calendar event
+    try {
+      const { getCalendarStatus, deleteCalendarEvent } = await import('./google-calendar.js');
+      if (getCalendarStatus(businessId).connected && _ccData['_gcal_event_id']) {
+        await deleteCalendarEvent(businessId, _ccData['_gcal_event_id']);
+      }
+    } catch(_ce) { log.warn({ err: _ce.message }, 'Calendar delete error on cancel_confirmed'); }
+    if (messageId) await tgCall(token, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
+    await tgCall(token, 'sendMessage', { chat_id: chatId, text: '\u274C Booking #' + _ccSubId + ' cancelled and calendar event deleted.', reply_to_message_id: messageId });
+    // Notify customer
+    const _ccChannel = _ccData['_channel'] || 'whatsapp';
+    const _ccChanId = _ccData['_channel_id'];
+    if (_ccChannel === 'telegram' && _ccChanId) {
+      const _ccMsg = '\u274C Your appointment (' + (_ccData['Service'] || 'service') + ' on ' + (_ccData['Preferred Date'] || '') + ') has been cancelled. Please contact us to reschedule.';
+      await tgCall(token, 'sendMessage', { chat_id: _ccChanId, text: _ccMsg });
+    }
+    return;
+  }
   if (action.startsWith('bk_r')) { await handleRescheduleFlow(businessId, token, chatId, messageId, callbackData); return; }
   const subId = parseInt(parts[1]);
   if (!subId) return;
@@ -570,6 +632,22 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
       ? ('✅ Booking Confirmed\n\n👤 ' + customerName + '  —  ' + _displayId + '\n📋 ' + service + '\n\nCustomer notified on ' + _notifChannel + '.')
       : ('❌ Booking Cancelled\n\n👤 ' + customerName + '  —  ' + _displayId + '\n📋 ' + service + '\n\nCustomer notified on ' + _notifChannel + '.');
     await tgCall(token, 'sendMessage', { chat_id: chatId, text: _replyText, parse_mode: 'HTML', reply_to_message_id: messageId });
+    // Send management buttons for confirmed bookings
+    if (newStatus === 'in_progress') {
+      const _mgmtButtons = [[
+        { text: '\u2705 Completed', callback_data: 'bk_complete:' + subId },
+        { text: '\u274C Cancel', callback_data: 'bk_cancel_confirmed:' + subId }
+      ]];
+      await tgCall(token, 'sendMessage', { chat_id: chatId, text: '\uD83D\uDCCB Manage booking #' + subId + ':', reply_markup: { inline_keyboard: _mgmtButtons } });
+    }
+    // Send management buttons for confirmed bookings
+    if (newStatus === 'in_progress') {
+      const _mgmtButtons = [[
+        { text: '\u2705 Completed', callback_data: 'bk_complete:' + subId },
+        { text: '\u274C Cancel', callback_data: 'bk_cancel_confirmed:' + subId }
+      ]];
+      await tgCall(token, 'sendMessage', { chat_id: chatId, text: '\uD83D\uDCCB Manage booking #' + subId + ':', reply_markup: { inline_keyboard: _mgmtButtons } });
+    }
   }
   if (_custChannel === 'telegram' && _chanId) {
     try {
