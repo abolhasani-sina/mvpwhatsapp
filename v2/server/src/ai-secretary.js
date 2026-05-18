@@ -212,6 +212,26 @@ const TOOLS = [
       },
       required: []
     }
+  },
+  {
+    name: 'cancel_booking',
+    description: 'Call when customer wants to cancel their existing booking. Use getCustomerActiveBookings to find their booking first if needed.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        reason: { type: 'string', description: 'Reason for cancellation if given' }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'get_my_booking',
+    description: 'Call when customer asks about their upcoming appointment, wants to know their booking details, or before suggesting reschedule/cancel.',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: []
+    }
   }
 ];
 
@@ -690,6 +710,43 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
         const finalReply = textReply.trim() || ("I'm sorry those times don't work, " + customerName + "! I'll let the team know and they'll suggest new options.");
         saveMessage(businessId, customerPhone, "assistant", finalReply);
         return { type: "text", body: finalReply };
+      }
+      if (toolUse.name === 'get_my_booking') {
+        const { getCustomerActiveBookings } = await import('./booking-engine.js');
+        const _bks = getCustomerActiveBookings(businessId, customerPhone);
+        const _hp2 = /[پچیکگ]/.test(incomingText);
+        const _ha2 = /[؀-ۿ]/.test(incomingText) && !_hp2;
+        let _bkReply;
+        if (!_bks.length) {
+          _bkReply = _hp2 ? 'رزرو فعالی برایت پیدا نکردم.' : (_ha2 ? 'لم أجد حجزات نشطة.' : 'I do not see any upcoming bookings for you.');
+        } else {
+          const b = _bks[0];
+          const _staffLine = b.staff_name ? (' - ' + b.staff_name) : '';
+          _bkReply = _hp2 ? ('رزرو شما: ' + b.service_name + _staffLine + ' | ' + b.date + ' ساعت ' + b.time) : (_ha2 ? ('حجزك: ' + b.service_name + _staffLine + ' | ' + b.date + ' ' + b.time) : ('Your booking: ' + b.service_name + _staffLine + ' | ' + b.date + ' at ' + b.time));
+        }
+        const _gbReply = textReply.trim() || _bkReply;
+        saveMessage(businessId, customerPhone, 'assistant', _gbReply);
+        return { type: 'text', body: _gbReply };
+      }
+            if (toolUse.name === 'cancel_booking') {
+        const { getCustomerActiveBookings, cancelBooking } = await import('./booking-engine.js');
+        const _bks2 = getCustomerActiveBookings(businessId, customerPhone);
+        const _hp3=/[پچیکگ]/.test(incomingText); const _ha3=/[؀-ۿ]/.test(incomingText)&&!_hp3;
+        if (!_bks2.length) {
+          const _noBook = _hp3 ? 'رزرو فعالی پیدا نکردم.' : (_ha3 ? 'لم أجد حجزات لإلغاءها.' : 'I don\'t see any active booking to cancel.');
+          saveMessage(businessId, customerPhone, 'assistant', _noBook); return { type: 'text', body: _noBook };
+        }
+        const _canResult = await cancelBooking(_bks2[0].id, (toolUse.input&&toolUse.input.reason)||'customer request', businessId);
+        let _canReply;
+        if (_canResult.success) {
+          _canReply = _hp3 ? 'رزروت لغو شد. امیدواریم دوباره ببینیمت 💜' : (_ha3 ? 'تم إلغاء حجزك. نتمنى رؤيتك مجدداً 💜' : 'Your booking has been cancelled. Hope to see you again soon 💜');
+        } else if (_canResult.error === 'past_deadline') {
+          _canReply = _hp3 ? ('متأسفم، لغو حداقل ' + _canResult.deadlineHours + ' ساعت قبل انجام میشه. میخوایی با تیم صحبت کنیم?') : (_ha3 ? ('آسف، الإلغاء قبل ' + _canResult.deadlineHours + ' ساعة من الموعد. هل تريد التواصل مع الفريق?') : ('Sorry, cancellations must be made ' + _canResult.deadlineHours + 'h before the appointment. Would you like me to connect you with the team?'));
+        } else {
+          _canReply = textReply.trim() || 'Sorry, I could not process the cancellation. Please contact us directly.';
+        }
+        saveMessage(businessId, customerPhone, 'assistant', _canReply);
+        return { type: 'text', body: _canReply };
       }
       if (toolUse.name === "check_availability") {
         const _caInput = toolUse.input || {};
