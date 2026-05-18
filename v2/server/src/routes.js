@@ -1880,3 +1880,179 @@ router.put('/business/:id/google/confirmation-mode', tenantScope, (req, res) => 
 });
 
 export default router;
+
+//  STAFF ENDPOINTS 
+
+router.get('/business/:id/staff-members', tenantScope, (req, res) => {
+  const bId = Number(req.params.id);
+  const staff = db.prepare('SELECT * FROM staff WHERE business_id = ? ORDER BY priority DESC, name ASC').all(bId);
+  res.json(staff);
+});
+
+router.post('/business/:id/staff-members', tenantScope, async (req, res) => {
+  const bId = Number(req.params.id);
+  const { name, specialty, priority, telegram_chat_id, phone, working_days, work_start, work_end } = req.body;
+  if (!name) return res.status(400).json({ error: 'name required' });
+  try {
+    // Create Google Calendar sub-calendar for this staff member
+    let calendarId = '';
+    try {
+      const { getCalendarStatus } = await import('./google-calendar.js');
+      if (getCalendarStatus(bId).connected) {
+        const { google } = await import('googleapis');
+        const { getOAuth2Client } = await import('./google-calendar.js');
+        const s = db.prepare('SELECT google_refresh_token FROM settings WHERE business_id = ?').get(bId);
+        if (s?.google_refresh_token) {
+          const { decryptField } = await import('./middleware/encryption.js');
+          const auth = getOAuth2Client();
+          auth.setCredentials({ refresh_token: decryptField(s.google_refresh_token) });
+          const cal = google.calendar({ version: 'v3', auth });
+          const resp = await cal.calendars.insert({ requestBody: { summary: name + ' - ' + (specialty || 'Staff') } });
+          calendarId = resp.data.id || '';
+        }
+      }
+    } catch(e) {}
+    const result = db.prepare(
+      'INSERT INTO staff (business_id, name, specialty, priority, telegram_chat_id, phone, working_days, work_start, work_end, google_calendar_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)'
+    ).run(bId, name, specialty || 'any', priority || 'normal', telegram_chat_id || '', phone || '', working_days ? JSON.stringify(working_days) : '[0,1,2,3,4,5,6]', work_start || '09:00', work_end || '21:00', calendarId);
+    const staff = db.prepare('SELECT * FROM staff WHERE id = ?').get(result.lastInsertRowid);
+    res.json(staff);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.put('/business/:id/staff-members/:staffId', tenantScope, (req, res) => {
+  const bId = Number(req.params.id);
+  const staffId = Number(req.params.staffId);
+  const { name, specialty, priority, telegram_chat_id, phone, working_days, work_start, work_end, is_active } = req.body;
+  const existing = db.prepare('SELECT id FROM staff WHERE id = ? AND business_id = ?').get(staffId, bId);
+  if (!existing) return res.status(404).json({ error: 'not found' });
+  db.prepare(
+    'UPDATE staff SET name=?, specialty=?, priority=?, telegram_chat_id=?, phone=?, working_days=?, work_start=?, work_end=?, is_active=? WHERE id = ?'
+  ).run(name, specialty || 'any', priority || 'normal', telegram_chat_id || '', phone || '', working_days ? JSON.stringify(working_days) : '[0,1,2,3,4,5,6]', work_start || '09:00', work_end || '21:00', is_active === false ? 0 : 1, staffId);
+  res.json(db.prepare('SELECT * FROM staff WHERE id = ?').get(staffId));
+});
+
+router.delete('/business/:id/staff-members/:staffId', tenantScope, async (req, res) => {
+  const bId = Number(req.params.id);
+  const staffId = Number(req.params.staffId);
+  const existing = db.prepare('SELECT * FROM staff WHERE id = ? AND business_id = ?').get(staffId, bId);
+  if (!existing) return res.status(404).json({ error: 'not found' });
+  // Delete Google Calendar if exists
+  if (existing.google_calendar_id) {
+    try {
+      const { google } = await import('googleapis');
+      const { getOAuth2Client } = await import('./google-calendar.js');
+      const s = db.prepare('SELECT google_refresh_token FROM settings WHERE business_id = ?').get(bId);
+      if (s?.google_refresh_token) {
+        const { decryptField } = await import('./middleware/encryption.js');
+        const auth = getOAuth2Client();
+        auth.setCredentials({ refresh_token: decryptField(s.google_refresh_token) });
+        const cal = google.calendar({ version: 'v3', auth });
+        await cal.calendars.delete({ calendarId: existing.google_calendar_id });
+      }
+    } catch(e) {}
+  }
+  db.prepare('DELETE FROM staff WHERE id = ?').run(staffId);
+  res.json({ success: true });
+});
+
+// Staff unavailability
+router.post('/business/:id/staff-members/:staffId/unavailability', tenantScope, (req, res) => {
+  const { date, reason } = req.body;
+  const bId = Number(req.params.id);
+  const staffId = Number(req.params.staffId);
+  if (!date) return res.status(400).json({ error: 'date required' });
+  db.prepare('INSERT OR IGNORE INTO staff_unavailability (staff_id, business_id, date, reason) VALUES (?, ?, ?, ?)').run(staffId, bId, date, reason || 'personal');
+  res.json({ success: true });
+});
+
+router.delete('/business/:id/staff-members/:staffId/unavailability/:date', tenantScope, (req, res) => {
+  db.prepare('DELETE FROM staff_unavailability WHERE staff_id = ? AND date = ?').run(Number(req.params.staffId), req.params.date);
+  res.json({ success: true });
+});
+
+//  SERVICES ENDPOINTS 
+
+router.get('/business/:id/services', tenantScope, (req, res) => {
+  const services = db.prepare('SELECT * FROM services WHERE business_id = ? ORDER BY name ASC').all(Number(req.params.id));
+  res.json(services);
+});
+
+router.post('/business/:id/services', tenantScope, (req, res) => {
+  const bId = Number(req.params.id);
+  const { name, duration_minutes, staff_specialty, price } = req.body;
+  if (!name) return res.status(400).json({ error: 'name required' });
+  const result = db.prepare(
+    'INSERT INTO services (business_id, name, duration_minutes, staff_specialty, price, is_active) VALUES (?, ?, ?, ?, ?, 1)'
+  ).run(bId, name, Number(duration_minutes) || 60, staff_specialty || 'any', price || '');
+  res.json(db.prepare('SELECT * FROM services WHERE id = ?').get(result.lastInsertRowid));
+});
+
+router.put('/business/:id/services/:serviceId', tenantScope, (req, res) => {
+  const serviceId = Number(req.params.serviceId);
+  const { name, duration_minutes, staff_specialty, price, is_active } = req.body;
+  const existing = db.prepare('SELECT id FROM services WHERE id = ? AND business_id = ?').get(serviceId, Number(req.params.id));
+  if (!existing) return res.status(404).json({ error: 'not found' });
+  db.prepare(
+    'UPDATE services SET name=?, duration_minutes=?, staff_specialty=?, price=?, is_active=? WHERE id=?'
+  ).run(name, Number(duration_minutes) || 60, staff_specialty || 'any', price || '', is_active === false ? 0 : 1, serviceId);
+  res.json(db.prepare('SELECT * FROM services WHERE id = ?').get(serviceId));
+});
+
+router.delete('/business/:id/services/:serviceId', tenantScope, (req, res) => {
+  const existing = db.prepare('SELECT id FROM services WHERE id = ? AND business_id = ?').get(Number(req.params.serviceId), Number(req.params.id));
+  if (!existing) return res.status(404).json({ error: 'not found' });
+  db.prepare('DELETE FROM services WHERE id = ?').run(Number(req.params.serviceId));
+  res.json({ success: true });
+});
+
+//  BUSINESS HOURS ENDPOINTS 
+
+router.get('/business/:id/hours', tenantScope, (req, res) => {
+  const hours = db.prepare('SELECT * FROM business_hours WHERE business_id = ? ORDER BY day_of_week ASC').all(Number(req.params.id));
+  res.json(hours);
+});
+
+router.put('/business/:id/hours', tenantScope, (req, res) => {
+  const bId = Number(req.params.id);
+  const { hours } = req.body; // array of { day_of_week, open_time, close_time, is_closed }
+  if (!Array.isArray(hours)) return res.status(400).json({ error: 'hours must be array' });
+  const upsert = db.prepare(
+    'INSERT OR REPLACE INTO business_hours (business_id, day_of_week, open_time, close_time, is_closed) VALUES (?, ?, ?, ?, ?)'
+  );
+  const tx = db.transaction((rows) => { for (const r of rows) upsert.run(bId, r.day_of_week, r.open_time || '09:00', r.close_time || '21:00', r.is_closed ? 1 : 0); });
+  tx(hours);
+  res.json({ success: true });
+});
+
+//  BOOKINGS ENDPOINTS 
+
+router.get('/business/:id/bookings', tenantScope, (req, res) => {
+  const bId = Number(req.params.id);
+  const { date, status, staff_id } = req.query;
+  let query = 'SELECT b.*, s.name as staff_name, c.name as customer_name, c.phone as customer_phone FROM bookings b LEFT JOIN staff s ON s.id = b.staff_id LEFT JOIN customers c ON c.id = b.customer_id WHERE b.business_id = ?';
+  const params = [bId];
+  if (date) { query += ' AND b.date = ?'; params.push(date); }
+  if (status) { query += ' AND b.status = ?'; params.push(status); }
+  if (staff_id) { query += ' AND b.staff_id = ?'; params.push(Number(staff_id)); }
+  query += ' ORDER BY b.date DESC, b.time DESC LIMIT 100';
+  res.json(db.prepare(query).all(...params));
+});
+
+router.put('/business/:id/bookings/:bookingId/no-show', tenantScope, async (req, res) => {
+  // no-show handler
+  // synchronous approach
+  try {
+    const booking = db.prepare('SELECT * FROM bookings WHERE id = ? AND business_id = ?').get(Number(req.params.bookingId), Number(req.params.id));
+    if (!booking) return res.status(404).json({ error: 'not found' });
+    db.prepare("UPDATE bookings SET status = 'no_show', no_show = 1 WHERE id = ?").run(booking.id);
+    if (booking.customer_id) {
+      db.prepare('UPDATE customers SET no_show_count = no_show_count + 1 WHERE id = ?').run(booking.customer_id);
+    }
+    res.json({ success: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
