@@ -224,12 +224,10 @@ export async function createBookingEvent(businessId, dateStr, timeStr, durationM
 
   // Use Dubai timezone offset explicitly (+04:00) to avoid timezone shift
   const _startStr = dateStr + 'T' + hh + ':' + mm + ':00+04:00';
-  const _endDate = new Date(new Date(_startStr).getTime() + durationMinutes * 60000);
-  const _endH = String(_endDate.getUTCHours() + 4).padStart(2,'0'); // +4 for Dubai
-  const _endM = String(_endDate.getUTCMinutes()).padStart(2,'0');
-  const _endDateStr = _endDate.toISOString().slice(0,10);
-  const _endStr = _endDateStr + 'T' + _endH.padStart(2,'0') + ':' + _endM + ':00+04:00';
-
+  const _totalEndMins = timeHour * 60 + timeMin + durationMinutes;
+  const _endH = String(Math.floor(_totalEndMins / 60) % 24).padStart(2,'0');
+  const _endM = String(_totalEndMins % 60).padStart(2,'0');
+  const _endStr = dateStr + 'T' + _endH + ':' + _endM + ':00+04:00';
   const event = await calendar.events.insert({
     calendarId: calendarId,
     requestBody: {

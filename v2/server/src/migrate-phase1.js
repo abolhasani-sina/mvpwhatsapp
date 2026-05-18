@@ -227,6 +227,7 @@ export function migratePhase1() {
   if (!staffCols.includes('work_end'))            db.exec("ALTER TABLE staff ADD COLUMN work_end TEXT DEFAULT '21:00'");
   if (!staffCols.includes('last_assigned_at'))    db.exec("ALTER TABLE staff ADD COLUMN last_assigned_at TEXT");
   if (!staffCols.includes('phone'))               db.exec("ALTER TABLE staff ADD COLUMN phone TEXT DEFAULT ''");
+  if (!staffCols.includes('is_active'))         db.exec("ALTER TABLE staff ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1");
 
   const custCols = db.prepare("PRAGMA table_info(customers)").all().map(c => c.name);
   if (!custCols.includes('phone'))                   db.exec("ALTER TABLE customers ADD COLUMN phone TEXT DEFAULT ''");

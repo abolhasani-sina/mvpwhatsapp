@@ -449,8 +449,8 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
     if (_gcs(businessId).connected) {
       _calendarConnected = true;
       const { getAvailableSlots: _gas } = await import('./google-calendar.js');
-      const _ts = await _gas(businessId, _todayDateStr, 75).catch(() => null);
-      const _tms = await _gas(businessId, _tomorrowDateStr, 75).catch(() => null);
+      const _ts = await _gas(businessId, _todayDateStr, 60).catch(() => null);
+      const _tms = await _gas(businessId, _tomorrowDateStr, 60).catch(() => null);
       log.info({ todaySlots: _ts && _ts.slots && _ts.slots.length, tomorrowSlots: _tms && _tms.slots && _tms.slots.length }, 'calendar prefetch');
       let _calCtx = '\n\nCALENDAR AVAILABILITY - USE ONLY THESE TIMES (ignore brain hours for booking):';
       _calCtx += '\nToday ' + _todayDateStr + ' (' + _dayNames[_dNow.getDay()] + '): ' + (_ts && _ts.available ? 'slots: ' + _ts.slots.join(', ') : 'no slots available today');
@@ -753,7 +753,7 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
         let _slotsResult;
         try {
           const { getAvailableSlots } = await import('./google-calendar.js');
-          _slotsResult = await getAvailableSlots(businessId, _caInput.date, _caInput.duration_minutes || 75, _caInput.service_name || null);
+          _slotsResult = await getAvailableSlots(businessId, _caInput.date, _caInput.duration_minutes || 60, _caInput.service_name || null);
         } catch(_caErr) {
           _slotsResult = { available: false, reason: 'Could not check calendar: ' + _caErr.message, slots: [], date: _caInput.date };
         }
