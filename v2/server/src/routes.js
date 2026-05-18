@@ -2056,3 +2056,22 @@ router.put('/business/:id/bookings/:bookingId/no-show', tenantScope, async (req,
     res.status(500).json({ error: e.message });
   }
 });
+
+router.put('/business/:id/bookings/:bookingId/complete', tenantScope, (req, res) => {
+  const booking = db.prepare('SELECT * FROM bookings WHERE id = ? AND business_id = ?').get(Number(req.params.bookingId), Number(req.params.id));
+  if (!booking) return res.status(404).json({ error: 'not found' });
+  db.prepare("UPDATE bookings SET status = 'completed' WHERE id = ?").run(booking.id);
+  db.prepare("INSERT INTO event_log (business_id, event_type, entity_type, entity_id, payload) VALUES (?, 'booking_completed', 'booking', ?, '{}')").run(Number(req.params.id), booking.id);
+  res.json({ success: true });
+});
+
+router.put('/business/:id/bookings/:bookingId/cancel', tenantScope, async (req, res) => {
+  const booking = db.prepare('SELECT * FROM bookings WHERE id = ? AND business_id = ?').get(Number(req.params.bookingId), Number(req.params.id));
+  if (!booking) return res.status(404).json({ error: 'not found' });
+  db.prepare("UPDATE bookings SET status = 'cancelled', cancelled_at = datetime('now') WHERE id = ?").run(booking.id);
+  if (booking.gcal_event_id) {
+    try { const { deleteCalendarEvent } = await import('./google-calendar.js'); await deleteCalendarEvent(Number(req.params.id), booking.gcal_event_id); } catch(e) {}
+  }
+  db.prepare("UPDATE reminders SET status = 'cancelled' WHERE booking_id = ? AND status = 'pending'").run(booking.id);
+  res.json({ success: true });
+});

@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import BuilderPage from './pages/BuilderPage';
 import SubmissionsList from './components/SubmissionsList';
 import StaffPage from './pages/StaffPage';
+import BookingsPage from './pages/BookingsPage';
 import { ToastProvider } from './components/Toast';
 import SettingsPage from './pages/SettingsPage';
 import WhatsAppTester from './pages/WhatsAppTester';
@@ -101,6 +102,7 @@ function AppRoutes() {
       {page === 'submissions' && <SubmissionsList businessId={businessId} />}
       {page === 'conversations' && <ConversationsPage businessId={businessId} />}
       {page === 'staff' && <StaffPage businessId={businessId} />}
+      {page === 'bookings' && <BookingsPage businessId={businessId} />}
       {page === 'settings' && <SettingsPage businessId={businessId} />}
       {page === 'tester' && <WhatsAppTester businessId={businessId} />}
       {page === 'logs' && <SystemLogs />}
