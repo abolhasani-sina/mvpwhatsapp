@@ -1,126 +1,147 @@
 import { useState, useEffect } from 'react';
-import { Inbox, Users, Bot, TrendingUp, ArrowRight, Clock, CheckCircle2, Sparkles } from 'lucide-react';
-import { fetchAnalytics } from '../lib/api';
+import { Calendar, Users, TrendingUp, AlertCircle, ArrowRight, Clock, CheckCircle, Phone } from 'lucide-react';
+import { fetchBookings, fetchStaffMembers } from '../lib/api';
 import Onboarding from '../components/Onboarding';
-import { SkeletonCard } from '../components/Skeleton';
+
+function StatCard({ label, value, sub, icon: Icon, color }) {
+  const colors = {
+    blue:   'bg-blue-50 text-blue-600 border-blue-100',
+    green:  'bg-green-50 text-green-600 border-green-100',
+    amber:  'bg-amber-50 text-amber-600 border-amber-100',
+    purple: 'bg-purple-50 text-purple-600 border-purple-100',
+  };
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-5 flex items-start gap-4">
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${colors[color] || colors.blue}`}>
+        <Icon className="w-5 h-5" />
+      </div>
+      <div>
+        <p className="text-xs text-slate-500 mb-0.5">{label}</p>
+        <p className="text-2xl font-semibold text-slate-800">{value}</p>
+        {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
+function MiniBar({ count, max, day }) {
+  const pct = max > 0 ? Math.round((count / max) * 100) : 0;
+  return (
+    <div className="flex flex-col items-center gap-1.5 flex-1">
+      <span className="text-xs text-slate-500">{count}</span>
+      <div className="w-full bg-slate-100 rounded-full" style={{height:'64px',display:'flex',alignItems:'flex-end'}}>
+        <div className="w-full bg-indigo-400 rounded-full transition-all" style={{height: pct + '%', minHeight: count > 0 ? '8px' : '0'}}></div>
+      </div>
+      <span className="text-xs text-slate-400">{day}</span>
+    </div>
+  );
+}
 
 export default function Dashboard({ businessId, setBusinessId, onNavigate }) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [bookings, setBookings] = useState([]);
+  const [staff, setStaff] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
   useEffect(() => {
     if (!businessId) return;
     setLoading(true);
-    setError(null);
-    fetchAnalytics(businessId)
-      .then((d) => setData(d))
-      .catch(() => setError('Failed to load dashboard data.'))
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetchBookings(businessId),
+      fetchStaffMembers(businessId)
+    ]).then(([bks, st]) => {
+      setBookings(Array.isArray(bks) ? bks : []);
+      setStaff(Array.isArray(st) ? st : []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, [businessId]);
 
-  // ── Onboarding state ──
   if (!businessId) {
-    return (
-      <Onboarding onComplete={(bizIdOrTarget) => {
-        if (bizIdOrTarget === 'settings') onNavigate?.('settings');
-        else if (bizIdOrTarget === 'builder') onNavigate?.('builder');
-        else if (typeof bizIdOrTarget === 'number') setBusinessId(bizIdOrTarget);
-      }} />
-    );
+    return <Onboarding onComplete={(t) => {
+      if (t === 'settings') onNavigate?.('settings');
+      else if (t === 'builder') onNavigate?.('builder');
+      else if (typeof t === 'number') setBusinessId(t);
+    }} />;
   }
 
-  const stats = data || { totalSubmissions: 0, newCount: 0, inProgress: 0, doneCount: 0, staffCount: 0, recentSubmissions: [], dailyCounts: [] };
+  const todayBks = bookings.filter(b => b.date === today);
+  const upcoming = todayBks.filter(b => b.status === 'confirmed' && b.time >= new Date().toTimeString().slice(0,5));
+  const confirmed = bookings.filter(b => b.status === 'confirmed').length;
+  const noShows = bookings.filter(b => b.status === 'no_show').length;
 
-  const cards = [
-    { label: 'Total Requests', value: stats.totalSubmissions, icon: Inbox, iconColor: 'text-blue-500', bgColor: 'bg-blue-50', borderColor: 'border-blue-100' },
-    { label: 'Waiting for Reply', value: stats.newCount, icon: TrendingUp, iconColor: 'text-amber-500', bgColor: 'bg-amber-50', borderColor: 'border-amber-100' },
-    { label: 'Being Handled', value: stats.inProgress, icon: Clock, iconColor: 'text-violet-500', bgColor: 'bg-violet-50', borderColor: 'border-violet-100' },
-    { label: 'Done', value: stats.doneCount, icon: CheckCircle2, iconColor: 'text-emerald-500', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-100' },
-  ];
+  // Last 7 days chart
+  const last7 = Array.from({length:7}, (_,i) => {
+    const d = new Date(); d.setDate(d.getDate() - (6 - i));
+    const dateStr = d.toISOString().slice(0,10);
+    return { day: days[d.getDay()], count: bookings.filter(b => b.date === dateStr).length };
+  });
+  const maxCount = Math.max(...last7.map(d => d.count), 1);
 
-  const quickActions = [
-    { label: 'Edit Bot', page: 'builder', icon: Bot, desc: 'Customize menus & flows', gradient: 'from-indigo-500 to-violet-500' },
-    { label: 'View Submissions', page: 'submissions', icon: Inbox, desc: 'Review incoming requests', gradient: 'from-blue-500 to-cyan-500' },
-    { label: 'Connect WhatsApp', page: 'settings', icon: Users, desc: 'Link your WhatsApp channel', gradient: 'from-amber-500 to-orange-500' },
-  ];
+  // Staff bookings today
+  const staffStats = staff.map(s => ({
+    ...s,
+    todayCount: todayBks.filter(b => b.staff_id === s.id).length
+  })).sort((a,b) => b.todayCount - a.todayCount);
 
-  const maxDaily = Math.max(...(stats.dailyCounts || []).map((d) => d.count), 1);
+  const greetingHour = new Date().getHours();
+  const greeting = greetingHour < 12 ? 'Good morning' : greetingHour < 17 ? 'Good afternoon' : 'Good evening';
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Good morning </h2>
-        <p className="text-sm text-slate-500 mt-1">Here is what is happening today</p>
+        <h2 className="text-xl font-semibold text-slate-800">{greeting} </h2>
+        <p className="text-sm text-slate-500 mt-0.5">Here is what is happening today</p>
       </div>
 
       {loading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <SkeletonCard key={i} />)}
-        </div>
-      ) : error ? (
-        <div className="text-center py-12">
-          <p className="text-red-500 text-sm mb-3">{error}</p>
-          <button onClick={() => { setError(null); setLoading(true); fetchAnalytics(businessId).then(d => setData(d)).catch(() => setError('Failed to load.')).finally(() => setLoading(false)); }} className="bg-indigo-500 hover:bg-indigo-600 text-white border-none rounded-xl px-5 py-2.5 text-sm font-medium cursor-pointer transition-colors">Retry</button>
+          {[1,2,3,4].map(i => <div key={i} className="bg-slate-100 rounded-xl h-24 animate-pulse"/>)}
         </div>
       ) : (
         <>
-          {/* Stat cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {cards.map((c) => (
-              <div key={c.label} className={`bg-white rounded-2xl border ${c.borderColor} p-5 hover:shadow-md transition-shadow`}>
-                <div className={`w-10 h-10 rounded-xl ${c.bgColor} flex items-center justify-center mb-3`}>
-                  <c.icon className={`w-5 h-5 ${c.iconColor}`} />
-                </div>
-                <div className="text-2xl font-bold text-slate-900">{c.value}</div>
-                <div className="text-xs text-slate-500 mt-1">{c.label}</div>
-              </div>
-            ))}
+            <StatCard label="Today's bookings" value={todayBks.length} sub={`${upcoming.length} upcoming`} icon={Calendar} color="blue" />
+            <StatCard label="Confirmed" value={confirmed} sub="total active" icon={CheckCircle} color="green" />
+            <StatCard label="Staff active" value={staff.filter(s=>s.is_active).length} sub={`${staffStats.filter(s=>s.todayCount>0).length} booked today`} icon={Users} color="purple" />
+            <StatCard label="No-shows" value={noShows} sub="all time" icon={AlertCircle} color="amber" />
           </div>
 
-          {/* Activity chart + recent */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-white rounded-2xl border border-slate-200 p-5">
-              <h3 className="text-sm font-semibold text-slate-700 mb-4">Last 7 Days</h3>
-              {(stats.dailyCounts || []).length === 0 ? (
-                <p className="text-xs text-slate-400 py-8 text-center">No activity yet</p>
-              ) : (
-                <div className="flex items-end gap-2 h-32">
-                  {(stats.dailyCounts || []).map((d) => (
-                    <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
-                      <span className="text-[10px] text-slate-500 font-medium">{d.count}</span>
-                      <div
-                        className="w-full bg-gradient-to-t from-indigo-500 to-violet-400 rounded-t-md min-h-[4px] transition-all"
-                        style={{ height: `${(d.count / maxDaily) * 100}%` }}
-                      />
-                      <span className="text-[10px] text-slate-400">{d.date.slice(5)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="bg-white border border-slate-200 rounded-xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-slate-700">Bookings  last 7 days</h3>
+                <button onClick={() => onNavigate?.('bookings')} className="text-xs text-indigo-500 hover:text-indigo-700 flex items-center gap-1">View all <ArrowRight className="w-3 h-3"/></button>
+              </div>
+              <div className="flex items-end gap-2">
+                {last7.map((d, i) => <MiniBar key={i} count={d.count} max={maxCount} day={d.day} />)}
+              </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-5">
+            <div className="bg-white border border-slate-200 rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-slate-700">Recent Submissions</h3>
-                {stats.totalSubmissions > 0 && (
-                  <button onClick={() => onNavigate?.('submissions')} className="text-xs text-indigo-600 hover:underline font-medium">
-                    View all →
-                  </button>
-                )}
+                <h3 className="text-sm font-medium text-slate-700">Today's schedule</h3>
+                <span className="text-xs text-slate-400">{todayBks.length} bookings</span>
               </div>
-              {(stats.recentSubmissions || []).length === 0 ? (
-                <p className="text-xs text-slate-400 py-8 text-center">No submissions yet</p>
+              {todayBks.length === 0 ? (
+                <div className="text-center py-8 text-slate-400">
+                  <Calendar className="w-8 h-8 mx-auto mb-2 opacity-30"/>
+                  <p className="text-sm">No bookings today</p>
+                </div>
               ) : (
-                <div className="space-y-2 max-h-40 overflow-y-auto bd-scrollbar">
-                  {(stats.recentSubmissions || []).slice(0, 5).map((s) => (
-                    <div key={s.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 text-xs">
-                      <div>
-                        <span className="font-medium text-slate-700">{s.flow_name || 'Submission'}</span>
-                        <span className="text-slate-400 ml-2">{new Date(s.created_at).toLocaleDateString()}</span>
+                <div className="space-y-2.5 max-h-48 overflow-y-auto">
+                  {todayBks.sort((a,b) => a.time.localeCompare(b.time)).map(b => (
+                    <div key={b.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                      <div className="w-14 text-center">
+                        <span className="text-xs font-medium text-slate-700">{b.time}</span>
                       </div>
-                      <span className={`px-2 py-0.5 rounded-full font-medium ${s.status === 'new' ? 'bg-amber-100 text-amber-700' : s.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                        {s.status}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-slate-800 truncate">{b.customer_name || 'Customer'}</p>
+                        <p className="text-xs text-slate-500 truncate">{b.service_name}{b.staff_name ? `  ${b.staff_name}` : ''}</p>
+                      </div>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.status === 'confirmed' ? 'bg-green-100 text-green-700' : b.status === 'completed' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>
+                        {b.status}
                       </span>
                     </div>
                   ))}
@@ -129,91 +150,25 @@ export default function Dashboard({ businessId, setBusinessId, onNavigate }) {
             </div>
           </div>
 
-          {/* Plan Usage */}
-          {stats.plan && (
-            <div className="bg-white rounded-2xl border border-slate-200 p-5">
+          {staff.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold text-slate-700">Plan Usage</h3>
-                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">{stats.plan.name}</span>
-                </div>
-                <button onClick={() => onNavigate?.('settings')} className="text-xs text-indigo-600 hover:underline font-medium">Manage </button>
+                <h3 className="text-sm font-medium text-slate-700">Staff today</h3>
+                <button onClick={() => onNavigate?.('staff')} className="text-xs text-indigo-500 hover:text-indigo-700 flex items-center gap-1">Manage <ArrowRight className="w-3 h-3"/></button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* Submissions this month */}
-                <div>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-xs text-slate-500">Submissions this month</span>
-                    <span className="text-xs font-semibold text-slate-700">
-                      {stats.plan.usageSubmissionsThisMonth} / {stats.plan.maxSubmissionsPerMonth ?? ''}
-                    </span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {staffStats.map(s => (
+                  <div key={s.id} className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-semibold shrink-0">{s.name[0]}</div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-slate-800 truncate">{s.name}</p>
+                      <p className="text-xs text-slate-400">{s.todayCount} booking{s.todayCount !== 1 ? 's' : ''}</p>
+                    </div>
                   </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        stats.plan.maxSubmissionsPerMonth &&
-                        stats.plan.usageSubmissionsThisMonth / stats.plan.maxSubmissionsPerMonth > 0.8
-                          ? 'bg-red-500' : 'bg-indigo-500'
-                      }`}
-                      style={{ width: `${stats.plan.maxSubmissionsPerMonth ? Math.min(100, (stats.plan.usageSubmissionsThisMonth / stats.plan.maxSubmissionsPerMonth) * 100) : 0}%` }}
-                    />
-                  </div>
-                </div>
-                {/* Staff */}
-                <div>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-xs text-slate-500">Staff members</span>
-                    <span className="text-xs font-semibold text-slate-700">
-                      {stats.plan.usageStaff} / {stats.plan.maxStaff ?? ''}
-                    </span>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        stats.plan.maxStaff &&
-                        stats.plan.usageStaff / stats.plan.maxStaff > 0.8
-                          ? 'bg-red-500' : 'bg-violet-500'
-                      }`}
-                      style={{ width: `${stats.plan.maxStaff ? Math.min(100, (stats.plan.usageStaff / stats.plan.maxStaff) * 100) : 0}%` }}
-                    />
-                  </div>
-                </div>
-                {/* Channels */}
-                <div>
-                  <div className="mb-1.5">
-                    <span className="text-xs text-slate-500">Channels included</span>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${stats.plan.allowTelegram ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-400 line-through'}`}>Telegram</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${stats.plan.allowWhatsapp ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-400 line-through'}`}>WhatsApp</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${stats.plan.allowInstagram ? 'bg-pink-100 text-pink-700' : 'bg-slate-100 text-slate-400 line-through'}`}>Instagram</span>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           )}
-
-          {/* Quick actions */}
-          <div>
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">Quick Actions</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {quickActions.map((a) => (
-                <button
-                  key={a.page}
-                  onClick={() => onNavigate?.(a.page)}
-                  className="flex items-center gap-4 bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md hover:border-indigo-200 transition-all text-left group"
-                >
-                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${a.gradient} flex items-center justify-center shrink-0 shadow-sm`}>
-                    <a.icon className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-slate-800 group-hover:text-indigo-700 transition-colors">{a.label}</div>
-                    <div className="text-xs text-slate-400">{a.desc}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
         </>
       )}
     </div>
