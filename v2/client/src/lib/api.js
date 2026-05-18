@@ -400,3 +400,57 @@ export async function fetchOwnerStats() {
   if (!res.ok) throw new Error(json.error || 'Failed to fetch stats');
   return json.data;
 }
+
+export async function fetchStaffMembers(businessId) {
+  const res = await authFetch(`${API}/business/${businessId}/staff-members`);
+  return res.ok ? res.json() : [];
+}
+export async function createStaffMember(businessId, data) {
+  const res = await authFetch(`${API}/business/${businessId}/staff-members`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed');
+  return json;
+}
+export async function updateStaffMember(businessId, staffId, data) {
+  const res = await authFetch(`${API}/business/${businessId}/staff-members/${staffId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed');
+  return json;
+}
+export async function deleteStaffMember(businessId, staffId) {
+  const res = await authFetch(`${API}/business/${businessId}/staff-members/${staffId}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed');
+}
+export async function fetchServices(businessId) {
+  const res = await authFetch(`${API}/business/${businessId}/services`);
+  return res.ok ? res.json() : [];
+}
+export async function createService(businessId, data) {
+  const res = await authFetch(`${API}/business/${businessId}/services`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed');
+  return json;
+}
+export async function updateService(businessId, serviceId, data) {
+  const res = await authFetch(`${API}/business/${businessId}/services/${serviceId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Failed');
+  return json;
+}
+export async function deleteService(businessId, serviceId) {
+  const res = await authFetch(`${API}/business/${businessId}/services/${serviceId}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed');
+}
+export async function fetchBusinessHours(businessId) {
+  const res = await authFetch(`${API}/business/${businessId}/hours`);
+  return res.ok ? res.json() : [];
+}
+export async function saveBusinessHours(businessId, hours) {
+  const res = await authFetch(`${API}/business/${businessId}/hours`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hours }) });
+  if (!res.ok) throw new Error('Failed');
+}
+export async function fetchBookings(businessId, params = {}) {
+  const q = new URLSearchParams(params).toString();
+  const res = await authFetch(`${API}/business/${businessId}/bookings${q ? '?' + q : ''}`);
+  return res.ok ? res.json() : [];
+}

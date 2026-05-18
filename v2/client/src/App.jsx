@@ -6,7 +6,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import BuilderPage from './pages/BuilderPage';
 import SubmissionsList from './components/SubmissionsList';
-import StaffManager from './components/StaffManager';
+import StaffPage from './pages/StaffPage';
 import { ToastProvider } from './components/Toast';
 import SettingsPage from './pages/SettingsPage';
 import WhatsAppTester from './pages/WhatsAppTester';
@@ -100,7 +100,7 @@ function AppRoutes() {
       {page === 'builder' && <BuilderPage businessId={businessId} setBusinessId={setBusinessId} />}
       {page === 'submissions' && <SubmissionsList businessId={businessId} />}
       {page === 'conversations' && <ConversationsPage businessId={businessId} />}
-      {page === 'staff' && <StaffManager businessId={businessId} />}
+      {page === 'staff' && <StaffPage businessId={businessId} />}
       {page === 'settings' && <SettingsPage businessId={businessId} />}
       {page === 'tester' && <WhatsAppTester businessId={businessId} />}
       {page === 'logs' && <SystemLogs />}
