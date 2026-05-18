@@ -504,6 +504,32 @@ export async function handleAISecretary(businessId, customerPhone, customerName,
     if (toolUse) {
       if (toolUse.name === "save_booking") {
         const input = toolUse.input || {};
+        // Phase 2: use booking engine if staff configured
+        const _staffCount = db.prepare('SELECT COUNT(*) as c FROM staff WHERE business_id = ? AND is_active = 1').get(businessId);
+        if (_staffCount && _staffCount.c > 0 && input.preferred_date && /^\d{4}-\d{2}-\d{2}$/.test(input.preferred_date)) {
+          try {
+            const { createBooking, detectLanguage } = await import('./booking-engine.js');
+            const _lang = detectLanguage(incomingText);
+            let _normTime = String(input.preferred_time || '09:00').trim();
+            const _tm = _normTime.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+            if (_tm) { let _th=parseInt(_tm[1]); const _tmm=(_tm[2]||'00'); const _tap=(_tm[3]||'').toLowerCase(); if(_tap==='pm'&&_th!==12)_th+=12; if(_tap==='am'&&_th===12)_th=0; _normTime=String(_th).padStart(2,'0')+':'+_tmm; }
+            let _dur=60;
+            const _svc=db.prepare('SELECT duration_minutes,staff_specialty FROM services WHERE business_id=? AND is_active=1 AND LOWER(name)=LOWER(?) LIMIT 1').get(businessId,input.service||'');
+            if(_svc)_dur=_svc.duration_minutes;
+            const _result=await createBooking({businessId,customerPhone,customerName:input.customer_name||customerName,channel,channelId:customerPhone,service:input.service||'Service',date:input.preferred_date,time:_normTime,durationMinutes:_dur,specialty:_svc?.staff_specialty||'any',language:_lang});
+            const _cn=input.customer_name||customerName||'';
+            const _sf=_result.staffName?' with '+_result.staffName:'';
+            const _hp=/[پچیکگ]/.test(incomingText);
+            const _ha=/[؀-ۿ]/.test(incomingText)&&!_hp;
+            let _ar;
+            if(_hp)_ar='ممنون '+_cn+' جان! رزروت '+(_result.staffName?'با '+_result.staffName+' ':'')+' ثبت شد ✅ '+input.preferred_date+' ساعت '+_normTime;
+            else if(_ha)_ar='تمام '+_cn+'! حجزك مؤكد'+(_result.staffName?' مع '+_result.staffName:'')+' ✅ '+input.preferred_date+' الساعة '+_normTime;
+            else _ar=textReply.trim()||('All set '+_cn+'! Confirmed'+_sf+' ✅ '+input.preferred_date+' at '+_normTime);
+            saveMessage(businessId,customerPhone,'assistant',_ar);
+            log.info({businessId,customerPhone,bookingId:_result.bookingId,staffName:_result.staffName},'Auto booking created');
+            return {type:'text',body:_ar};
+          } catch(_beErr){ log.warn({err:_beErr.message},'Booking engine failed, falling back'); }
+        }
         // Validate against calendar before saving
         if (_calendarConnected && input.preferred_date && /^\d{4}-\d{2}-\d{2}$/.test(input.preferred_date)) {
           try {

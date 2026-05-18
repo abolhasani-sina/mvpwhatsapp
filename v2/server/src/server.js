@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync } from 'fs';
 import { migrate } from './migrate.js';
+import { migratePhase1 } from './migrate-phase1.js';
 import routes from './routes.js';
 import authRoutes from './auth-routes.js';
 import ownerRoutes from './owner-routes.js';
@@ -122,6 +123,7 @@ app.use(cookieParser());
 
 // Run migrations on startup
 migrate();
+migratePhase1();
 log.info('database migrated');
 
 // Auto-start polling for all businesses with a telegram token // [ADDED: auto-start-polling]
@@ -297,6 +299,8 @@ setInterval(cleanupDedupRecords, 5 * 60 * 1000);
 setInterval(cleanupTelegramUpdates, 60 * 60 * 1000);
 
 // Process message queue every 5 seconds
+// Process appointment reminders every 60 seconds
+setInterval(() => { import("./booking-engine.js").then(m => m.processReminders()).catch(e => {}); }, 60 * 1000);
 setInterval(processMessageQueue, 5 * 1000);
 
 // ── Update gauge metrics every 30 seconds ──

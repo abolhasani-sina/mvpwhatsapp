@@ -514,8 +514,29 @@ async function handleBookingCallback(businessId, token, chatId, messageId, callb
   if (action === 'bk_complete') {
     const _cSubId = parseInt(callbackData.split(':')[1]);
     db.prepare("UPDATE submissions SET status = 'done' WHERE id = ?").run(_cSubId);
-    if (messageId) await tgCall(token, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
-    await tgCall(token, 'sendMessage', { chat_id: chatId, text: '\u2705 Booking #' + _cSubId + ' marked as completed.', reply_to_message_id: messageId });
+    // Change calendar event color to green (completed)
+    try {
+      const _cSub = db.prepare('SELECT * FROM submissions WHERE id = ?').get(_cSubId);
+      if (_cSub) {
+        const _cData = JSON.parse(_cSub.data || '{}');
+        const _cEventId = _cData['_gcal_event_id'];
+        if (_cEventId) {
+          const { getCalendarStatus, getOAuth2Client } = await import('./google-calendar.js');
+          const { google } = await import('googleapis');
+          if (getCalendarStatus(businessId).connected) {
+            const { decryptField } = await import('./middleware/encryption.js');
+            const _cs = db.prepare('SELECT google_refresh_token FROM settings WHERE business_id = ?').get(businessId);
+            if (_cs?.google_refresh_token) {
+              const _auth = getOAuth2Client();
+              _auth.setCredentials({ refresh_token: decryptField(_cs.google_refresh_token) });
+              const _cal = google.calendar({ version: 'v3', auth: _auth });
+              await _cal.events.patch({ calendarId: 'primary', eventId: _cEventId, requestBody: { colorId: '2', summary: '\u2705 ' + (_cData['Service'] || 'Service') + ' \u2014 ' + (_cData['Customer Name'] || '') } }).catch(() => {});
+            }
+          }
+        }
+      }
+    } catch(_ce) {}
+    if (messageId) await tgCall(token, 'editMessageText', { chat_id: chatId, message_id: messageId, text: '\u2705 Completed\n\n' + (db.prepare('SELECT data FROM submissions WHERE id = ?').get(_cSubId) ? JSON.parse(db.prepare('SELECT data FROM submissions WHERE id = ?').get(_cSubId).data)['Customer Name'] || '' : '') + ' \u2014 booking done.', reply_markup: { inline_keyboard: [] } });
     return;
   }
   if (action === 'bk_cancel_confirmed') {

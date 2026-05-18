@@ -90,7 +90,8 @@ function getAuthedClient(businessId) {
   return oauth2Client;
 }
 
-export async function getAvailableSlots(businessId, dateStr, durationMinutes, serviceName) {
+export async function getAvailableSlots(businessId, dateStr, durationMinutes, serviceName, calendarId) {
+  calendarId = calendarId || 'primary';
   // If serviceName provided, look up real duration from brain
   if (serviceName) {
     const _brain = db.prepare('SELECT services, booking_buffer FROM business_brain WHERE business_id = ?').get(businessId);
@@ -157,7 +158,7 @@ export async function getAvailableSlots(businessId, dateStr, durationMinutes, se
   let events = [];
   try {
     const res = await calendar.events.list({
-      calendarId: 'primary',
+      calendarId: calendarId,
       timeMin, timeMax,
       singleEvents: true,
       orderBy: 'startTime',
@@ -191,7 +192,8 @@ export async function getAvailableSlots(businessId, dateStr, durationMinutes, se
   return { available: slots.length > 0, slots, date: dateStr, day: dayKey };
 }
 
-export async function createBookingEvent(businessId, dateStr, timeStr, durationMinutes, customerName, service, customerPhone) {
+export async function createBookingEvent(businessId, dateStr, timeStr, durationMinutes, customerName, service, customerPhone, calendarId) {
+  calendarId = calendarId || 'primary';
   durationMinutes = Number(durationMinutes) || 60;
   const auth = getAuthedClient(businessId);
   const calendar = google.calendar({ version: 'v3', auth });
@@ -229,7 +231,7 @@ export async function createBookingEvent(businessId, dateStr, timeStr, durationM
   const _endStr = _endDateStr + 'T' + _endH.padStart(2,'0') + ':' + _endM + ':00+04:00';
 
   const event = await calendar.events.insert({
-    calendarId: 'primary',
+    calendarId: calendarId,
     requestBody: {
       summary: service + ' \u2014 ' + customerName,
       description: 'Customer: ' + customerName + '\nPhone: ' + customerPhone + '\nService: ' + service + '\n\nBooked via NabzChat',
