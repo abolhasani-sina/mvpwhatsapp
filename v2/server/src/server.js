@@ -7,7 +7,6 @@ import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync } from 'fs';
-import { execSync } from 'child_process';
 import { migrate } from './migrate.js';
 import { migratePhase1 } from './migrate-phase1.js';
 import routes from './routes.js';
@@ -332,17 +331,6 @@ if (existsSync(distDir)) {
   log.warn({ distDir }, 'frontend dist not found — run: cd v2/client && npm run build');
 }
 
-const server = app.listen(PORT, () => {
+app.listen(PORT, () => {
   log.info({ port: PORT }, `V2 server running on http://localhost:${PORT}`);
-});
-
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    log.error({ port: PORT }, 'Port already in use - killing and retrying');
-    try { execSync(`fuser -k ${PORT}/tcp`); } catch(e) {}
-    setTimeout(() => server.listen(PORT), 2000);
-  } else {
-    log.error({ err }, 'Server error');
-    process.exit(1);
-  }
 });

@@ -61,7 +61,7 @@ def check():
 
     # CPU
     cpu = psutil.cpu_percent(interval=2)
-    if cpu > 90:
+    if cpu > 95:
         alerts.append(('critical', f' CPU critical: {cpu:.0f}%'))
     elif cpu > 80:
         alerts.append(('high', f' CPU high: {cpu:.0f}%'))
@@ -111,7 +111,7 @@ def main():
 
             # Send alerts with cooldowns
             for severity, msg in alerts:
-                cooldown = 60 if severity == 'critical' else 300
+                cooldown = 300 if severity == 'critical' else 300
                 last_time = last_alerts.get(msg, 0)
                 if time.time() - last_time > cooldown:
                     send_telegram(bot, channel, msg)
